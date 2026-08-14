@@ -19,6 +19,7 @@ from pathlib import Path
 from . import cleanup, history
 from . import render as render_mod
 from . import rules, schema
+from . import upgrade as upgrade_mod
 from .loader import load
 from .model import ERROR, WARN
 from .rename import RenameError
@@ -292,6 +293,50 @@ def cmd_rename(args: argparse.Namespace) -> int:
     return 0
 
 
+def cmd_upgrade(args: argparse.Namespace) -> int:
+    root = _repo_root(args.root)
+
+    try:
+        result = upgrade_mod.inspect(root)
+    except upgrade_mod.UpgradeError as exc:
+        print(f"エラー: {exc}", file=sys.stderr)
+        return 1
+
+    print(f"ローカル:     {result['local']}")
+    print(f"テンプレート: {result['remote']}")
+    print("")
+
+    if result["ahead"]:
+        print("ローカルの方が新しい版です。テンプレート本体で実行していませんか。")
+        return 0
+
+    if not result["behind"]:
+        print("最新です。取り込むものはありません。")
+        return 0
+
+    if result["breaking"]:
+        print("**破壊的変更を含みます。マージしただけでは壊れます。**")
+        print("下の移行手順を読んでから取り込んでください。")
+        print("")
+
+    for version, body in result["entries"]:
+        print(f"--- {version} ---")
+        print(body if body else "（記載なし）")
+        print("")
+
+    if result["files"]:
+        print(f"変更されるファイル（{len(result['files'])} 件）:")
+        for rel in result["files"][:20]:
+            print(f"  {rel}")
+        if len(result["files"]) > 20:
+            print(f"  ... 他 {len(result['files']) - 20} 件")
+        print("")
+
+    print("取り込む手順は README の「テンプレートの更新を取り込む」にあります。")
+    print("このコマンドは何も書き込んでいません。")
+    return 0
+
+
 def cmd_stats(args: argparse.Namespace) -> int:
     root = _repo_root(args.root)
     graph = load(root)
@@ -410,6 +455,12 @@ def build_parser() -> argparse.ArgumentParser:
         "--dry-run", action="store_true", help="書き込まずに変更内容だけ表示する"
     )
     p_rename.set_defaults(func=cmd_rename)
+
+    p_upgrade = sub.add_parser(
+        "upgrade",
+        help="テンプレートとの差を調べる（読み取りのみ。取り込みは手動）",
+    )
+    p_upgrade.set_defaults(func=cmd_upgrade)
 
     p_stats = sub.add_parser("stats", help="集計を表示する")
     p_stats.set_defaults(func=cmd_stats)

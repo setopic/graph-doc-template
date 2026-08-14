@@ -9,32 +9,15 @@ git が無い・リポジトリでない・履歴が浅い場合は**何も返�
 
 from __future__ import annotations
 
-import subprocess
 from datetime import date, datetime
 from pathlib import Path
+
+from .git import run as _run
 
 # 出力側の区切り。引数には ASCII の "%x00" を渡し、git に NUL へ展開させる。
 # NUL 文字そのものを引数に含めると Windows でプロセスを起動できない。
 SEPARATOR = "\x00"
 COMMIT_FORMAT = "--format=%x00%cI"
-TIMEOUT_SECONDS = 30
-
-
-def _run(root: Path, args: list[str]) -> str | None:
-    try:
-        completed = subprocess.run(
-            ["git", "-C", str(root), *args],
-            capture_output=True,
-            text=True,
-            encoding="utf-8",
-            errors="replace",
-            timeout=TIMEOUT_SECONDS,
-        )
-    except (OSError, subprocess.SubprocessError):
-        return None
-    if completed.returncode != 0:
-        return None
-    return completed.stdout
 
 
 def is_usable(root: Path) -> bool:

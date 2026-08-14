@@ -167,6 +167,8 @@ python -m tools.graph render --format mermaid --focus DOM-01
 | `python -m tools.graph new --type usecase --id UC-02 --title "..."` | 雛形からノードを起こす |
 | `python -m tools.graph new --from <file>` | 1 行 1 ノードのファイルからまとめて起こす |
 | `python -m tools.graph reset-samples` | 同梱のサンプルノードを一括で取り除く |
+| `python -m tools.graph upgrade` | テンプレートとの差を調べる（読み取りのみ） |
+| `python -m tools.graph --version` | テンプレートの版 |
 | `python -m tools.graph stats` | ノード数・エッジ数の集計 |
 
 `make check` `make sync` `make graph` も同じことをする（Makefile 参照）。
@@ -302,12 +304,15 @@ contract | CON-02 | キャンセル API | cancel-api | draft | contract-http
 
 ### 取り込む
 
-**まず [TEMPLATE_CHANGELOG.md](TEMPLATE_CHANGELOG.md) を読む。** 版が major で
-上がっていれば移行作業が要る。マージしただけでは壊れる変更がありうる。
+**まず差を調べる。** 読み取りのみで、何も書き込まない。
 
 ```bash
-python -m tools.graph --version
+python -m tools.graph upgrade
 ```
+
+遅れていれば、その間の変更履歴と、変更されるファイルの一覧が出る。
+**major が上がっていれば移行作業が要る** — マージしただけでは壊れるので、
+表示された移行手順を先に読む。
 
 手順はこう。
 
