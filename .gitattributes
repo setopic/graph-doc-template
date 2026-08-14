@@ -7,8 +7,12 @@
 *.pdf binary
 
 # テンプレートから更新を取り込む（git merge template/main）とき、
-# この 2 つは常にプロジェクト側を残す。中身がプロジェクト固有だから。
+# ここに挙げたものは常にプロジェクト側を残す。中身がプロジェクト固有だから。
 # 取り込む側で一度だけ設定が要る:
 #   git config merge.ours.driver true
-README.md     merge=ours
-docs/index.md merge=ours
+#
+# index.md はスラッシュを含まないので、どの階層の index.md にも当たる。
+# 目次の一覧はプロジェクトのノードで埋まっているため、常に自分側が正しい。
+README.md merge=ours
+index.md  merge=ours
+docs/50-adr/adr-0001-graph-driven-docs.md merge=ours
