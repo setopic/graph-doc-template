@@ -300,7 +300,16 @@ contract | CON-02 | キャンセル API | cancel-api | draft | contract-http
    git fetch template && git merge template/main --allow-unrelated-histories
    ```
 
-以後の取り込みはこの手順。
+### 取り込む
+
+**まず [TEMPLATE_CHANGELOG.md](TEMPLATE_CHANGELOG.md) を読む。** 版が major で
+上がっていれば移行作業が要る。マージしただけでは壊れる変更がありうる。
+
+```bash
+python -m tools.graph --version
+```
+
+手順はこう。
 
 ```bash
 git fetch template && git merge template/main

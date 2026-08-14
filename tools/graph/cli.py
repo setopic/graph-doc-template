@@ -25,6 +25,7 @@ from .rename import RenameError
 from .rename import rename as rename_node
 from .scaffold import ScaffoldError, create, create_many, parse_batch
 from .sync import sync as sync_graph
+from .version import TEMPLATE_VERSION
 
 
 def _repo_root(arg: str | None) -> Path:
@@ -300,6 +301,12 @@ def cmd_stats(args: argparse.Namespace) -> int:
 
 def build_parser() -> argparse.ArgumentParser:
     parser = argparse.ArgumentParser(prog="python -m tools.graph", description=__doc__)
+    parser.add_argument(
+        "--version",
+        action="version",
+        version=f"graph-doc-template {TEMPLATE_VERSION}",
+        help="テンプレートの版を表示する（変更履歴は TEMPLATE_CHANGELOG.md）",
+    )
     parser.add_argument("--root", help="リポジトリルート（既定: このファイルから推定）")
     sub = parser.add_subparsers(dest="command", required=True)
 

@@ -116,6 +116,20 @@ python -m tools.graph render --format mermaid --focus DOM-01 --depth 1
 - 取り込み手順は README の「テンプレートの更新を取り込む」にある。
   **`reset-samples --yes` まで含めて 1 セット**
 
+## テンプレート本体を変えるとき
+
+**このリポジトリがテンプレート本体（`graph-doc-template`）なら、
+変更を `TEMPLATE_CHANGELOG.md` に記録し、`tools/graph/version.py` の版を上げる。**
+
+| 変更 | 上げる箇所 |
+| --- | --- |
+| 取り込む側に作業が要る（語彙の変更、id 規約の変更） | major |
+| 追加だけ（雛形、コマンド、ルール） | minor |
+| 文言・不具合の修正 | patch |
+
+**破壊的な変更には必ず移行手順を書く。** 書けないなら入れない。
+手順のない破壊的変更は、長く放置されたリポジトリを黙って壊す。
+
 ## ツールを直すとき
 
 - 語彙（ノード種別・エッジ種別・層）は `tools/graph/schema.py` に集約されている。
