@@ -468,7 +468,31 @@ def build_parser() -> argparse.ArgumentParser:
     return parser
 
 
+def _make_stdio_safe() -> None:
+    """印字で落ちないようにする。
+
+    `check` の警告は文書の本文をそのまま引用する（`G013` など）。本文には
+    Windows の既定コードページ（cp932 など）で表現できない文字が混ざりうる。
+    そのまま print すると UnicodeEncodeError で途中まで出したまま止まり、
+    **グラフは正しいのに終了コード 1 になる**。本物の検証失敗と区別が付かない。
+
+    そこで UTF-8 に切り替える。ファイルの書き出しは元から UTF-8 なので、
+    これで入出力の扱いが揃う。`errors="replace"` は表現できない文字が
+    残った場合（サロゲートを含むパスなど）の保険。
+    """
+    for stream in (sys.stdout, sys.stderr):
+        # pythonw では None、テストでは StringIO に差し替わっていることがある
+        reconfigure = getattr(stream, "reconfigure", None)
+        if reconfigure is None:
+            continue
+        try:
+            reconfigure(encoding="utf-8", errors="replace")
+        except (ValueError, OSError, LookupError):
+            pass
+
+
 def main(argv: list[str] | None = None) -> int:
+    _make_stdio_safe()
     parser = build_parser()
     args = parser.parse_args(argv)
     return args.func(args)
