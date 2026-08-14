@@ -19,7 +19,10 @@ jobs:
         run: python -m tools.graph check
 
       - name: 関連ドキュメントが最新か確かめる
-        run: python -m tools.graph sync --dry-run --check
+        run: python -m tools.graph sync --check
+
+      - name: README の図が最新か確かめる
+        run: python -m tools.graph render --format mermaid --into README.md --check
 
       - name: 集計を出す
         if: always()

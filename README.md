@@ -55,6 +55,67 @@ tools/graph/            検証・可視化・生成ツール（依存なし）
 40-contracts ──▶ 30-usecases ──▶ 20-domain ──▶ 10-architecture
 ```
 
+## グラフ
+
+同梱のサンプルノードで作ったグラフ。実線が `depends_on` と `refines`、
+破線が `related` と `decides`、点線の枠が `draft` のノード。
+
+<!-- graph:diagram:start -->
+
+<!-- この図は render --into が生成する。手で編集しない -->
+
+```mermaid
+graph LR
+  subgraph index["目次"]
+    IDX-ADR["IDX-ADR<br/>決定記録"]
+    IDX-ARCH["IDX-ARCH<br/>アーキテクチャ"]
+    IDX-CON["IDX-CON<br/>契約"]
+    IDX-DOM["IDX-DOM<br/>ドメイン"]
+    IDX-ROOT["IDX-ROOT<br/>ドキュメントグラフのルート"]
+    IDX-UC["IDX-UC<br/>ユースケース"]
+  end
+  subgraph meta["メタ / 規約"]
+    META-01["META-01<br/>グラフの規約"]
+    META-02["META-02<br/>ノード種別と層"]
+  end
+  subgraph architecture["アーキテクチャ"]
+    ARCH-01["ARCH-01<br/>システム全体構成"]
+    ARCH-02["ARCH-02<br/>ワーカーの実行モデル"]
+  end
+  subgraph domain["ドメイン"]
+    DOM-01["DOM-01<br/>予約"]
+  end
+  subgraph usecase["ユースケース"]
+    UC-01["UC-01<br/>予約を確定する"]
+  end
+  subgraph contract["契約"]
+    CON-01["CON-01<br/>予約確定エンドポイント"]
+  end
+  subgraph adr["決定記録"]
+    ADR-0001["ADR-0001<br/>設計文書をグラフとして管理する"]
+  end
+  ADR-0001 -.->|decides| META-01
+  ADR-0001 -.->|decides| ARCH-01
+  ARCH-02 -->|refines| ARCH-01
+  CON-01 -->|depends_on| UC-01
+  CON-01 -->|depends_on| DOM-01
+  DOM-01 -->|depends_on| ARCH-01
+  META-01 -.->|related| META-02
+  META-02 -.->|related| META-01
+  UC-01 -->|depends_on| DOM-01
+  classDef draft stroke-dasharray: 4 3;
+  classDef deprecated opacity:0.5;
+  class CON-01 draft;
+```
+
+<!-- graph:diagram:end -->
+
+図は `render --into` が生成する。CI で最新かどうかを検証している。
+
+```bash
+python -m tools.graph render --format mermaid --into README.md
+```
+
 ## コマンド
 
 | コマンド | 用途 |
@@ -63,8 +124,10 @@ tools/graph/            検証・可視化・生成ツール（依存なし）
 | `python -m tools.graph check --strict` | 警告も失敗として扱う |
 | `python -m tools.graph check --format json` | CI やエディタ連携向け |
 | `python -m tools.graph sync` | 各文書末尾の「関連ドキュメント」を再生成 |
-| `python -m tools.graph sync --dry-run --check` | 再生成が必要なら終了コード 1（CI 用） |
+| `python -m tools.graph sync --check` | 再生成が必要なら終了コード 1（CI 用） |
 | `python -m tools.graph render --format mermaid\|json\|dot` | 図・データの書き出し |
+| `python -m tools.graph render --into README.md` | README の図を再生成 |
+| `python -m tools.graph render --into README.md --check` | 図が古ければ終了コード 1（CI 用） |
 | `python -m tools.graph new --type usecase --id UC-02 --title "..."` | 雛形からノードを起こす |
 | `python -m tools.graph new --from <file>` | 1 行 1 ノードのファイルからまとめて起こす |
 | `python -m tools.graph reset-samples` | 同梱のサンプルノードを一括で取り除く |
@@ -168,8 +231,22 @@ contract | CON-02 | キャンセル API | cancel-api | draft | contract-http
 
 ## CI
 
-`.github/workflows/graph-check.yml` が push / PR で `check` と `sync --dry-run --check` を回す。
-GitHub 以外を使うなら、この 2 コマンドを同等のジョブに移すだけでよい。
+`.github/workflows/graph-check.yml` が push / PR で次の 3 つを回す。
+GitHub 以外を使うなら、この 3 コマンドを同等のジョブに移すだけでよい。
+
+```bash
+python -m tools.graph check
+```
+
+```bash
+python -m tools.graph sync --check
+```
+
+```bash
+python -m tools.graph render --format mermaid --into README.md --check
+```
+
+3 つ目があるので、**グラフを変えたまま README の図を更新し忘れると CI が落ちる**。
 
 ## ライセンス
 

@@ -85,6 +85,31 @@ def cmd_render(args: argparse.Namespace) -> int:
     else:
         output = render_mod.to_dot(graph, include_mentions=args.include_mentions)
 
+    if args.into:
+        if args.format != "mermaid":
+            print("エラー: --into は --format mermaid のときだけ使えます", file=sys.stderr)
+            return 1
+
+        into_path = Path(args.into)
+        if not into_path.is_absolute():
+            into_path = root / into_path
+
+        try:
+            changed = render_mod.inject(into_path, output, dry_run=args.check)
+        except render_mod.InjectError as exc:
+            print(f"エラー: {exc}", file=sys.stderr)
+            return 1
+
+        rel = into_path.relative_to(root).as_posix()
+        if not changed:
+            print(f"更新なし（最新）: {rel}")
+            return 0
+        if args.check:
+            print(f"図が古くなっています: {rel}")
+            return 1
+        print(f"図を更新しました: {rel}")
+        return 0
+
     if args.out:
         out_path = Path(args.out)
         if not out_path.is_absolute():
@@ -108,16 +133,17 @@ def cmd_sync(args: argparse.Namespace) -> int:
         print("\n読み込みエラーがあるため sync を中止しました")
         return 1
 
-    changed = sync_graph(graph, dry_run=args.dry_run)
+    dry_run = args.dry_run or args.check
+    changed = sync_graph(graph, dry_run=dry_run)
     if not changed:
         print("更新なし（すべて最新）")
         return 0
 
-    verb = "更新予定" if args.dry_run else "更新"
+    verb = "更新予定" if dry_run else "更新"
     for rel in changed:
         print(f"{verb}: {rel}")
     print(f"\n{len(changed)} 件")
-    return 1 if (args.dry_run and args.check) else 0
+    return 1 if args.check else 0
 
 
 def cmd_new(args: argparse.Namespace) -> int:
@@ -263,6 +289,16 @@ def build_parser() -> argparse.ArgumentParser:
     p_render.add_argument("--format", choices=("mermaid", "json", "dot"), default="mermaid")
     p_render.add_argument("--out", help="出力先（省略時は標準出力）")
     p_render.add_argument(
+        "--into",
+        metavar="PATH",
+        help="Markdown のマーカー内に図を書き込む（mermaid 限定。README 用）",
+    )
+    p_render.add_argument(
+        "--check",
+        action="store_true",
+        help="--into と併用し、書き込まずに古ければ終了コード 1（CI 用）",
+    )
+    p_render.add_argument(
         "--include-mentions",
         action="store_true",
         help="本文中の [[ID]] 由来のリンクも含める",
@@ -274,7 +310,7 @@ def build_parser() -> argparse.ArgumentParser:
     p_sync.add_argument(
         "--check",
         action="store_true",
-        help="--dry-run と併用し、更新が必要なら終了コード 1（CI 用）",
+        help="書き込まず、更新が必要なら終了コード 1（CI 用）",
     )
     p_sync.set_defaults(func=cmd_sync)
 

@@ -3,9 +3,16 @@
 from __future__ import annotations
 
 import json
+import re
+from pathlib import Path
 
 from . import schema
 from .model import Graph
+
+DIAGRAM_BLOCK_RE = re.compile(
+    re.escape(schema.DIAGRAM_BLOCK_START) + r".*?" + re.escape(schema.DIAGRAM_BLOCK_END),
+    re.DOTALL,
+)
 
 _ARROW = {
     "refines": "-->",
@@ -94,6 +101,50 @@ def to_dot(graph: Graph, include_mentions: bool = False) -> str:
         lines.append(f'  "{edge.src}" -> "{edge.dst}" [label="{edge.kind}"];')
     lines.append("}")
     return "\n".join(lines) + "\n"
+
+
+class InjectError(RuntimeError):
+    pass
+
+
+def inject(path: Path, diagram: str, *, dry_run: bool = False) -> bool:
+    """マーカーで囲まれた範囲に図を書き込む。更新が必要なら True。
+
+    README に図を貼ると必ず腐るので、`sync` と同じくマーカー方式にして
+    CI で最新かどうかを検証できるようにする。
+    """
+    if not path.is_file():
+        raise InjectError(f"ファイルがありません: {path}")
+
+    original = path.read_text(encoding="utf-8")
+    if not DIAGRAM_BLOCK_RE.search(original):
+        raise InjectError(
+            f"{path.name} に書き込み先がありません。"
+            f"次の 2 行を並べて置いてください:\n"
+            f"  {schema.DIAGRAM_BLOCK_START}\n  {schema.DIAGRAM_BLOCK_END}"
+        )
+
+    block = "\n".join(
+        [
+            schema.DIAGRAM_BLOCK_START,
+            "",
+            "<!-- この図は render --into が生成する。手で編集しない -->",
+            "",
+            "```mermaid",
+            diagram.rstrip("\n"),
+            "```",
+            "",
+            schema.DIAGRAM_BLOCK_END,
+        ]
+    )
+
+    updated = DIAGRAM_BLOCK_RE.sub(lambda _: block, original, count=1)
+    if updated == original:
+        return False
+
+    if not dry_run:
+        path.write_text(updated, encoding="utf-8", newline="\n")
+    return True
 
 
 def summary(graph: Graph) -> str:

@@ -21,11 +21,17 @@
    python -m tools.graph check
    ```
 
-3. **リンクを増やしたら sync する。**
+3. **リンクを増やしたら sync する。** ノードやエッジを増減したら README の図も再生成する。
 
    ```bash
    python -m tools.graph sync
    ```
+
+   ```bash
+   python -m tools.graph render --format mermaid --into README.md
+   ```
+
+   どちらも CI で最新かを検証している。忘れると落ちる。
 
 4. **`<!-- graph:auto:start -->` 〜 `<!-- graph:auto:end -->` を手で編集しない。**
    `sync` が上書きする。ここを直したいときは、元になっているフロントマターの側を直す。
