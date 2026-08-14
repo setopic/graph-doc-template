@@ -67,6 +67,9 @@ def changelog_entries(text: str, newer_than: tuple[int, ...]) -> list[tuple[str,
     if current is not None:
         entries.append((current, "\n".join(body).strip()))
 
+    # 項目の末尾に付く区切り線は表示に要らない
+    entries = [(version, text.rstrip("- \n")) for version, text in entries]
+
     return [
         (version, text)
         for version, text in entries
@@ -105,7 +108,13 @@ def inspect(root: Path) -> dict:
         if changelog:
             entries = changelog_entries(changelog, local)
 
-    diff = git_run(root, ["diff", "--name-only", "HEAD", _ref()])
+    # 3 ドットにする。2 ドットだとツリー全体の差になり、テンプレートには無い
+    # プロジェクト固有のノードまで「変更される」ように見えてしまう。
+    # 知りたいのは「分岐したあとテンプレート側が変えた分」だけ。
+    diff = git_run(root, ["diff", "--name-only", f"HEAD...{_ref()}"])
+    if diff is None:
+        # 共通の祖先がない（初回マージ前）。全体の差で代用する
+        diff = git_run(root, ["diff", "--name-only", "HEAD", _ref()])
     files = [line for line in (diff or "").splitlines() if line.strip()]
 
     return {

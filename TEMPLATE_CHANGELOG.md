@@ -57,6 +57,10 @@ python -m tools.graph upgrade
 
 なし。通常のマージで済む。
 
+**ただし 1.0.0 のリポジトリでは `upgrade` がまだ存在しない。**
+この版に上げる最初の 1 回だけは、手動で `git fetch template && git merge template/main`
+する必要がある。以後は `upgrade` で差を確認できる。
+
 ---
 
 ## 1.0.0 — 2026-08-14
