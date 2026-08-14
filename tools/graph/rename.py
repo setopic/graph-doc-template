@@ -35,6 +35,21 @@ def _token_re(node_id: str) -> re.Pattern:
     )
 
 
+def _scan_targets(root: Path, docs: Path) -> list[Path]:
+    """書き換え対象のファイル一覧。
+
+    グラフは `docs/` だが、リポジトリ直下の README.md や CLAUDE.md も
+    docs の中へリンクしている。ここを見落とすと、グラフの検証は通るのに
+    表紙のリンクだけ切れる。
+    """
+    paths: dict[Path, None] = {}
+    for path in sorted(docs.rglob("*.md")):
+        paths[path] = None
+    for path in sorted(root.glob("*.md")):
+        paths.setdefault(path, None)
+    return list(paths)
+
+
 def _target_path(node_path: Path, docs: Path, old_id: str, new_id: str, new_type: str) -> Path:
     spec = schema.NODE_TYPES[new_type]
     directory = node_path.parent if spec["dir"] is None else docs / spec["dir"]
@@ -114,7 +129,7 @@ def rename(
     token = _token_re(old_id)
     edited: list[str] = []
 
-    for path in sorted(docs.rglob("*.md")):
+    for path in _scan_targets(root, docs):
         original = path.read_text(encoding="utf-8")
         updated = token.sub(new_id, original)
 
