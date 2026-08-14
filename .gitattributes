@@ -1,0 +1,7 @@
+# tools/graph は常に LF で書き出す（sync が改行を書き換える）。
+# 作業コピーも LF に固定しないと、sync のたびに全行差分になる。
+* text=auto eol=lf
+
+*.png binary
+*.jpg binary
+*.pdf binary

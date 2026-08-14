@@ -1,0 +1,191 @@
+"""グラフ操作の CLI。
+
+    python -m tools.graph check         リンク切れ・孤立・循環・層の逆流を検証
+    python -m tools.graph render        Mermaid / JSON / DOT を書き出す
+    python -m tools.graph sync          各文書末尾の関連リンクを再生成
+    python -m tools.graph new           テンプレートから新しいノードを起こす
+    python -m tools.graph stats         ノード数・エッジ数の集計
+"""
+
+from __future__ import annotations
+
+import argparse
+import json
+import sys
+from pathlib import Path
+
+from . import render as render_mod
+from . import rules, schema
+from .loader import load
+from .model import ERROR, WARN
+from .scaffold import ScaffoldError, create
+from .sync import sync as sync_graph
+
+
+def _repo_root(arg: str | None) -> Path:
+    if arg:
+        return Path(arg).resolve()
+    # tools/graph/cli.py -> リポジトリルート
+    return Path(__file__).resolve().parents[2]
+
+
+def cmd_check(args: argparse.Namespace) -> int:
+    root = _repo_root(args.root)
+    graph = load(root)
+    issues = rules.check_all(graph)
+
+    errors = [i for i in issues if i.severity == ERROR]
+    warns = [i for i in issues if i.severity == WARN]
+
+    if args.format == "json":
+        print(
+            json.dumps(
+                {
+                    "nodes": len(graph.nodes),
+                    "errors": len(errors),
+                    "warnings": len(warns),
+                    "issues": [i.to_dict() for i in issues],
+                },
+                ensure_ascii=False,
+                indent=2,
+            )
+        )
+    else:
+        for issue in issues:
+            print(issue.format())
+        if not issues:
+            print(f"OK: {len(graph.nodes)} ノード、問題なし")
+        else:
+            print("")
+            print(f"ノード {len(graph.nodes)} / エラー {len(errors)} / 警告 {len(warns)}")
+            codes = sorted({i.code for i in issues})
+            for code in codes:
+                print(f"  {code}: {rules.RULE_INDEX.get(code, '')}")
+
+    if errors:
+        return 1
+    if warns and args.strict:
+        return 1
+    return 0
+
+
+def cmd_render(args: argparse.Namespace) -> int:
+    root = _repo_root(args.root)
+    graph = load(root)
+
+    if args.format == "mermaid":
+        output = render_mod.to_mermaid(graph, include_mentions=args.include_mentions)
+    elif args.format == "json":
+        output = render_mod.to_json(graph, include_mentions=args.include_mentions)
+    else:
+        output = render_mod.to_dot(graph, include_mentions=args.include_mentions)
+
+    if args.out:
+        out_path = Path(args.out)
+        if not out_path.is_absolute():
+            out_path = root / out_path
+        out_path.parent.mkdir(parents=True, exist_ok=True)
+        out_path.write_text(output, encoding="utf-8", newline="\n")
+        print(f"書き出しました: {out_path.relative_to(root).as_posix()}")
+    else:
+        sys.stdout.write(output)
+    return 0
+
+
+def cmd_sync(args: argparse.Namespace) -> int:
+    root = _repo_root(args.root)
+    graph = load(root)
+
+    blocking = [i for i in graph.load_issues if i.severity == ERROR]
+    if blocking:
+        for issue in blocking:
+            print(issue.format())
+        print("\n読み込みエラーがあるため sync を中止しました")
+        return 1
+
+    changed = sync_graph(graph, dry_run=args.dry_run)
+    if not changed:
+        print("更新なし（すべて最新）")
+        return 0
+
+    verb = "更新予定" if args.dry_run else "更新"
+    for rel in changed:
+        print(f"{verb}: {rel}")
+    print(f"\n{len(changed)} 件")
+    return 1 if (args.dry_run and args.check) else 0
+
+
+def cmd_new(args: argparse.Namespace) -> int:
+    root = _repo_root(args.root)
+    try:
+        path = create(
+            root,
+            node_type=args.type,
+            node_id=args.id,
+            title=args.title,
+            slug=args.slug,
+            status=args.status,
+        )
+    except ScaffoldError as exc:
+        print(f"エラー: {exc}", file=sys.stderr)
+        return 1
+
+    print(f"作成しました: {path.relative_to(root).as_posix()}")
+    print("フロントマターの depends_on / related を埋めてから check を回してください")
+    return 0
+
+
+def cmd_stats(args: argparse.Namespace) -> int:
+    root = _repo_root(args.root)
+    graph = load(root)
+    sys.stdout.write(render_mod.summary(graph))
+    return 0
+
+
+def build_parser() -> argparse.ArgumentParser:
+    parser = argparse.ArgumentParser(prog="python -m tools.graph", description=__doc__)
+    parser.add_argument("--root", help="リポジトリルート（既定: このファイルから推定）")
+    sub = parser.add_subparsers(dest="command", required=True)
+
+    p_check = sub.add_parser("check", help="グラフを検証する")
+    p_check.add_argument("--strict", action="store_true", help="警告も失敗として扱う")
+    p_check.add_argument("--format", choices=("text", "json"), default="text")
+    p_check.set_defaults(func=cmd_check)
+
+    p_render = sub.add_parser("render", help="グラフを書き出す")
+    p_render.add_argument("--format", choices=("mermaid", "json", "dot"), default="mermaid")
+    p_render.add_argument("--out", help="出力先（省略時は標準出力）")
+    p_render.add_argument(
+        "--include-mentions",
+        action="store_true",
+        help="本文中の [[ID]] 由来のリンクも含める",
+    )
+    p_render.set_defaults(func=cmd_render)
+
+    p_sync = sub.add_parser("sync", help="関連ドキュメントのブロックを再生成する")
+    p_sync.add_argument("--dry-run", action="store_true", help="書き込まずに差分だけ表示")
+    p_sync.add_argument(
+        "--check",
+        action="store_true",
+        help="--dry-run と併用し、更新が必要なら終了コード 1（CI 用）",
+    )
+    p_sync.set_defaults(func=cmd_sync)
+
+    p_new = sub.add_parser("new", help="新しいノードを作る")
+    p_new.add_argument("--type", required=True, choices=tuple(schema.NODE_TYPES))
+    p_new.add_argument("--id", required=True, help="例: UC-02")
+    p_new.add_argument("--title", required=True)
+    p_new.add_argument("--slug", help="ファイル名に使う英数字。省略時は title から生成")
+    p_new.add_argument("--status", default="draft", choices=schema.STATUSES)
+    p_new.set_defaults(func=cmd_new)
+
+    p_stats = sub.add_parser("stats", help="集計を表示する")
+    p_stats.set_defaults(func=cmd_stats)
+
+    return parser
+
+
+def main(argv: list[str] | None = None) -> int:
+    parser = build_parser()
+    args = parser.parse_args(argv)
+    return args.func(args)
