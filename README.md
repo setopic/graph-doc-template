@@ -1,4 +1,4 @@
-# graph-template
+# graph-doc-template
 
 **設計文書をグラフとして管理し、その整合性を CI で検証する**プロジェクトテンプレート。
 
