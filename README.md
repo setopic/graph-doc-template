@@ -66,6 +66,8 @@ tools/graph/            検証・可視化・生成ツール（依存なし）
 | `python -m tools.graph sync --dry-run --check` | 再生成が必要なら終了コード 1（CI 用） |
 | `python -m tools.graph render --format mermaid\|json\|dot` | 図・データの書き出し |
 | `python -m tools.graph new --type usecase --id UC-02 --title "..."` | 雛形からノードを起こす |
+| `python -m tools.graph new --from <file>` | 1 行 1 ノードのファイルからまとめて起こす |
+| `python -m tools.graph reset-samples` | 同梱のサンプルノードを一括で取り除く |
 | `python -m tools.graph stats` | ノード数・エッジ数の集計 |
 
 `make check` `make sync` `make graph` も同じことをする（Makefile 参照）。
@@ -84,6 +86,25 @@ python -m tools.graph new --type usecase --id UC-02 --title "予約をキャン�
 
 あとは本文と `depends_on` を書いて `check` を通す。
 
+同じ type に複数の書式が要るときは `--template` で雛形を選ぶ。
+`api` には汎用（既定）と HTTP 用の 2 つがある。
+
+```bash
+python -m tools.graph new --type api --template api-http --id API-02 --title "..."
+```
+
+立ち上げ時などで数が多いときは、1 行 1 ノードのファイルからまとめて作る。
+
+```bash
+python -m tools.graph new --from docs/00-meta/new-nodes.txt
+```
+
+```
+# type | id | title | slug | status | template
+usecase | UC-02  | 予約をキャンセルする | cancel-booking
+api     | API-02 | キャンセル API      | cancel-api | draft | api-http
+```
+
 ## 検証されること
 
 | コード | 内容 |
@@ -99,18 +120,44 @@ python -m tools.graph new --type usecase --id UC-02 --title "予約をキャン�
 | `G009` | `status` 語彙違反 / stable が draft に依存（警告） |
 | `G010` | `related` が片側だけ（警告） |
 
-コードブロックとコードスパンの中は検査しないので、規約文書に記法の例を書いても落ちない。
+コードブロック・コードスパン・HTML コメントの中は検査しない。規約文書や雛形に
+記法の例を書いても落ちない。逆に、コメントアウトした参照はグラフに現れない。
+
+**本文の `[[ID]]` はリンク切れしか見ない。** 層（`G007`）と循環（`G006`）の検査を受けるのは
+フロントマターの型つきエッジだけ。前提は本文ではなく `depends_on` に書く
+（詳細は [graph-rules.md](docs/00-meta/graph-rules.md) の「本文リンクは層と循環の検査を受けない」）。
 
 ## 自分のプロジェクトに合わせる
 
-1. **語彙を決める** — `tools/graph/schema.py` の `NODE_TYPES` と `EDGE_KINDS` を編集。
-   層を増やす／減らす、ノード種別を足すのはここだけで済む
-2. **表を合わせる** — `docs/00-meta/node-types.md` の表を 1 と一致させる
-3. **雛形を直す** — `docs/00-meta/templates/*.md` を自分たちの書式にする
-4. **サンプルを消す** — `tags: [sample]` が付いたノード（ARCH-01 / DOM-01 / UC-01 / API-01）を
-   削除するか中身を差し替える。消したら `check` で孤立ノードが出るので、`index.md` の
-   一覧ブロックも合わせて直す
-5. **ADR-0001 を残すか決める** — この進め方自体を採用するなら残す
+1. **サンプルを消す** — 同梱のサンプルノードを取り除く。
+
+   ```bash
+   python -m tools.graph reset-samples --yes
+   ```
+
+   `tags` に `sample` を持つノード（ARCH-01 / DOM-01 / UC-01 / API-01）を削除し、
+   各 `index.md` の一覧からも外す。**他のノードからの参照は自動で消さない**ので、
+   残った参照は `check` が `G004`（リンク切れ）として指す。それを見て直す
+
+2. **ADR-0001 を残すか決める** — この進め方自体を採用するなら残す。
+   残す場合、サンプル削除で切れた `decides` の参照を実プロジェクトのノードに張り替える
+
+3. **表紙を書き換える** — この 3 つはテンプレートの説明のままなので、
+   プロジェクトの説明に差し替える
+
+   | ファイル | 何を書くか |
+   | --- | --- |
+   | `README.md` | プロジェクトの目的、読む順番、未確定なものの一覧 |
+   | `CLAUDE.md` | エージェント向けの前提。グラフ規約の部分はそのまま使える |
+   | `docs/index.md` | グラフのルート。層の表は流用でき、冒頭にプロジェクトの説明を足す |
+
+4. **語彙を決める** — `tools/graph/schema.py` の `NODE_TYPES` と `EDGE_KINDS` を編集。
+   層を増やす／減らす、ノード種別を足すのはここだけで済む。
+   **まず 1〜3 で書き始めてみて、層が合わないと分かってから触るのでよい**
+
+5. **表を合わせる** — 4 を変えたら `docs/00-meta/node-types.md` の表を一致させる
+
+6. **雛形を直す** — `docs/00-meta/templates/*.md` を自分たちの書式にする
 
 ## AI エージェントと使う
 

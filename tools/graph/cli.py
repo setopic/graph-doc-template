@@ -1,10 +1,11 @@
 """グラフ操作の CLI。
 
-    python -m tools.graph check         リンク切れ・孤立・循環・層の逆流を検証
-    python -m tools.graph render        Mermaid / JSON / DOT を書き出す
-    python -m tools.graph sync          各文書末尾の関連リンクを再生成
-    python -m tools.graph new           テンプレートから新しいノードを起こす
-    python -m tools.graph stats         ノード数・エッジ数の集計
+    python -m tools.graph check          リンク切れ・孤立・循環・層の逆流を検証
+    python -m tools.graph render         Mermaid / JSON / DOT を書き出す
+    python -m tools.graph sync           各文書末尾の関連リンクを再生成
+    python -m tools.graph new            雛形から新しいノードを起こす（--from で一括）
+    python -m tools.graph reset-samples  サンプルノードを一括で取り除く
+    python -m tools.graph stats          ノード数・エッジ数の集計
 """
 
 from __future__ import annotations
@@ -14,11 +15,12 @@ import json
 import sys
 from pathlib import Path
 
+from . import cleanup
 from . import render as render_mod
 from . import rules, schema
 from .loader import load
 from .model import ERROR, WARN
-from .scaffold import ScaffoldError, create
+from .scaffold import ScaffoldError, create, create_many, parse_batch
 from .sync import sync as sync_graph
 
 
@@ -117,6 +119,18 @@ def cmd_sync(args: argparse.Namespace) -> int:
 
 def cmd_new(args: argparse.Namespace) -> int:
     root = _repo_root(args.root)
+
+    if args.from_file:
+        return _new_from_file(root, Path(args.from_file))
+
+    missing = [n for n in ("type", "id", "title") if not getattr(args, n)]
+    if missing:
+        print(
+            f"エラー: --{' --'.join(missing)} が必要です（または --from でまとめて指定）",
+            file=sys.stderr,
+        )
+        return 1
+
     try:
         path = create(
             root,
@@ -125,6 +139,7 @@ def cmd_new(args: argparse.Namespace) -> int:
             title=args.title,
             slug=args.slug,
             status=args.status,
+            template=args.template,
         )
     except ScaffoldError as exc:
         print(f"エラー: {exc}", file=sys.stderr)
@@ -132,6 +147,59 @@ def cmd_new(args: argparse.Namespace) -> int:
 
     print(f"作成しました: {path.relative_to(root).as_posix()}")
     print("フロントマターの depends_on / related を埋めてから check を回してください")
+    return 0
+
+
+def _new_from_file(root: Path, path: Path) -> int:
+    if not path.is_absolute():
+        path = root / path
+
+    try:
+        entries = parse_batch(path)
+    except ScaffoldError as exc:
+        print(f"エラー: {exc}", file=sys.stderr)
+        return 1
+
+    created, errors = create_many(root, entries)
+
+    for created_path in created:
+        print(f"作成しました: {created_path.relative_to(root).as_posix()}")
+    for message in errors:
+        print(f"エラー: {message}", file=sys.stderr)
+
+    print(f"\n作成 {len(created)} 件 / 失敗 {len(errors)} 件")
+    if created:
+        print("フロントマターの depends_on / related を埋めてから check を回してください")
+    return 1 if errors else 0
+
+
+def cmd_reset_samples(args: argparse.Namespace) -> int:
+    root = _repo_root(args.root)
+    graph = load(root)
+    result = cleanup.remove(root, graph, args.tag, dry_run=not args.yes)
+
+    targets = result["targets"]
+    if not targets:
+        print(f"tags に {args.tag!r} を持つノードはありません")
+        return 0
+
+    verb = "削除しました" if args.yes else "削除対象"
+    for node in targets:
+        print(f"{verb}: {node.rel}  ({node.id} {node.title})")
+
+    for rel in result["index_updated"]:
+        print(f"一覧から除外: {rel}")
+
+    if result["referenced_by"]:
+        print("\n他のノードから参照されています。削除後に修正が必要です:")
+        for target_id, sources in sorted(result["referenced_by"].items()):
+            print(f"  {target_id} <- {', '.join(sources)}")
+
+    if not args.yes:
+        print(f"\n{len(targets)} 件。実際に削除するには --yes を付けてください")
+        return 0
+
+    print(f"\n{len(targets)} 件を削除しました。check を回して残った参照を直してください")
     return 0
 
 
@@ -172,12 +240,38 @@ def build_parser() -> argparse.ArgumentParser:
     p_sync.set_defaults(func=cmd_sync)
 
     p_new = sub.add_parser("new", help="新しいノードを作る")
-    p_new.add_argument("--type", required=True, choices=tuple(schema.NODE_TYPES))
-    p_new.add_argument("--id", required=True, help="例: UC-02")
-    p_new.add_argument("--title", required=True)
+    p_new.add_argument("--type", choices=tuple(schema.NODE_TYPES))
+    p_new.add_argument("--id", help="例: UC-02")
+    p_new.add_argument("--title")
     p_new.add_argument("--slug", help="ファイル名に使う英数字。省略時は title から生成")
     p_new.add_argument("--status", default="draft", choices=schema.STATUSES)
+    p_new.add_argument(
+        "--template",
+        help="使う雛形の名前（docs/00-meta/templates/<名前>.md）。省略時は type と同名",
+    )
+    p_new.add_argument(
+        "--from",
+        dest="from_file",
+        metavar="PATH",
+        help="1 行 1 ノードのファイルからまとめて作る（`type | id | title | slug` 形式）",
+    )
     p_new.set_defaults(func=cmd_new)
+
+    p_reset = sub.add_parser(
+        "reset-samples",
+        help="サンプルノードを一括で取り除く（テンプレート複製直後に使う）",
+    )
+    p_reset.add_argument(
+        "--tag",
+        default=cleanup.DEFAULT_TAG,
+        help=f"削除対象とする tags の値（既定: {cleanup.DEFAULT_TAG}）",
+    )
+    p_reset.add_argument(
+        "--yes",
+        action="store_true",
+        help="実際に削除する。付けない場合は対象を表示するだけ",
+    )
+    p_reset.set_defaults(func=cmd_reset_samples)
 
     p_stats = sub.add_parser("stats", help="集計を表示する")
     p_stats.set_defaults(func=cmd_stats)

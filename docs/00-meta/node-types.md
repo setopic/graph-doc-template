@@ -54,10 +54,27 @@ docs/50-adr/adr-0001-graph-driven-docs.md
 ```
 
 日本語タイトルからスラッグを作れないときは `--slug` を明示する。
+省略すると `dom-02.md` のように id だけのファイル名になる。
 
 ```bash
 python -m tools.graph new --type usecase --id UC-02 --title "予約をキャンセルする" --slug cancel-booking
 ```
+
+## 雛形
+
+既定では `00-meta/templates/<type>.md` が使われる。`api` だけ 2 種類ある。
+
+| type | 既定の雛形 | 別の雛形 |
+| --- | --- | --- |
+| `api` | `api.md`（伝送方式に依存しない契約） | `api-http.md`（HTTP 用） |
+| その他 | `<type>.md` | — |
+
+```bash
+python -m tools.graph new --type api --template api-http --id API-02 --title "..."
+```
+
+`api` の既定を汎用にしてあるのは、この層の抽象が「境界の契約」であって
+HTTP に限らないため。UI 操作・メッセージキュー・ファイル形式もこの層に置ける。
 
 ---
 

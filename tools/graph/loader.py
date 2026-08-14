@@ -19,15 +19,21 @@ AUTO_BLOCK_RE = re.compile(
 )
 FENCED_CODE_RE = re.compile(r"```.*?```", re.DOTALL)
 INLINE_CODE_RE = re.compile(r"`[^`\n]*`")
+HTML_COMMENT_RE = re.compile(r"<!--.*?-->", re.DOTALL)
 
 
-def strip_code(text: str) -> str:
-    """コードブロックとコードスパンを取り除く。
+def strip_non_prose(text: str) -> str:
+    """リンクとして数えない部分を取り除く。
 
-    規約やテンプレートの説明には `[[ID]]` のような記法の「例」が出てくる。
-    これをリンクとして数えると、書き方を説明しただけでリンク切れになる。
+    - コードブロック / コードスパン: 規約やテンプレートの説明には
+      `[[ID]]` のような記法の「例」が出てくる。これをリンクとして数えると、
+      書き方を説明しただけでリンク切れになる
+    - HTML コメント: 雛形の記入案内が入っている。案内文に書いた例や、
+      コメントアウトした記述をエッジにしない
     """
-    return INLINE_CODE_RE.sub(" ", FENCED_CODE_RE.sub(" ", text))
+    return INLINE_CODE_RE.sub(
+        " ", FENCED_CODE_RE.sub(" ", HTML_COMMENT_RE.sub(" ", text))
+    )
 
 
 def strip_auto_block(text: str) -> str:
@@ -101,7 +107,7 @@ def load(root: Path) -> Graph:
         graph.add(node)
         by_path[path.resolve()] = node
 
-        linkable = strip_code(clean_body)
+        linkable = strip_non_prose(clean_body)
         wiki = WIKILINK_RE.findall(linkable)
         md = [
             href
