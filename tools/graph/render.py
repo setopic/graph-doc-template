@@ -43,7 +43,11 @@ def _escape(text: str) -> str:
     return text.replace('"', "'").replace("\n", " ")
 
 
-def to_mermaid(graph: Graph, include_mentions: bool = False) -> str:
+def to_mermaid(
+    graph: Graph,
+    include_mentions: bool = False,
+    focus: set[str] | None = None,
+) -> str:
     lines = ["graph LR"]
 
     for type_name, spec in schema.NODE_TYPES.items():
@@ -70,6 +74,12 @@ def to_mermaid(graph: Graph, include_mentions: bool = False) -> str:
         lines.append(f"  class {','.join(draft)} draft;")
     if deprecated:
         lines.append(f"  class {','.join(deprecated)} deprecated;")
+
+    if focus:
+        marked = [n.id for n in graph.sorted_nodes() if n.id in focus]
+        if marked:
+            lines.append("  classDef focus stroke-width:3px;")
+            lines.append(f"  class {','.join(marked)} focus;")
 
     return "\n".join(lines) + "\n"
 

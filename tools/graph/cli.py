@@ -77,9 +77,29 @@ def cmd_check(args: argparse.Namespace) -> int:
 def cmd_render(args: argparse.Namespace) -> int:
     root = _repo_root(args.root)
     graph = load(root)
+    focus: set[str] | None = None
+
+    if args.focus:
+        focus = {i.strip() for i in args.focus.split(",") if i.strip()}
+        unknown = sorted(i for i in focus if i not in graph.nodes)
+        if unknown:
+            print(f"エラー: 存在しないノードです: {', '.join(unknown)}", file=sys.stderr)
+            return 1
+        graph = graph.neighborhood(
+            sorted(focus),
+            depth=args.depth,
+            include_mentions=args.include_mentions,
+        )
+        print(
+            f"{', '.join(sorted(focus))} から {args.depth} ホップ以内: "
+            f"{len(graph.nodes)} ノード",
+            file=sys.stderr,
+        )
 
     if args.format == "mermaid":
-        output = render_mod.to_mermaid(graph, include_mentions=args.include_mentions)
+        output = render_mod.to_mermaid(
+            graph, include_mentions=args.include_mentions, focus=focus
+        )
     elif args.format == "json":
         output = render_mod.to_json(graph, include_mentions=args.include_mentions)
     else:
@@ -297,6 +317,18 @@ def build_parser() -> argparse.ArgumentParser:
         "--check",
         action="store_true",
         help="--into と併用し、書き込まずに古ければ終了コード 1（CI 用）",
+    )
+    p_render.add_argument(
+        "--focus",
+        metavar="ID[,ID...]",
+        help="指定ノードの近傍だけを描く（向きは無視して両方向に辿る）",
+    )
+    p_render.add_argument(
+        "--depth",
+        type=int,
+        default=1,
+        metavar="N",
+        help="--focus から何ホップまで含めるか（既定: 1）",
     )
     p_render.add_argument(
         "--include-mentions",

@@ -116,6 +116,20 @@ graph LR
 python -m tools.graph render --format mermaid --into README.md
 ```
 
+### 近傍だけを描く
+
+ノードが増えると全体図は読めなくなる。`--focus` で 1 ノードの周りだけを切り出す。
+
+```bash
+python -m tools.graph render --format mermaid --focus DOM-01
+```
+
+**エッジの向きは無視して両方向に辿る。** 前提（何に依存しているか）と
+影響範囲（誰から依存されているか）は、どちらも同時に見たいものだから。
+`--depth N` で範囲を広げられる（既定は 1）。焦点のノードは枠が太くなる。
+
+`--focus` は `--format json` でも効くので、**変更の影響範囲を機械的に取り出す**のにも使える。
+
 ## コマンド
 
 | コマンド | 用途 |
@@ -126,6 +140,7 @@ python -m tools.graph render --format mermaid --into README.md
 | `python -m tools.graph sync` | 各文書末尾の「関連ドキュメント」を再生成 |
 | `python -m tools.graph sync --check` | 再生成が必要なら終了コード 1（CI 用） |
 | `python -m tools.graph render --format mermaid\|json\|dot` | 図・データの書き出し |
+| `python -m tools.graph render --focus <ID>` | そのノードの近傍だけを描く（`--depth N`） |
 | `python -m tools.graph render --into README.md` | README の図を再生成 |
 | `python -m tools.graph render --into README.md --check` | 図が古ければ終了コード 1（CI 用） |
 | `python -m tools.graph new --type usecase --id UC-02 --title "..."` | 雛形からノードを起こす |

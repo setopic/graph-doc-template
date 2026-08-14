@@ -59,17 +59,29 @@
 全文書を読み込まない。対象ノードとその近傍だけを読む。
 
 ```bash
-python -m tools.graph render --format json --out docs/graph.json
+python -m tools.graph render --format json --focus UC-01 --depth 1
 ```
 
-`graph.json` の `edges` から、対象ノードの `depends_on` 先（前提）と、
-そのノードを指している側（影響範囲）を引いてから本文を読む。
+これが「前提（`depends_on` 先）」と「影響範囲（そのノードを指している側）」の
+両方を含んだ最小の集合になる。返ってきた `nodes` のファイルだけを読む。
+
+範囲が足りなければ `--depth 2` に広げる。全体を見たいときだけ `--focus` を外す。
+
+```bash
+python -m tools.graph render --format json --out docs/graph.json
+```
 
 ## 変更の影響範囲を確かめる
 
 ノードを変更したら、そのノードを `depends_on` している側が追従不要かを確認する。
 各文書末尾の「このノードを参照しているノード」がその一覧になっている
 （`sync` が生成しているので手で数えない）。
+
+図で見るなら次を使う。
+
+```bash
+python -m tools.graph render --format mermaid --focus DOM-01 --depth 1
+```
 
 ## よくある落とし方
 

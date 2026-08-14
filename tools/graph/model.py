@@ -2,8 +2,10 @@
 
 from __future__ import annotations
 
-from dataclasses import dataclass, field
+from dataclasses import dataclass, field, replace
 from pathlib import Path
+
+from . import schema
 
 ERROR = "error"
 WARN = "warn"
@@ -85,3 +87,51 @@ class Graph:
 
     def sorted_nodes(self) -> list[Node]:
         return sorted(self.nodes.values(), key=lambda n: (n.type, n.id))
+
+    def neighborhood(
+        self,
+        focus_ids: list[str],
+        depth: int = 1,
+        *,
+        include_mentions: bool = False,
+    ) -> "Graph":
+        """指定ノードから `depth` ホップ以内だけを含む部分グラフを返す。
+
+        エッジの向きは無視する。**前提（依存先）と影響範囲（依存元）の両方**を
+        見たいので、片方向に絞ると近傍の意味をなさない。
+        """
+        adjacency: dict[str, set[str]] = {}
+        for node in self.nodes.values():
+            for edge in node.edges:
+                if not edge.resolved:
+                    continue
+                if not include_mentions and edge.kind == schema.BODY_EDGE_KIND:
+                    continue
+                adjacency.setdefault(edge.src, set()).add(edge.dst)
+                adjacency.setdefault(edge.dst, set()).add(edge.src)
+
+        selected = {node_id for node_id in focus_ids if node_id in self.nodes}
+        frontier = set(selected)
+
+        for _ in range(max(depth, 0)):
+            nxt: set[str] = set()
+            for node_id in frontier:
+                nxt |= adjacency.get(node_id, set())
+            nxt -= selected
+            if not nxt:
+                break
+            selected |= nxt
+            frontier = nxt
+
+        sub = Graph()
+        for node_id in selected:
+            node = self.nodes[node_id]
+            kept = [
+                edge
+                for edge in node.edges
+                if edge.resolved
+                and edge.dst in selected
+                and (include_mentions or edge.kind != schema.BODY_EDGE_KIND)
+            ]
+            sub.add(replace(node, edges=kept))
+        return sub
