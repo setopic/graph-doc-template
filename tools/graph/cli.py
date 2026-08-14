@@ -16,7 +16,7 @@ import json
 import sys
 from pathlib import Path
 
-from . import cleanup
+from . import cleanup, history
 from . import render as render_mod
 from . import rules, schema
 from .loader import load
@@ -37,7 +37,10 @@ def _repo_root(arg: str | None) -> Path:
 def cmd_check(args: argparse.Namespace) -> int:
     root = _repo_root(args.root)
     graph = load(root)
-    issues = rules.check_all(graph)
+
+    # 履歴が取れないときは G011 を飛ばす（誤検知より無検知）
+    file_dates = {} if args.no_history else history.last_commit_dates(root)
+    issues = rules.check_all(graph, history=file_dates)
 
     errors = [i for i in issues if i.severity == ERROR]
     warns = [i for i in issues if i.severity == WARN]
@@ -303,6 +306,11 @@ def build_parser() -> argparse.ArgumentParser:
     p_check = sub.add_parser("check", help="グラフを検証する")
     p_check.add_argument("--strict", action="store_true", help="警告も失敗として扱う")
     p_check.add_argument("--format", choices=("text", "json"), default="text")
+    p_check.add_argument(
+        "--no-history",
+        action="store_true",
+        help="git 履歴を見ない（G011 の放置検出を飛ばす）",
+    )
     p_check.set_defaults(func=cmd_check)
 
     p_render = sub.add_parser("render", help="グラフを書き出す")

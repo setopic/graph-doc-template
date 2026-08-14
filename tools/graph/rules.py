@@ -6,6 +6,8 @@
 
 from __future__ import annotations
 
+from datetime import date
+
 from . import schema
 from .model import ERROR, WARN, Graph, Issue, Node
 
@@ -22,10 +24,18 @@ RULE_INDEX: dict[str, str] = {
     "G008": "refines が異なる種別のノードを指している",
     "G009": "status の語彙違反 / 成熟度の不整合",
     "G010": "related が片側にしか書かれていない",
+    "G011": "確定していないまま長期間放置されている",
+    "G012": "参照されすぎている（分割を検討）",
 }
 
 
-def check_all(graph: Graph) -> list[Issue]:
+def check_all(
+    graph: Graph,
+    *,
+    history: dict[str, date] | None = None,
+    today: date | None = None,
+) -> list[Issue]:
+    """`history` は `{相対パス: 最終コミット日}`。無ければ G011 を飛ばす。"""
     issues: list[Issue] = list(graph.load_issues)
     for rule in (
         rule_g003_identity,
@@ -36,8 +46,13 @@ def check_all(graph: Graph) -> list[Issue]:
         rule_g008_refines_type,
         rule_g009_status,
         rule_g010_related_symmetry,
+        rule_g012_hub_nodes,
     ):
         issues.extend(rule(graph))
+
+    if history:
+        issues.extend(rule_g011_stale(graph, history, today or date.today()))
+
     return sorted(issues, key=lambda i: (i.severity != ERROR, i.code, i.location))
 
 
@@ -284,6 +299,70 @@ def rule_g009_status(graph: Graph) -> list[Issue]:
                     )
                 )
     return issues
+
+
+# --------------------------------------------------------------------------
+# G011: 放置された未確定ノード
+# --------------------------------------------------------------------------
+def rule_g011_stale(graph: Graph, history: dict[str, date], today: date) -> list[Issue]:
+    """`draft` / `review` のまま長く動きがないノードを警告する。
+
+    「いつ draft になったか」ではなく「最後に触られたのはいつか」で見る。
+    書きかけでも手が入り続けているなら問題ではなく、**止まっていることが問題**。
+    """
+    issues: list[Issue] = []
+
+    for node in graph.sorted_nodes():
+        if node.status not in schema.STALE_STATUSES:
+            continue
+
+        last = history.get(node.rel)
+        if last is None:
+            continue  # 未コミットのファイルなど。判断材料がないので飛ばす
+
+        days = (today - last).days
+        if days > schema.STALE_AFTER_DAYS:
+            issues.append(
+                Issue(
+                    "G011",
+                    WARN,
+                    f"{node.status} のまま {days} 日間更新されていません"
+                    f"（最終更新 {last.isoformat()}）。"
+                    "確定させるか、不要なら削除してください",
+                    node.rel,
+                )
+            )
+
+    return issues
+
+
+# --------------------------------------------------------------------------
+# G012: 参照されすぎているノード
+# --------------------------------------------------------------------------
+def rule_g012_hub_nodes(graph: Graph) -> list[Issue]:
+    """多くのノードから `depends_on` されているノードを警告する。
+
+    参照が集まるノードは、複数の概念が混ざっていることが多い。
+    変更したときの影響範囲が広く、追従の確認コストが跳ね上がる。
+    """
+    counts: dict[str, int] = {}
+    for node in graph.sorted_nodes():
+        for edge in node.out_edges("depends_on"):
+            if edge.resolved:
+                counts[edge.dst] = counts.get(edge.dst, 0) + 1
+
+    limit = schema.MAX_INCOMING_DEPENDENCIES
+    return [
+        Issue(
+            "G012",
+            WARN,
+            f"{count} ノードから depends_on されています（上限 {limit}）。"
+            "概念が混ざっていないか点検し、必要なら分割してください",
+            graph.nodes[node_id].rel,
+        )
+        for node_id, count in sorted(counts.items())
+        if count > limit
+    ]
 
 
 # --------------------------------------------------------------------------

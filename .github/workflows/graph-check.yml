@@ -9,6 +9,10 @@ jobs:
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v7
+        with:
+          # G011（放置された未確定ノードの検出）は git 履歴の日付を使う。
+          # 既定の浅いクローンだと全ファイルが同じ日付になり、検査が飛ばされる。
+          fetch-depth: 0
 
       - uses: actions/setup-python@v7
         with:
