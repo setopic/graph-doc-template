@@ -79,7 +79,7 @@ EDGE_KINDS: dict[str, dict] = {
         "same_type": True,
         "acyclic": True,
         "symmetric": False,
-        "desc": "より大きい同種ノードを具体化する（親 → 子の子側に書く）",
+        "desc": "分割元のノード（1 つの文書を分けたときだけ使う。前提は depends_on）",
     },
     "depends_on": {
         "layered": True,
