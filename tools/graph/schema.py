@@ -50,12 +50,12 @@ NODE_TYPES: dict[str, dict] = {
         "exempt_layer": False,
         "label": "ユースケース",
     },
-    "api": {
-        "prefix": "API",
-        "dir": "40-api",
+    "contract": {
+        "prefix": "CON",
+        "dir": "40-contracts",
         "layer": 40,
         "exempt_layer": False,
-        "label": "API / 契約",
+        "label": "契約",
     },
     "adr": {
         "prefix": "ADR",

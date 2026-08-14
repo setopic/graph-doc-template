@@ -1,6 +1,6 @@
 ---
-id: API-01
-type: api
+id: CON-01
+type: contract
 title: 予約確定エンドポイント
 status: draft
 tags: [sample]

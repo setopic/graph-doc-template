@@ -10,7 +10,7 @@
 設計文書は増えると必ず次の 3 つが起きる。
 
 1. どこに何が書いてあるか分からなくなる
-2. 上流（ドメイン）を変えたとき、下流（ユースケース・API）の追従漏れに気づけない
+2. 上流（ドメイン）を変えたとき、下流（ユースケース・契約）の追従漏れに気づけない
 3. 人も AI も、文書間の前提関係を毎回読み直して推測する
 
 目次を手で整備しても 2 と 3 は解決しない。**前提関係そのものを機械可読にして検証する**のが
@@ -44,7 +44,7 @@ docs/
   10-architecture/      層 10: 構成要素と責務、境界
   20-domain/            層 20: 概念・不変条件・用語
   30-usecases/          層 30: 誰が何をして何が起きるか
-  40-api/               層 40: 境界の契約
+  40-contracts/         層 40: 境界をまたぐ約束事
   50-adr/               横断: 決定・理由・却下案
 tools/graph/            検証・可視化・生成ツール（依存なし）
 ```
@@ -52,7 +52,7 @@ tools/graph/            検証・可視化・生成ツール（依存なし）
 依存は必ず**上の層（数字の小さい側）へ**向ける。逆向きは `G007` で落ちる。
 
 ```
-40-api ──▶ 30-usecases ──▶ 20-domain ──▶ 10-architecture
+40-contracts ──▶ 30-usecases ──▶ 20-domain ──▶ 10-architecture
 ```
 
 ## コマンド
@@ -87,10 +87,10 @@ python -m tools.graph new --type usecase --id UC-02 --title "予約をキャン�
 あとは本文と `depends_on` を書いて `check` を通す。
 
 同じ type に複数の書式が要るときは `--template` で雛形を選ぶ。
-`api` には汎用（既定）と HTTP 用の 2 つがある。
+`contract` には汎用（既定）と HTTP 用の 2 つがある。
 
 ```bash
-python -m tools.graph new --type api --template api-http --id API-02 --title "..."
+python -m tools.graph new --type contract --template contract-http --id CON-02 --title "..."
 ```
 
 立ち上げ時などで数が多いときは、1 行 1 ノードのファイルからまとめて作る。
@@ -102,7 +102,7 @@ python -m tools.graph new --from docs/00-meta/new-nodes.txt
 ```
 # type | id | title | slug | status | template
 usecase | UC-02  | 予約をキャンセルする | cancel-booking
-api     | API-02 | キャンセル API      | cancel-api | draft | api-http
+contract | CON-02 | キャンセル API | cancel-api | draft | contract-http
 ```
 
 ## 検証されること
@@ -135,7 +135,7 @@ api     | API-02 | キャンセル API      | cancel-api | draft | api-http
    python -m tools.graph reset-samples --yes
    ```
 
-   `tags` に `sample` を持つノード（ARCH-01 / ARCH-02 / DOM-01 / UC-01 / API-01）を削除し、
+   `tags` に `sample` を持つノード（ARCH-01 / ARCH-02 / DOM-01 / UC-01 / CON-01）を削除し、
    各 `index.md` の一覧からも外す。**他のノードからの参照は自動で消さない**ので、
    残った参照は `check` が `G004`（リンク切れ）として指す。それを見て直す
 

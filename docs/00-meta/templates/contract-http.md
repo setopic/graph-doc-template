@@ -13,7 +13,7 @@ related: []
 <!--
 HTTP の API を書くための雛形。伝送方式が HTTP でないなら、汎用の雛形を使う:
 
-    python -m tools.graph new --type api --id API-02 --title "..."
+    python -m tools.graph new --type contract --id CON-02 --title "..."
 -->
 
 ## エンドポイント

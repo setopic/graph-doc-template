@@ -49,8 +49,8 @@ related: []
 上位層のノードへの言及を書けてしまう。
 
 ```markdown
-<!-- 層 30 のユースケースに、層 40 の API への言及を書ける（検証は通る） -->
-- [ ] 出力したファイルが文字化けしない（[[API-40]]）
+<!-- 層 30 のユースケースに、層 40 の契約への言及を書ける（検証は通る） -->
+- [ ] 出力したファイルが文字化けしない（[[CON-02]]）
 ```
 
 同じことをフロントマターの `depends_on` に書けば `G007` で落ちる。使い分けの基準は次のとおり。
@@ -111,7 +111,7 @@ refines:
 依存は **抽象度の高い側へ向ける**。逆向きは `G007` で落ちる。
 
 ```
-40-api  ──depends_on──▶ 30-usecases ──depends_on──▶ 20-domain ──depends_on──▶ 10-architecture
+40-contracts ──depends_on──▶ 30-usecases ──depends_on──▶ 20-domain ──depends_on──▶ 10-architecture
 ```
 
 ドメインがユースケースを知っている状態は設計の破綻なので、規約ではなく検証で止める。
@@ -154,7 +154,7 @@ python -m tools.graph new --from docs/00-meta/new-nodes.txt
 ```
 # type | id | title | slug | status | template
 usecase | UC-02 | 予約をキャンセルする | cancel-booking
-api     | API-02 | キャンセル API      | cancel-api | draft | api-http
+contract | CON-02 | キャンセル API | cancel-api | draft | contract-http
 ```
 
 `slug` 以降は省略できる。1 件失敗しても残りは作られ、失敗した分だけが報告される。
@@ -166,11 +166,11 @@ api     | API-02 | キャンセル API      | cancel-api | draft | api-http
 
 | 雛形 | 用途 |
 | --- | --- |
-| `api.md` | 伝送方式に依存しない「境界の契約」。既定 |
-| `api-http.md` | HTTP の API。エンドポイントとステータスコードを持つ |
+| `contract.md` | 伝送方式に依存しない「境界をまたぐ約束事」。既定 |
+| `contract-http.md` | HTTP の API。エンドポイントとステータスコードを持つ |
 
 ```bash
-python -m tools.graph new --type api --template api-http --id API-02 --title "..."
+python -m tools.graph new --type contract --template contract-http --id CON-02 --title "..."
 ```
 
 雛形そのものはグラフに含めない（`EXCLUDE_PREFIXES` で除外している）ため、

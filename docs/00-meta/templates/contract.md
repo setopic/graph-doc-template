@@ -14,7 +14,7 @@ related: []
 この雛形は伝送方式に依存しない「境界の契約」の骨組み。
 HTTP の API を書くなら、より具体的な雛形がある:
 
-    python -m tools.graph new --type api --template api-http --id API-02 --title "..."
+    python -m tools.graph new --type contract --template contract-http --id CON-02 --title "..."
 -->
 
 ## 境界

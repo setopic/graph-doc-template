@@ -4,6 +4,7 @@
     python -m tools.graph render         Mermaid / JSON / DOT を書き出す
     python -m tools.graph sync           各文書末尾の関連リンクを再生成
     python -m tools.graph new            雛形から新しいノードを起こす（--from で一括）
+    python -m tools.graph rename         id を変更し、全参照を追随させる
     python -m tools.graph reset-samples  サンプルノードを一括で取り除く
     python -m tools.graph stats          ノード数・エッジ数の集計
 """
@@ -20,6 +21,8 @@ from . import render as render_mod
 from . import rules, schema
 from .loader import load
 from .model import ERROR, WARN
+from .rename import RenameError
+from .rename import rename as rename_node
 from .scaffold import ScaffoldError, create, create_many, parse_batch
 from .sync import sync as sync_graph
 
@@ -203,6 +206,42 @@ def cmd_reset_samples(args: argparse.Namespace) -> int:
     return 0
 
 
+def cmd_rename(args: argparse.Namespace) -> int:
+    root = _repo_root(args.root)
+    graph = load(root)
+
+    try:
+        result = rename_node(
+            root,
+            graph,
+            args.old_id,
+            args.new_id,
+            dry_run=args.dry_run,
+            new_path_override=Path(args.path) if args.path else None,
+        )
+    except RenameError as exc:
+        print(f"エラー: {exc}", file=sys.stderr)
+        return 1
+
+    verb = "変更予定" if args.dry_run else "変更"
+    print(f"{verb}: {result['old_id']} -> {result['new_id']}")
+
+    if result["old_type"] != result["new_type"]:
+        print(f"  type: {result['old_type']} -> {result['new_type']}")
+    if result["moved"]:
+        print(f"  file: {result['old_path']} -> {result['new_path']}")
+
+    for rel in result["edited"]:
+        print(f"  更新: {rel}")
+
+    print(f"\n{len(result['edited'])} ファイル")
+    if args.dry_run:
+        print("--dry-run のため書き込んでいません")
+    else:
+        print("sync を回してから check を確認してください")
+    return 0
+
+
 def cmd_stats(args: argparse.Namespace) -> int:
     root = _repo_root(args.root)
     graph = load(root)
@@ -272,6 +311,22 @@ def build_parser() -> argparse.ArgumentParser:
         help="実際に削除する。付けない場合は対象を表示するだけ",
     )
     p_reset.set_defaults(func=cmd_reset_samples)
+
+    p_rename = sub.add_parser(
+        "rename",
+        help="ノードの id を変更し、全参照を追随させる",
+    )
+    p_rename.add_argument("--from", dest="old_id", required=True, metavar="ID", help="例: API-01")
+    p_rename.add_argument("--to", dest="new_id", required=True, metavar="ID", help="例: CON-01")
+    p_rename.add_argument(
+        "--path",
+        metavar="PATH",
+        help="移動先を明示する（種別からディレクトリが決まらない index などで使う）",
+    )
+    p_rename.add_argument(
+        "--dry-run", action="store_true", help="書き込まずに変更内容だけ表示する"
+    )
+    p_rename.set_defaults(func=cmd_rename)
 
     p_stats = sub.add_parser("stats", help="集計を表示する")
     p_stats.set_defaults(func=cmd_stats)

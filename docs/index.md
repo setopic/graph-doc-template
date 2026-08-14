@@ -25,7 +25,7 @@ tags: [index]
 | 10 | `10-architecture/` | [IDX-ARCH アーキテクチャ](./10-architecture/index.md) |
 | 20 | `20-domain/` | [IDX-DOM ドメイン](./20-domain/index.md) |
 | 30 | `30-usecases/` | [IDX-UC ユースケース](./30-usecases/index.md) |
-| 40 | `40-api/` | [IDX-API API / 契約](./40-api/index.md) |
+| 40 | `40-contracts/` | [IDX-CON 契約](./40-contracts/index.md) |
 | 横断 | `50-adr/` | [IDX-ADR 決定記録](./50-adr/index.md) |
 
 ## 使い方

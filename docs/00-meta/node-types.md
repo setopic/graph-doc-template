@@ -19,7 +19,7 @@ related:
 | `architecture` | `ARCH-` | `10-architecture/` | 10 | 構成要素と責務、技術選定の前提 |
 | `domain` | `DOM-` | `20-domain/` | 20 | 概念・不変条件・用語。UI も API も出さない |
 | `usecase` | `UC-` | `30-usecases/` | 30 | 誰が何をして何が起きるか。事前・事後条件 |
-| `api` | `API-` | `40-api/` | 40 | 境界の契約。リクエスト / レスポンス / エラー |
+| `contract` | `CON-` | `40-contracts/` | 40 | 境界をまたぐ約束事。API・UI 操作・ファイル形式・メッセージ構造 |
 | `adr` | `ADR-` | `50-adr/` | 横断 | 決定・背景・却下案・影響 |
 
 ## 層の数字の意味
@@ -31,7 +31,7 @@ related:
 
 ## 採番
 
-- `ARCH` `DOM` `UC` `API` は 2 桁ゼロ埋め（`UC-01`）。50 を超えそうなら 3 桁に切り替える
+- `ARCH` `DOM` `UC` `CON` は 2 桁ゼロ埋め（`UC-01`）。50 を超えそうなら 3 桁に切り替える
 - `ADR` は 4 桁ゼロ埋め（`ADR-0001`）。**欠番を作らず、取り消しは `deprecated` + `supersedes`**
 - 一度振った id は再利用しない。削除したノードの id は永久欠番
 
@@ -85,19 +85,38 @@ python -m tools.graph new --type usecase --id UC-02 --title "予約をキャン�
 
 ## 雛形
 
-既定では `00-meta/templates/<type>.md` が使われる。`api` だけ 2 種類ある。
+既定では `00-meta/templates/<type>.md` が使われる。`contract` だけ 2 種類ある。
 
 | type | 既定の雛形 | 別の雛形 |
 | --- | --- | --- |
-| `api` | `api.md`（伝送方式に依存しない契約） | `api-http.md`（HTTP 用） |
+| `contract` | `contract.md`（伝送方式に依存しない） | `contract-http.md`（HTTP 用） |
 | その他 | `<type>.md` | — |
 
 ```bash
-python -m tools.graph new --type api --template api-http --id API-02 --title "..."
+python -m tools.graph new --type contract --template contract-http --id CON-02 --title "..."
 ```
 
-`api` の既定を汎用にしてあるのは、この層の抽象が「境界の契約」であって
+既定を汎用にしてあるのは、この層の抽象が「境界をまたぐ約束事」であって
 HTTP に限らないため。UI 操作・メッセージキュー・ファイル形式もこの層に置ける。
+
+## id を変えるとき
+
+層を組み替えて接頭辞が変わった場合など、id の変更は手でやらない。
+フロントマターのエッジ・本文の `[[ID]]`・目次の一覧・相対リンクのどれかを必ず落とす。
+
+```bash
+python -m tools.graph rename --from API-01 --to CON-01
+```
+
+新しい接頭辞が別の種別を指す場合は、`type` の書き換えとファイルの移動も同時に行う。
+ディレクトリが決まらない `index` ノードは `--path` で移動先を明示する。
+
+```bash
+python -m tools.graph rename --from IDX-API --to IDX-CON --path docs/40-contracts/index.md
+```
+
+**本文の散文までは直らない。** 「40-api ディレクトリ」のような、id でもリンクでもない
+記述は自分で直す。`--dry-run` で影響範囲を先に見ておくとよい。
 
 ---
 

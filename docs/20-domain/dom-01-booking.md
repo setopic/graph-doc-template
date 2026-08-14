@@ -62,7 +62,7 @@ related: []
 
 **このノードを参照しているノード**
 
-- (depends_on) [API-01 予約確定エンドポイント](../40-api/api-01-confirm-booking.md)
+- (depends_on) [CON-01 予約確定エンドポイント](../40-contracts/con-01-confirm-booking.md)
 - (depends_on) [UC-01 予約を確定する](../30-usecases/uc-01-confirm-booking.md)
 
 <!-- graph:auto:end -->
