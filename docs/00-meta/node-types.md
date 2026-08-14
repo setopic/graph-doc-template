@@ -85,16 +85,30 @@ python -m tools.graph new --type usecase --id UC-02 --title "予約をキャン�
 
 ## 雛形
 
-既定では `00-meta/templates/<type>.md` が使われる。`contract` だけ 2 種類ある。
+既定では `00-meta/templates/<type>.md` が使われる。`contract` と `usecase` に別種がある。
 
 | type | 既定の雛形 | 別の雛形 |
 | --- | --- | --- |
 | `contract` | `contract.md`（伝送方式に依存しない） | `contract-http.md`（HTTP 用） |
+| `usecase` | `usecase.md`（システムの振る舞い） | `usecase-runbook.md`（**人間が実行する手順**） |
 | その他 | `<type>.md` | — |
 
 ```bash
 python -m tools.graph new --type contract --template contract-http --id CON-02 --title "..."
 ```
+
+### `usecase-runbook` を使うとき
+
+実行者が人間で、順序のある手順を書くとき（配置、更新、障害対応、移行など）。
+
+既定の雛形は「システムが〜する」を前提にしているため、手順書では
+**代替フロー / 例外フロー / 事後条件 / 受け入れ条件が当てはまらない**。
+分岐はフローの分岐ではなく症状ごとの対処になり、事後条件をドメインの用語で
+書こうにも、その語彙が存在しないことが多い。
+
+`usecase-runbook` は代わりに「手順 / 順序の制約 / つまずきやすい点 / 完了の確認 /
+未確認」を持つ。**順序はグラフに乗らないので、本文の「順序の制約」に書く**
+（[META-01](./graph-rules.md) の「順序はグラフに乗らない」）。
 
 既定を汎用にしてあるのは、この層の抽象が「境界をまたぐ約束事」であって
 HTTP に限らないため。UI 操作・メッセージキュー・ファイル形式もこの層に置ける。
