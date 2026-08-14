@@ -243,7 +243,7 @@ def cmd_reset_samples(args: argparse.Namespace) -> int:
         print(f"一覧から除外: {rel}")
 
     if result["referenced_by"]:
-        print("\n他のノードから参照されています。削除後に修正が必要です:")
+        print("\n以下から参照されています。削除後に check で確認してください:")
         for target_id, sources in sorted(result["referenced_by"].items()):
             print(f"  {target_id} <- {', '.join(sources)}")
 

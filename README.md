@@ -249,15 +249,35 @@ contract | CON-02 | キャンセル API | cancel-api | draft | contract-http
 **ファイルをコピーしない。** どれが共通かの判断を毎回やることになり、
 削除も伝わらず、いずれ静かにドリフトする。
 
-最初に一度だけ設定する。
+### 最初に一度だけ
 
-```bash
-git remote add template https://github.com/setopic/graph-doc-template.git
-```
+"Use this template" で作ったリポジトリはテンプレートと**履歴を共有していない**。
+そのままマージすると、共通の祖先がないせいで共有ファイルまで軒並み競合する。
+先に共有ファイルをテンプレートと一致させ、競合面を消してから繋ぐ。
 
-```bash
-git config merge.ours.driver true
-```
+1. 共有ファイルをテンプレートの内容で上書きしてコミットする。
+   対象は `tools/`、`docs/00-meta/graph-rules.md`、`docs/00-meta/node-types.md`、
+   `docs/00-meta/templates/`、`CLAUDE.md`、`Makefile`、`.github/`、
+   `.gitattributes`、`.gitignore`、`LICENSE`。
+   **`README.md`・`docs/index.md`・各 `index.md`・ノード本体は対象外**（プロジェクト固有）
+
+2. upstream を追加する。
+
+   ```bash
+   git remote add template https://github.com/setopic/graph-doc-template.git
+   ```
+
+3. `merge=ours` ドライバを有効にする。`.gitattributes` の指定はこれがないと効かない。
+
+   ```bash
+   git config merge.ours.driver true
+   ```
+
+4. 初回だけ `--allow-unrelated-histories` を付けてマージする。
+
+   ```bash
+   git fetch template && git merge template/main --allow-unrelated-histories
+   ```
 
 以後の取り込みはこの手順。
 
