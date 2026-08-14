@@ -5,3 +5,10 @@
 *.png binary
 *.jpg binary
 *.pdf binary
+
+# テンプレートから更新を取り込む（git merge template/main）とき、
+# この 2 つは常にプロジェクト側を残す。中身がプロジェクト固有だから。
+# 取り込む側で一度だけ設定が要る:
+#   git config merge.ours.driver true
+README.md     merge=ours
+docs/index.md merge=ours

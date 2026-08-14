@@ -19,6 +19,24 @@ from .model import Graph
 
 MD_LINK_RE = re.compile(r"(\]\()([^)\s]+\.md)(\))")
 
+# 書き換えてはいけない区間。loader が「リンクとして数えない場所」と同じ範囲。
+# 規約や雛形に載せた**使い方の例**まで書き換えると、意味をなさない記述になる。
+PROTECTED_RE = re.compile(r"```.*?```|`[^`\n]*`|<!--.*?-->", re.DOTALL)
+
+
+def _apply_outside_protected(text: str, transform) -> str:
+    """コードブロック・コードスパン・HTML コメントの外側にだけ `transform` を適用する。"""
+    parts: list[str] = []
+    last = 0
+
+    for match in PROTECTED_RE.finditer(text):
+        parts.append(transform(text[last : match.start()]))
+        parts.append(match.group(0))
+        last = match.end()
+
+    parts.append(transform(text[last:]))
+    return "".join(parts)
+
 
 class RenameError(RuntimeError):
     pass
@@ -131,15 +149,20 @@ def rename(
 
     for path in _scan_targets(root, docs):
         original = path.read_text(encoding="utf-8")
-        updated = token.sub(new_id, original)
+        updated = _apply_outside_protected(original, lambda s: token.sub(new_id, s))
 
         if path == old_path:
             if node.type != new_type:
                 updated = _replace_type(updated, new_type)
             if moved:
-                updated = _rebase_own_links(updated, old_path, new_path)
+                updated = _apply_outside_protected(
+                    updated, lambda s: _rebase_own_links(s, old_path, new_path)
+                )
         elif moved:
-            updated = _retarget_links(updated, path.parent, old_path, new_path)
+            parent = path.parent
+            updated = _apply_outside_protected(
+                updated, lambda s: _retarget_links(s, parent, old_path, new_path)
+            )
 
         if updated != original:
             edited.append(path.relative_to(root).as_posix())

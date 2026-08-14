@@ -118,6 +118,10 @@ python -m tools.graph rename --from IDX-API --to IDX-CON --path docs/40-contract
 **本文の散文までは直らない。** 「40-api ディレクトリ」のような、id でもリンクでもない
 記述は自分で直す。`--dry-run` で影響範囲を先に見ておくとよい。
 
+コードブロック・コードスパン・HTML コメントの中は書き換えない。
+この文書に載せた**使い方の例**が実行のたびに壊れないようにするため
+（`check` がリンクを数えない範囲と同じ）。
+
 ---
 
 <!-- graph:auto:start -->

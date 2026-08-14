@@ -243,6 +243,49 @@ contract | CON-02 | キャンセル API | cancel-api | draft | contract-http
 
 6. **雛形を直す** — `docs/00-meta/templates/*.md` を自分たちの書式にする
 
+## テンプレートの更新を取り込む
+
+このテンプレートから起こしたプロジェクトに、あとからテンプレート側の改善を反映する。
+**ファイルをコピーしない。** どれが共通かの判断を毎回やることになり、
+削除も伝わらず、いずれ静かにドリフトする。
+
+最初に一度だけ設定する。
+
+```bash
+git remote add template https://github.com/setopic/graph-doc-template.git
+```
+
+```bash
+git config merge.ours.driver true
+```
+
+以後の取り込みはこの手順。
+
+```bash
+git fetch template && git merge template/main
+```
+
+```bash
+python -m tools.graph reset-samples --yes
+```
+
+```bash
+python -m tools.graph check && python -m tools.graph sync
+```
+
+知っておくこと。
+
+- **サンプルノードは毎回追加される。** マージはテンプレート側にしかないファイルを
+  素直に足すので、`reset-samples` で消すところまでが 1 セット。省くと、
+  プロジェクト側の同じ id と衝突して `G002` が残る
+- **`README.md` と `docs/index.md` は競合しない。** `.gitattributes` の `merge=ours` で
+  プロジェクト側が優先される。テンプレート側の改善を取り込みたいときは、
+  `git diff HEAD template/main -- README.md` で差分を見て手で反映する
+- テンプレートがサンプルノードを変更した場合だけ modify/delete の競合が出る。
+  `git rm <path>` で解決してよい
+- **初回のマージだけ** `--allow-unrelated-histories` が要る。
+  GitHub の "Use this template" は履歴を引き継がないため
+
 ## AI エージェントと使う
 
 [CLAUDE.md](CLAUDE.md) にエージェント向けの作業手順を書いてある。要点は 2 つ。
