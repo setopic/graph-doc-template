@@ -123,3 +123,7 @@ python -m tools.graph new --type usecase --id UC-02 --title "予約をキャン�
 
 `.github/workflows/graph-check.yml` が push / PR で `check` と `sync --dry-run --check` を回す。
 GitHub 以外を使うなら、この 2 コマンドを同等のジョブに移すだけでよい。
+
+## ライセンス
+
+[MIT](LICENSE)。複製して自分のプロジェクトの土台にすることを想定している。
