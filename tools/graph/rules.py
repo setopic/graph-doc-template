@@ -6,9 +6,11 @@
 
 from __future__ import annotations
 
+import re
 from datetime import date
 
 from . import schema
+from .loader import strip_non_prose
 from .model import ERROR, WARN, Graph, Issue, Node
 
 # ルールコードと概要（レポートと docs/00-meta/graph-rules.md の対応表に使う）
@@ -26,6 +28,7 @@ RULE_INDEX: dict[str, str] = {
     "G010": "related が片側にしか書かれていない",
     "G011": "確定していないまま長期間放置されている",
     "G012": "参照されすぎている（分割を検討）",
+    "G013": "依存先が禁じた言い換えを使っている",
 }
 
 
@@ -47,6 +50,7 @@ def check_all(
         rule_g009_status,
         rule_g010_related_symmetry,
         rule_g012_hub_nodes,
+        rule_g013_term_consistency,
     ):
         issues.extend(rule(graph))
 
@@ -384,6 +388,149 @@ def rule_g010_related_symmetry(graph: Graph) -> list[Issue]:
                         "G010",
                         WARN,
                         f"{target.id} 側の {edge.kind} に {node.id} がありません（相互リンク推奨）",
+                        node.rel,
+                    )
+                )
+    return issues
+
+
+# --------------------------------------------------------------------------
+# G013: 用語の一貫性
+# --------------------------------------------------------------------------
+# 「## 用語」の節。次の同レベル見出しか文末まで。
+_TERM_SECTION_RE = re.compile(
+    rf"^##\s+{re.escape(schema.TERM_SECTION_HEADING)}\s*$(.*?)(?=^##\s|\Z)",
+    re.MULTILINE | re.DOTALL,
+)
+# セル末尾の丸括弧。禁止の理由か、使ってよい条件が入っている
+_TRAILING_NOTE_RE = re.compile(r"[（(]([^）)]*)[）)]\s*$")
+_INNER_PAREN_RE = re.compile(r"[（(][^）)]*[）)]")
+_SEPARATOR_RE = re.compile(r"[、,]")
+_SNIPPET_PAD = 20
+
+
+def _table_rows(section: str) -> list[list[str]]:
+    """Markdown の表を行ごとのセル一覧にする。区切り行（`| --- |`）は落とす。"""
+    rows: list[list[str]] = []
+    for line in section.splitlines():
+        line = line.strip()
+        if not line.startswith("|"):
+            continue
+        cells = [cell.strip() for cell in line.strip("|").split("|")]
+        if all(set(cell) <= {"-", ":", " "} for cell in cells):
+            continue
+        rows.append(cells)
+    return rows
+
+
+def forbidden_terms(body: str) -> dict[str, tuple[str, str]]:
+    """「用語」表から `{使ってはいけない語: (正しい用語, 注記)}` を作る。
+
+    列は位置ではなく見出しで探す。列が増えても壊れないようにするため。
+    """
+    section = _TERM_SECTION_RE.search(body)
+    if section is None:
+        return {}
+
+    rows = _table_rows(section.group(1))
+    if not rows:
+        return {}
+
+    header = rows[0]
+    try:
+        term_at = header.index(schema.TERM_COLUMN)
+        forbidden_at = header.index(schema.TERM_FORBIDDEN_COLUMN)
+    except ValueError:
+        return {}  # 見出しが違う表。用語表ではないので触らない
+
+    found: dict[str, tuple[str, str]] = {}
+    for cells in rows[1:]:
+        if max(term_at, forbidden_at) >= len(cells):
+            continue
+        term = cells[term_at]
+        raw = cells[forbidden_at]
+        if not term or not raw:
+            continue  # 雛形の空行
+
+        # 末尾の括弧はセル全体にかかる注記として扱う。
+        # 「承認、昇格（第三者が判断する語感になる）」の理由は両方にかかっている
+        note_match = _TRAILING_NOTE_RE.search(raw)
+        note = note_match.group(1).strip() if note_match else ""
+        listed = _TRAILING_NOTE_RE.sub("", raw)
+
+        for chunk in _SEPARATOR_RE.split(listed):
+            word = _INNER_PAREN_RE.sub("", chunk).strip()
+            if len(word) < schema.TERM_MIN_LENGTH:
+                continue
+            found.setdefault(word, (term, note))
+
+    return found
+
+
+def _prerequisites(graph: Graph, node_id: str) -> list[str]:
+    """`depends_on` / `refines` を辿って到達できるノードを返す（間接も含む）。
+
+    **直接の依存だけでは足りない。** 契約はユースケース経由でドメインに繋がるので、
+    直接に絞ると「契約が語彙を破っている」場合を丸ごと見落とす。
+    """
+    kinds = {"depends_on", "refines"}
+    seen: set[str] = set()
+    stack = [node_id]
+    while stack:
+        node = graph.nodes.get(stack.pop())
+        if node is None:
+            continue
+        for edge in node.edges:
+            if edge.resolved and edge.kind in kinds and edge.dst not in seen:
+                seen.add(edge.dst)
+                stack.append(edge.dst)
+    return sorted(seen)
+
+
+def _snippet(text: str, index: int, word: str) -> str:
+    start = max(0, index - _SNIPPET_PAD)
+    end = index + len(word) + _SNIPPET_PAD
+    body = " ".join(text[start:end].split())
+    return f"{'…' if start else ''}{body}{'…' if end < len(text) else ''}"
+
+
+def rule_g013_term_consistency(graph: Graph) -> list[Issue]:
+    """依存先が「使ってはいけない言い換え」に挙げた語の使用を警告する。
+
+    規約の「`depends_on` に挙げたノードの用語だけを使って書く」を機械で見る。
+    これまで唯一、人の注意力だけに任せていた条項だった。
+
+    **語の意味までは分からない。** 別の概念について同じ語を使っている場合や、
+    「承認は挟まない」のように否定するために持ち出した場合も引っかかる。
+    だから警告に留め、判断の材料（注記と前後の文）を出すところまでを仕事とする。
+    """
+    vocabulary = {
+        node.id: terms
+        for node in graph.sorted_nodes()
+        if (terms := forbidden_terms(node.body))
+    }
+    if not vocabulary:
+        return []
+
+    issues: list[Issue] = []
+    for node in graph.sorted_nodes():
+        # 用語表そのものは対象外。禁止語を「挙げている」ことは「使っている」ことではない
+        text = strip_non_prose(_TERM_SECTION_RE.sub(" ", node.body))
+
+        for owner_id in _prerequisites(graph, node.id):
+            for word, (term, note) in sorted(vocabulary.get(owner_id, {}).items()):
+                count = text.count(word)
+                if not count:
+                    continue
+                where = f"（{count} 箇所）" if count > 1 else ""
+                reason = f"。{owner_id} の注記: {note}" if note else ""
+                issues.append(
+                    Issue(
+                        "G013",
+                        WARN,
+                        f"{word!r} は {owner_id} が使ってはいけない言い換えに挙げています"
+                        f"{where}。{term!r} を使ってください{reason}"
+                        f" / {_snippet(text, text.find(word), word)}",
                         node.rel,
                     )
                 )

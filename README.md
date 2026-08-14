@@ -59,7 +59,7 @@ python -m tools.graph render --format mermaid --out docs/graph.mmd
 docs/
   index.md              グラフのルート。全ノードはここから辿れること
   00-meta/              規約とテンプレート（グラフの語彙そのもの）
-    graph-rules.md      ルール ID G001〜G010 と直し方
+    graph-rules.md      ルール ID G001〜G013 と直し方
     node-types.md       ノード種別・接頭辞・置き場所・層
     templates/          new コマンドが使う雛形（グラフには含めない）
   10-architecture/      層 10: 構成要素と責務、境界
@@ -222,8 +222,9 @@ contract | CON-02 | キャンセル API | cancel-api | draft | contract-http
 | `G010` | `related` が片側だけ（警告） |
 | `G011` | `draft` / `review` のまま長期間放置（警告。git 履歴を使う） |
 | `G012` | `depends_on` で参照されすぎ（警告。分割の合図） |
+| `G013` | 依存先が「使ってはいけない言い換え」に挙げた語の使用（警告） |
 
-`G001`〜`G008` は構造の誤りで、直さなければ壊れている。`G009`〜`G012` は
+`G001`〜`G008` は構造の誤りで、直さなければ壊れている。`G009`〜`G013` は
 **健全性の警告**で、承知のうえで放置してもよい（`--strict` で失敗扱いにできる）。
 しきい値は `tools/graph/schema.py` にある。
 
