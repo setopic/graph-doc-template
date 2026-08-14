@@ -26,6 +26,10 @@ VERSION_RE = re.compile(r'TEMPLATE_VERSION\s*=\s*["\']([^"\']+)["\']')
 # 変更履歴の見出し: "## 1.2.0 — 2026-08-14"
 ENTRY_RE = re.compile(r"^##\s+(\d+\.\d+\.\d+)\b(.*)$")
 
+# check-attr に一度に渡す経路の数。多すぎるとコマンド行の上限に当たる
+# （初回マージ前は差がツリー全体になり、数百件になりうる）
+ATTR_CHUNK = 100
+
 
 class UpgradeError(RuntimeError):
     pass
@@ -77,6 +81,33 @@ def changelog_entries(text: str, newer_than: tuple[int, ...]) -> list[tuple[str,
     ]
 
 
+def merge_ours(root: Path, paths: list[str]) -> set[str]:
+    """`.gitattributes` が `merge=ours` にしている経路を返す。
+
+    判定できなければ空集合を返す。多めに出すのはただの過剰申告だが、
+    判定できないまま落とすと「変わらない」と嘘をつくことになる。
+    """
+    # ドライバ未設定（README の `git config merge.ours.driver true` を
+    # していない）なら `merge=ours` は効かず、素の合成になる。この場合は
+    # 本当に変更されるので落とさない
+    if not (git_run(root, ["config", "--get", "merge.ours.driver"]) or "").strip():
+        return set()
+
+    found: set[str] = set()
+    for start in range(0, len(paths), ATTR_CHUNK):
+        chunk = paths[start : start + ATTR_CHUNK]
+        # -z なら経路も値も NUL 区切りで返る。引用もエスケープも挟まらない
+        out = git_run(root, ["check-attr", "-z", "merge", "--", *chunk])
+        if out is None:
+            return set()
+        # <経路> NUL <属性> NUL <値> の 3 つで 1 組
+        fields = out.split("\0")
+        for i in range(0, len(fields) - 2, 3):
+            if fields[i + 1] == "merge" and fields[i + 2] == "ours":
+                found.add(fields[i])
+    return found
+
+
 def inspect(root: Path) -> dict:
     """テンプレートとの差を調べる。書き込みは行わない。"""
     remotes = git_run(root, ["remote"])
@@ -116,6 +147,11 @@ def inspect(root: Path) -> dict:
         # 共通の祖先がない（初回マージ前）。全体の差で代用する
         diff = git_run(root, ["diff", "--name-only", "HEAD", _ref()])
     files = [line for line in (diff or "").splitlines() if line.strip()]
+
+    # `merge=ours` のものは差があってもマージでは変わらない（プロジェクト側が残る）。
+    # 差分にはそのまま出てくるので、落とさないと「変更される」と嘘になる。
+    ours = merge_ours(root, files)
+    files = [path for path in files if path not in ours]
 
     return {
         "local": TEMPLATE_VERSION,
