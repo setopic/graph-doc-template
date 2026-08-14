@@ -115,6 +115,31 @@ def _scalar(token: str, lineno: int) -> object:
     return token
 
 
+def set_scalar(text: str, key: str, value: str) -> str:
+    """フロントマター内の `key:` を書き換える。本文には触れない。
+
+    見つからなければ何もしない。フロントマターが無い文書に
+    キーを生やす用途には使わない。
+    """
+    import re
+
+    parts = text.split("---", 2)
+    if len(parts) < 3:
+        return text
+
+    head, replaced = re.subn(
+        rf"^{re.escape(key)}:.*$",
+        f"{key}: {value}",
+        parts[1],
+        count=1,
+        flags=re.MULTILINE,
+    )
+    if not replaced:
+        return text
+
+    return parts[0] + "---" + head + "---" + parts[2]
+
+
 def as_list(value: object) -> list[str]:
     """フロントマターの値を文字列リストに正規化する。"""
     if value is None:

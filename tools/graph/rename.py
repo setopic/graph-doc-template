@@ -15,6 +15,7 @@ import re
 from pathlib import Path
 
 from . import schema
+from .frontmatter import set_scalar
 from .model import Graph
 
 MD_LINK_RE = re.compile(r"(\]\()([^)\s]+\.md)(\))")
@@ -86,11 +87,7 @@ def _relative(target: Path, from_dir: Path) -> str:
 
 def _replace_type(text: str, new_type: str) -> str:
     """フロントマター内の `type:` だけを書き換える。"""
-    parts = text.split("---", 2)
-    if len(parts) < 3:
-        return text
-    head = re.sub(r"^type:.*$", f"type: {new_type}", parts[1], count=1, flags=re.MULTILINE)
-    return parts[0] + "---" + head + "---" + parts[2]
+    return set_scalar(text, "type", new_type)
 
 
 def rename(

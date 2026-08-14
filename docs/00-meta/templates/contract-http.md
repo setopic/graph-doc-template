@@ -1,6 +1,6 @@
 ---
 id: {{ID}}
-type: api
+type: contract
 title: {{TITLE}}
 status: {{STATUS}}
 tags: []

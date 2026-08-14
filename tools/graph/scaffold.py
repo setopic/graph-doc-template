@@ -11,6 +11,7 @@ import re
 from pathlib import Path
 
 from . import schema
+from .frontmatter import set_scalar
 
 TEMPLATE_DIR = "00-meta/templates"
 CHILDREN_START = "<!-- graph:children:start -->"
@@ -112,6 +113,10 @@ def create(
         .replace("{{STATUS}}", status)
         .replace("{{DATE}}", _dt.date.today().isoformat())
     )
+    # 雛形に書かれた type を信用しない。--type で指定されたものを正とする。
+    # 雛形はグラフの検査対象外なので、そこに古い type が残っていても気づけない
+    # （層を改称したとき、実際に雛形の type だけ取り残された）。
+    content = set_scalar(content, "type", node_type)
 
     target.parent.mkdir(parents=True, exist_ok=True)
     target.write_text(content, encoding="utf-8", newline="\n")
