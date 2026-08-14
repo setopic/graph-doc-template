@@ -103,7 +103,7 @@ graph LR
   META-01 -.->|related| META-02
   META-02 -.->|related| META-01
   UC-01 -->|depends_on| DOM-01
-  classDef draft stroke-dasharray: 4 3;
+  classDef draft stroke-dasharray: 4\,3;
   classDef deprecated opacity:0.5;
   class CON-01 draft;
 ```

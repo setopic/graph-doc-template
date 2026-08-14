@@ -62,7 +62,9 @@ def to_mermaid(graph: Graph, include_mentions: bool = False) -> str:
     # status で色を分ける
     draft = [n.id for n in graph.sorted_nodes() if n.status == "draft"]
     deprecated = [n.id for n in graph.sorted_nodes() if n.status == "deprecated"]
-    lines.append("  classDef draft stroke-dasharray: 4 3;")
+    # mermaid の style 定義はカンマ区切りなので、値に含めるカンマは \, と書く。
+    # 空白区切り（"4 3"）は仕様として定義されておらず、描画されないことがある。
+    lines.append("  classDef draft stroke-dasharray: 4\\,3;")
     lines.append("  classDef deprecated opacity:0.5;")
     if draft:
         lines.append(f"  class {','.join(draft)} draft;")
