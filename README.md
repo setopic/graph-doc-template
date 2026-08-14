@@ -135,7 +135,7 @@ api     | API-02 | キャンセル API      | cancel-api | draft | api-http
    python -m tools.graph reset-samples --yes
    ```
 
-   `tags` に `sample` を持つノード（ARCH-01 / DOM-01 / UC-01 / API-01）を削除し、
+   `tags` に `sample` を持つノード（ARCH-01 / ARCH-02 / DOM-01 / UC-01 / API-01）を削除し、
    各 `index.md` の一覧からも外す。**他のノードからの参照は自動で消さない**ので、
    残った参照は `check` が `G004`（リンク切れ）として指す。それを見て直す
 

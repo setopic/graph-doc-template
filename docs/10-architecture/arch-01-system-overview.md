@@ -26,6 +26,9 @@ related: []
 | データストア | 状態の保持と一意性の保証 | 業務ルールの判断 |
 | ワーカー | 時間のかかる処理の実行と結果の書き戻し | 利用者との直接のやりとり |
 
+ワーカーの記述が長くなったので、詳細は [[ARCH-02]] に分けた（`refines`）。
+**この文書は全体の見取り図として残す**。分割しても、ここを読めば構成は把握できる状態を保つ。
+
 ## 境界
 
 - 利用者 ↔ API サーバ: HTTP / JSON。契約は `40-api/` のノードが正
@@ -51,5 +54,6 @@ related: []
 
 - (decides) [ADR-0001 設計文書をグラフとして管理する](../50-adr/adr-0001-graph-driven-docs.md)
 - (depends_on) [DOM-01 予約](../20-domain/dom-01-booking.md)
+- (refines) [ARCH-02 ワーカーの実行モデル](./arch-02-worker-execution-model.md)
 
 <!-- graph:auto:end -->
