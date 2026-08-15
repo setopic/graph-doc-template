@@ -163,6 +163,10 @@ AUTO_BLOCK_END = "<!-- graph:auto:end -->"
 DIAGRAM_BLOCK_START = "<!-- graph:diagram:start -->"
 DIAGRAM_BLOCK_END = "<!-- graph:diagram:end -->"
 
+# 目次の一覧ブロックの目印。sync が中身を作り直す
+CHILDREN_START = "<!-- graph:children:start -->"
+CHILDREN_END = "<!-- graph:children:end -->"
+
 
 def prefix_of(node_type: str) -> str:
     return NODE_TYPES[node_type]["prefix"]

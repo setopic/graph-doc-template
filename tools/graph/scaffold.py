@@ -14,8 +14,8 @@ from . import schema
 from .frontmatter import set_scalar
 
 TEMPLATE_DIR = "00-meta/templates"
-CHILDREN_START = "<!-- graph:children:start -->"
-CHILDREN_END = "<!-- graph:children:end -->"
+CHILDREN_START = schema.CHILDREN_START
+CHILDREN_END = schema.CHILDREN_END
 
 # 一括生成ファイルの区切り。タブは編集中に空白へ化けることがあるため使わない
 BATCH_SEPARATOR = "|"
@@ -143,7 +143,7 @@ def parse_batch(path: Path) -> list[dict]:
         raise ScaffoldError(f"一括生成ファイルがありません: {path}")
 
     entries: list[dict] = []
-    for lineno, raw in enumerate(path.read_text(encoding="utf-8").splitlines(), start=1):
+    for lineno, raw in enumerate(path.read_text(encoding="utf-8-sig").splitlines(), start=1):
         line = raw.strip()
         if not line or line.startswith("#"):
             continue
