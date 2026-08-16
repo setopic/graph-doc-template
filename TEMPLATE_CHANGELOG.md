@@ -26,8 +26,6 @@ python -m tools.graph --version
 
 ---
 
----
-
 ## 1.4.0 — 2026-08-16
 
 ### 追加
