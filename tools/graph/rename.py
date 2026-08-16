@@ -69,9 +69,22 @@ def _scan_targets(root: Path, docs: Path) -> list[Path]:
     return list(paths)
 
 
-def _target_path(node_path: Path, docs: Path, old_id: str, new_id: str, new_type: str) -> Path:
+SLUG_RE = re.compile(r"^[a-z0-9]+(?:-[a-z0-9]+)*$")
+
+
+def _target_path(
+    node_path: Path,
+    docs: Path,
+    old_id: str,
+    new_id: str,
+    new_type: str,
+    new_slug: str | None = None,
+) -> Path:
     spec = schema.NODE_TYPES[new_type]
     directory = node_path.parent if spec["dir"] is None else docs / spec["dir"]
+
+    if new_slug is not None:
+        return directory / f"{new_id.lower()}-{new_slug}.md"
 
     stem = node_path.stem
     if stem.startswith(old_id.lower()):
@@ -98,19 +111,28 @@ def rename(
     *,
     dry_run: bool = False,
     new_path_override: Path | None = None,
+    new_slug: str | None = None,
 ) -> dict:
     """`new_path_override` は移動先を明示したいときに使う。
 
     種別 `index` のようにディレクトリが決まっていないノードを別の場所へ
     移すときに要る。リンクの張り替えは自動配置のときと同じように行う。
+
+    `new_slug` はファイル名の後半だけを変えたいときに使う。**id は据え置ける。**
+    文書の題を変えるとファイル名が実態とずれるが、id を変える理由は無い
+    という場面がある。
     """
     node = graph.nodes.get(old_id)
     if node is None:
         raise RenameError(f"ノード {old_id!r} が見つかりません")
-    if new_id in graph.nodes:
+    if new_id != old_id and new_id in graph.nodes:
         raise RenameError(f"id {new_id!r} はすでに使われています")
-    if old_id == new_id:
-        raise RenameError("変更前と変更後の id が同じです")
+    if old_id == new_id and new_slug is None:
+        raise RenameError("変更前と変更後の id が同じです（--slug で名前だけ変えられます）")
+    if new_slug is not None and not SLUG_RE.match(new_slug):
+        raise RenameError(
+            f"slug {new_slug!r} は英小文字・数字・ハイフンだけで書いてください"
+        )
 
     new_prefix = new_id.split("-")[0]
     new_type = schema.type_of_prefix(new_prefix)
@@ -134,7 +156,7 @@ def rename(
                 f"移動先は {schema.DOCS_DIR}/ の中である必要があります: {new_path}"
             ) from None
     else:
-        new_path = _target_path(old_path, docs, old_id, new_id, new_type)
+        new_path = _target_path(old_path, docs, old_id, new_id, new_type, new_slug)
 
     moved = new_path != old_path
 

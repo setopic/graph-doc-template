@@ -261,14 +261,19 @@ def cmd_rename(args: argparse.Namespace) -> int:
     root = _repo_root(args.root)
     graph = load(root)
 
+    if not args.new_id and not args.new_slug:
+        print("エラー: --to か --slug のどちらかが要ります", file=sys.stderr)
+        return 1
+
     try:
         result = rename_node(
             root,
             graph,
             args.old_id,
-            args.new_id,
+            args.new_id or args.old_id,
             dry_run=args.dry_run,
             new_path_override=Path(args.path) if args.path else None,
+            new_slug=args.new_slug,
         )
     except RenameError as exc:
         print(f"エラー: {exc}", file=sys.stderr)
@@ -442,10 +447,18 @@ def build_parser() -> argparse.ArgumentParser:
 
     p_rename = sub.add_parser(
         "rename",
-        help="ノードの id を変更し、全参照を追随させる",
+        help="ノードの id やファイル名を変更し、全参照を追随させる",
     )
     p_rename.add_argument("--from", dest="old_id", required=True, metavar="ID", help="例: API-01")
-    p_rename.add_argument("--to", dest="new_id", required=True, metavar="ID", help="例: CON-01")
+    p_rename.add_argument(
+        "--to", dest="new_id", metavar="ID", help="新しい id（例: CON-01）。省略すると据え置く"
+    )
+    p_rename.add_argument(
+        "--slug",
+        dest="new_slug",
+        metavar="SLUG",
+        help="ファイル名の後半だけを変える（例: view）。id は変わらない",
+    )
     p_rename.add_argument(
         "--path",
         metavar="PATH",
