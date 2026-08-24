@@ -4,6 +4,8 @@
 
 1 文書 = 1 ノード、フロントマターの型つきリンク = エッジ。リンク切れ・孤立ノード・
 循環依存・**層の逆流**を機械検証する。外部依存なし（Python 3.10+ の標準ライブラリのみ）。
+**検証はオフラインで完結する。** 本文の質を AI に見てもらう `review` だけが通信するが、
+これは任意のコマンドで、CI では回さない（[ai-review.md](docs/00-meta/ai-review.md)）。
 
 ## なぜ
 
@@ -98,6 +100,7 @@ graph LR
   subgraph meta["メタ / 規約"]
     META-01["META-01<br/>グラフの規約"]
     META-02["META-02<br/>ノード種別と層"]
+    META-03["META-03<br/>本文のレビュー（AI）"]
   end
   subgraph architecture["アーキテクチャ"]
     ARCH-01["ARCH-01<br/>システム全体構成"]
@@ -122,7 +125,9 @@ graph LR
   CON-01 -->|depends_on| DOM-01
   DOM-01 -->|depends_on| ARCH-01
   META-01 -.->|related| META-02
+  META-01 -.->|related| META-03
   META-02 -.->|related| META-01
+  META-03 -.->|related| META-01
   UC-01 -->|depends_on| DOM-01
   classDef draft stroke-dasharray: 4\,3;
   classDef deprecated opacity:0.5;
@@ -170,6 +175,8 @@ python -m tools.graph render --format mermaid --focus DOM-01
 | `python -m tools.graph upgrade` | テンプレートとの差を調べる（読み取りのみ） |
 | `python -m tools.graph --version` | テンプレートの版 |
 | `python -m tools.graph stats` | ノード数・エッジ数の集計 |
+| `python -m tools.graph review` | **本文の質を AI に見てもらう（任意・通信あり）** |
+| `python -m unittest discover -s tests -t .` | ツール自体のテスト |
 
 `make check` `make sync` `make graph` も同じことをする（Makefile 参照）。
 
@@ -192,6 +199,9 @@ python -m tools.graph new --type usecase --id UC-02 --title "予約をキャン�
 
 ```bash
 python -m tools.graph new --type contract --template contract-http --id CON-02 --title "..."
+
+# チャットの操作（コマンド・ボタン）を書くなら
+python -m tools.graph new --type contract --template contract-interaction --id CON-03 --title "..."
 ```
 
 立ち上げ時などで数が多いときは、1 行 1 ノードのファイルからまとめて作る。
@@ -223,10 +233,18 @@ contract | CON-02 | キャンセル API | cancel-api | draft | contract-http
 | `G011` | `draft` / `review` のまま長期間放置（警告。git 履歴を使う） |
 | `G012` | `depends_on` で参照されすぎ（警告。分割の合図） |
 | `G013` | 依存先が「使ってはいけない言い換え」に挙げた語の使用（警告） |
+| `G014` | 種別ごとに決めた必須の節が無い（警告） |
 
-`G001`〜`G008` は構造の誤りで、直さなければ壊れている。`G009`〜`G013` は
+`G001`〜`G008` は構造の誤りで、直さなければ壊れている。`G009`〜`G014` は
 **健全性の警告**で、承知のうえで放置してもよい（`--strict` で失敗扱いにできる）。
-しきい値は `tools/graph/schema.py` にある。
+しきい値と必須の節は `tools/graph/schema.py` にある。
+
+**CI では main への push だけ `--strict` を使う。** 開発中のブランチと PR では
+警告を出すだけにして、書いている途中で止めない。
+
+**`G014` は雛形の全節を求めない。** 「これが無いと文書として成立しない」節だけを
+見る。全節を必須にすると、意図的に省いた節まで警告になる
+（[graph-rules.md](docs/00-meta/graph-rules.md) の `G014` に測定結果がある）。
 
 コードブロック・コードスパン・HTML コメントの中は検査しない。規約文書や雛形に
 記法の例を書いても落ちない。逆に、コメントアウトした参照はグラフに現れない。

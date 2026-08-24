@@ -29,6 +29,7 @@ RULE_INDEX: dict[str, str] = {
     "G011": "確定していないまま長期間放置されている",
     "G012": "参照されすぎている（分割を検討）",
     "G013": "依存先が禁じた言い換えを使っている",
+    "G014": "テンプレートの必須の節が無い",
 }
 
 
@@ -51,6 +52,7 @@ def check_all(
         rule_g010_related_symmetry,
         rule_g012_hub_nodes,
         rule_g013_term_consistency,
+        rule_g014_required_sections,
     ):
         issues.extend(rule(graph))
 
@@ -534,4 +536,63 @@ def rule_g013_term_consistency(graph: Graph) -> list[Issue]:
                         node.rel,
                     )
                 )
+    return issues
+
+
+# --------------------------------------------------------------------------
+# G014: テンプレートの必須の節
+# --------------------------------------------------------------------------
+
+_HEADING_RE = re.compile(r"^##\s+(.+?)\s*$", re.MULTILINE)
+
+
+def sections(body: str) -> list[str]:
+    """本文の `## ` 見出しを順に返す。
+
+    `node.body` は sync が生成するブロックを取り除いた後の本文なので、
+    「関連ドキュメント（自動生成）」は数えない。
+    コードブロックの中の `## ` も落とす（雛形の説明に現れる）。
+    """
+    return _HEADING_RE.findall(strip_non_prose(body))
+
+
+def required_sections(node: Node) -> tuple[str, ...]:
+    """そのノードに求める節。refines を持つなら親から切り出した側の定義を使う。"""
+    if node.out_edges("refines"):
+        refined = schema.REQUIRED_SECTIONS_REFINED.get(node.type)
+        if refined is not None:
+            return refined
+    return schema.REQUIRED_SECTIONS.get(node.type, ())
+
+
+def rule_g014_required_sections(graph: Graph) -> list[Issue]:
+    """type ごとに決めた必須の節が本文にあるかを見る。
+
+    **雛形の全節ではなく「これが無いと文書として成立しない」節だけ**を対象にする
+    （schema.REQUIRED_SECTIONS）。全節を必須にすると、意図的に省いた節まで
+    警告になり、「層を無理に埋めない」という方針と衝突する。
+
+    節が空でないかまでは見ない。見出しがあることしか確かめられないので、
+    **「なし」と書いてあれば通る。** それでよい。書く場所を用意させることが目的で、
+    書かないと決めたことを明示させるのもこのルールの役目である。
+    """
+    issues: list[Issue] = []
+    for node in graph.sorted_nodes():
+        wanted = required_sections(node)
+        if not wanted:
+            continue
+        have = set(sections(node.body))
+        missing = [name for name in wanted if name not in have]
+        if not missing:
+            continue
+        issues.append(
+            Issue(
+                "G014",
+                WARN,
+                f"{node.type} に必要な節がありません: "
+                + " / ".join(repr(name) for name in missing)
+                + "。書くことが無いなら「なし」と書く",
+                node.rel,
+            )
+        )
     return issues

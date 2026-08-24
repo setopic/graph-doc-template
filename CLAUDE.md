@@ -17,6 +17,7 @@
    雛形を選ぶ場面は 2 つある。
 
    - HTTP の契約 → `--template contract-http`
+   - **チャットの操作（コマンド・ボタン）→ `--template contract-interaction`**
    - **人間が実行する手順**（配置・更新・障害対応・移行）→ `--template usecase-runbook`
 
 2. **文書を編集したら検証する。** 通らない状態で「完了」と報告しない。
@@ -112,6 +113,7 @@ python -m tools.graph render --format mermaid --focus DOM-01 --depth 1
 | `G011` が出る | `draft` のまま放置されている | 確定させるか削除する。意図的に寝かせているなら理由を本文に書く |
 | `G012` が出る | 1 ノードに参照が集まりすぎ | 概念が混ざっていないか点検する。中心的な語彙なら放置してよい |
 | `G013` が出る | 依存先が禁じた言い換えを使っている | 正しい用語に直す。意図した使い方なら、禁止の範囲が広すぎるので用語表を直す |
+| `G014` が出る | 種別に必要な節が無い | 節を足す。**書くことが無いなら「なし」と書く。** 求めるほうが誤りなら `schema.py` の `REQUIRED_SECTIONS` を直す |
 
 ## テンプレート由来のファイルを直すとき
 
@@ -144,4 +146,8 @@ python -m tools.graph render --format mermaid --focus DOM-01 --depth 1
   ここを変えたら `docs/00-meta/node-types.md` の表も必ず合わせる
 - 検証ルールは `tools/graph/rules.py` に 1 ルール 1 関数で並んでいる。
   ルールを足したら `RULE_INDEX` と `graph-rules.md` の一覧の両方に追記する
-- 外部依存を足さない。標準ライブラリだけで動くことがこのツールの前提
+- 外部依存を足さない。標準ライブラリだけで動くことがこのツールの前提。
+  **`check` はオフラインで完結させる。** 通信するのは `review` だけで、
+  あれは CI から呼ばず、終了コードも常に 0（`docs/00-meta/ai-review.md`）
+- **ルールを足したらテストも足す。** `tests/` に `unittest` で置く。
+  `python -m unittest discover -s tests -t .` が CI の 1 本目

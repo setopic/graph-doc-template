@@ -19,8 +19,21 @@ jobs:
           python-version: "3.12"
 
       # 外部依存はないので install なし
-      - name: グラフを検証する
-        run: python -m tools.graph check
+      - name: テストを走らせる
+        run: python -m unittest discover -s tests -t .
+
+      # main では警告も失敗にする（--strict）。
+      # 開発中のブランチと PR では警告を出すだけにして、作業の途中で止めない。
+      # 警告（G009〜G014）は「直すべきだが、今すぐ壊れてはいない」もの。
+      - name: グラフを検証する（main は strict）
+        run: |
+          if [ "${{ github.ref }}" = "refs/heads/main" ] && [ "${{ github.event_name }}" = "push" ]; then
+            echo "main への push なので --strict で検証します"
+            python -m tools.graph check --strict
+          else
+            echo "警告は失敗にしません（main への push だけ --strict）"
+            python -m tools.graph check
+          fi
 
       - name: 関連ドキュメントが最新か確かめる
         run: python -m tools.graph sync --check
@@ -31,3 +44,6 @@ jobs:
       - name: 集計を出す
         if: always()
         run: python -m tools.graph stats
+
+      # AI lint（graph review）はここで回さない。
+      # 指摘が再現せず、API キーと費用と通信が要るため。人が手で回す。

@@ -16,7 +16,7 @@ import json
 import sys
 from pathlib import Path
 
-from . import cleanup, history
+from . import cleanup, history, review
 from . import render as render_mod
 from . import rules, schema
 from . import upgrade as upgrade_mod
@@ -349,6 +349,80 @@ def cmd_stats(args: argparse.Namespace) -> int:
     return 0
 
 
+def cmd_review(args: argparse.Namespace) -> int:
+    """本文の質を AI に見てもらう。**終了コードは常に 0。**
+
+    指摘は再現しないので、失敗として扱わない。CI からも呼ばない。
+    """
+    api_key = review.api_key_from_env()
+    if api_key is None:
+        print(f"{review.API_KEY_ENV} が設定されていないため、レビューを行いません。")
+        print("これはグラフの問題ではありません。check は影響を受けません。")
+        return 0
+
+    root = _repo_root(args.root)
+    graph = load(root)
+
+    if args.focus:
+        node = graph.nodes.get(args.focus)
+        if node is None:
+            print(f"ノードが見つかりません: {args.focus}")
+            return 0
+        targets = [node]
+    else:
+        targets = review.select_nodes(graph, limit=args.limit)
+
+    if not targets:
+        print("レビュー対象がありません。")
+        return 0
+
+    # 黙って通信しない。何件送るかを先に出す
+    print(
+        f"{len(targets)} ノードを {args.model} に送ります"
+        f"（{review.API_URL} へ通信します）"
+    )
+
+    findings: list[review.Finding] = []
+    for node in targets:
+        try:
+            found = review.review_node(
+                graph, node, api_key=api_key, model=args.model
+            )
+        except review.ReviewError as error:
+            print(f"  {node.id}: {error}")
+            continue
+        findings.extend(found)
+        if args.format != "json":
+            mark = f"{len(found)} 件" if found else "指摘なし"
+            print(f"  {node.id} {node.title}: {mark}")
+
+    if args.format == "json":
+        print(
+            json.dumps(
+                {
+                    "reviewed": len(targets),
+                    "findings": [f.to_dict() for f in findings],
+                },
+                ensure_ascii=False,
+                indent=2,
+            )
+        )
+        return 0
+
+    if findings:
+        print("")
+        for finding in findings:
+            print("  " + finding.format())
+        print("")
+        codes = sorted({f.code for f in findings})
+        print(f"指摘 {len(findings)} 件")
+        for code in codes:
+            print(f"  {code}: {review.FINDING_CODES[code]}")
+        print("")
+        print("**これは助言であって検査ではありません。** 従う義務はありません。")
+    return 0
+
+
 def build_parser() -> argparse.ArgumentParser:
     parser = argparse.ArgumentParser(prog="python -m tools.graph", description=__doc__)
     parser.add_argument(
@@ -474,6 +548,23 @@ def build_parser() -> argparse.ArgumentParser:
         help="テンプレートとの差を調べる（読み取りのみ。取り込みは手動）",
     )
     p_upgrade.set_defaults(func=cmd_upgrade)
+
+    p_review = sub.add_parser(
+        "review",
+        help="本文の質を AI に見てもらう（任意・通信あり・CI では回さない）",
+    )
+    p_review.add_argument("--focus", help="このノードだけを見る")
+    p_review.add_argument(
+        "--limit",
+        type=int,
+        default=review.DEFAULT_LIMIT,
+        help=f"送るノード数の上限（既定 {review.DEFAULT_LIMIT}。0 で全件）",
+    )
+    p_review.add_argument(
+        "--model", default=review.DEFAULT_MODEL, help="使うモデル"
+    )
+    p_review.add_argument("--format", choices=("text", "json"), default="text")
+    p_review.set_defaults(func=cmd_review)
 
     p_stats = sub.add_parser("stats", help="集計を表示する")
     p_stats.set_defaults(func=cmd_stats)
