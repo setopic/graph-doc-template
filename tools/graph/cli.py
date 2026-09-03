@@ -16,7 +16,7 @@ import json
 import sys
 from pathlib import Path
 
-from . import cleanup, history, review
+from . import changes, cleanup, history, review
 from . import render as render_mod
 from . import rules, schema
 from . import upgrade as upgrade_mod
@@ -42,7 +42,15 @@ def cmd_check(args: argparse.Namespace) -> int:
 
     # 履歴が取れないときは G011 を飛ばす（誤検知より無検知）
     file_dates = {} if args.no_history else history.last_commit_dates(root)
-    issues = rules.check_all(graph, history=file_dates)
+
+    # 変更が取れないときは G015 を飛ばす。git が無くても check は動く
+    changed_ids: set[str] = set()
+    if not args.no_history:
+        touched = changes.changed_paths(root, args.since)
+        if touched:
+            changed_ids = {n.id for n in graph.nodes.values() if n.rel in touched}
+
+    issues = rules.check_all(graph, history=file_dates, changed=changed_ids)
 
     errors = [i for i in issues if i.severity == ERROR]
     warns = [i for i in issues if i.severity == WARN]
@@ -440,7 +448,13 @@ def build_parser() -> argparse.ArgumentParser:
     p_check.add_argument(
         "--no-history",
         action="store_true",
-        help="git 履歴を見ない（G011 の放置検出を飛ばす）",
+        help="git を見ない（G011 の放置検出と G015 の追従漏れを飛ばす）",
+    )
+    p_check.add_argument(
+        "--since",
+        metavar="REF",
+        help="G015 で見る変更の窓。この参照との分岐点から HEAD まで"
+        "（省略時は未コミットの変更だけ）",
     )
     p_check.set_defaults(func=cmd_check)
 

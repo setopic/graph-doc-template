@@ -163,6 +163,8 @@ python -m tools.graph render --format mermaid --focus DOM-01
 | `python -m tools.graph check` | 検証。エラーがあれば終了コード 1 |
 | `python -m tools.graph check --strict` | 警告も失敗として扱う |
 | `python -m tools.graph check --format json` | CI やエディタ連携向け |
+| `python -m tools.graph check --since origin/main` | `G015`（追従漏れ）で見る変更の窓を広げる |
+| `python -m tools.graph check --no-history` | git を見ない（`G011` と `G015` を飛ばす） |
 | `python -m tools.graph sync` | 各文書末尾の「関連ドキュメント」を再生成 |
 | `python -m tools.graph sync --check` | 再生成が必要なら終了コード 1（CI 用） |
 | `python -m tools.graph render --format mermaid\|json\|dot` | 図・データの書き出し |

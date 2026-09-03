@@ -24,12 +24,19 @@ jobs:
 
       # main では警告も失敗にする（--strict）。
       # 開発中のブランチと PR では警告を出すだけにして、作業の途中で止めない。
-      # 警告（G009〜G014）は「直すべきだが、今すぐ壊れてはいない」もの。
-      - name: グラフを検証する（main は strict）
+      # 警告（G009〜G015）は「直すべきだが、今すぐ壊れてはいない」もの。
+      #
+      # PR では G015（追従漏れ）の窓を base ブランチまで広げる。
+      # 「この PR で依存先を変えたが、依存元を見ていない」の一覧が出る。
+      # 失敗にはしない。追従が要るかどうかは人が決める。
+      - name: グラフを検証する（main は strict / PR は追従漏れも見る）
         run: |
           if [ "${{ github.ref }}" = "refs/heads/main" ] && [ "${{ github.event_name }}" = "push" ]; then
             echo "main への push なので --strict で検証します"
             python -m tools.graph check --strict
+          elif [ "${{ github.event_name }}" = "pull_request" ]; then
+            echo "PR なので origin/${{ github.base_ref }} との差分で G015 も見ます"
+            python -m tools.graph check --since "origin/${{ github.base_ref }}"
           else
             echo "警告は失敗にしません（main への push だけ --strict）"
             python -m tools.graph check

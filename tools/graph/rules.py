@@ -30,6 +30,7 @@ RULE_INDEX: dict[str, str] = {
     "G012": "参照されすぎている（分割を検討）",
     "G013": "依存先が禁じた言い換えを使っている",
     "G014": "テンプレートの必須の節が無い",
+    "G015": "依存先が変わったのに追従していない",
 }
 
 
@@ -38,8 +39,12 @@ def check_all(
     *,
     history: dict[str, date] | None = None,
     today: date | None = None,
+    changed: set[str] | None = None,
 ) -> list[Issue]:
-    """`history` は `{相対パス: 最終コミット日}`。無ければ G011 を飛ばす。"""
+    """`history` は `{相対パス: 最終コミット日}`。無ければ G011 を飛ばす。
+
+    `changed` は「この変更で動いたノードの id」。無ければ G015 を飛ばす。
+    """
     issues: list[Issue] = list(graph.load_issues)
     for rule in (
         rule_g003_identity,
@@ -58,6 +63,9 @@ def check_all(
 
     if history:
         issues.extend(rule_g011_stale(graph, history, today or date.today()))
+
+    if changed:
+        issues.extend(rule_g015_unfollowed_changes(graph, changed))
 
     return sorted(issues, key=lambda i: (i.severity != ERROR, i.code, i.location))
 
@@ -592,6 +600,50 @@ def rule_g014_required_sections(graph: Graph) -> list[Issue]:
                 f"{node.type} に必要な節がありません: "
                 + " / ".join(repr(name) for name in missing)
                 + "。書くことが無いなら「なし」と書く",
+                node.rel,
+            )
+        )
+    return issues
+
+
+# --------------------------------------------------------------------------
+# G015: 依存先が変わったのに追従していない
+# --------------------------------------------------------------------------
+def rule_g015_unfollowed_changes(graph: Graph, changed: set[str]) -> list[Issue]:
+    """この変更で動いたノードの、依存元が動いていないことを知らせる。
+
+    **グラフの状態ではなく、変更の状態を見る唯一のルールである。**
+    窓（`check --since`、既定は作業ツリー）の外では何も出ない。
+
+    「このノードを参照しているノード」は `sync` が一覧を作っているが、
+    **見たかどうかは記録されない。** 規約の散文に置くと守られないので、
+    変更した瞬間に一覧を突きつけるところまでを機械の仕事にする。
+
+    **追従が要るとは限らない。** 依存先の変更が依存元に関係しないことは多い。
+    見て「変えなくてよい」と判断したなら、そのまま進めてよい。
+    """
+    issues: list[Issue] = []
+    for node in graph.sorted_nodes():
+        if node.id in changed:
+            continue
+        moved = sorted(
+            {
+                edge.dst
+                for edge in node.edges
+                if edge.kind in ("depends_on", "refines")
+                and edge.resolved
+                and edge.dst in changed
+            }
+        )
+        if not moved:
+            continue
+        issues.append(
+            Issue(
+                "G015",
+                WARN,
+                "依存先が変わりました: "
+                + " / ".join(moved)
+                + "。追従が要るか確かめてください（要らなければそのままでよい）",
                 node.rel,
             )
         )
