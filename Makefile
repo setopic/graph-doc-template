@@ -13,9 +13,10 @@ PYTHON ?= python
 # README の図に足す引数。既定は無し（全ノードをそのまま描く）。
 README_GRAPH_ARGS ?=
 
-.PHONY: help check strict sync sync-check linkify linkify-check graph json readme readme-check stats all
+.PHONY: help setup check strict sync sync-check linkify linkify-check graph json readme readme-check stats all
 
 help:
+	@echo "setup         クローンごとに要る設定を入れる（何度実行してもよい）"
 	@echo "check         グラフを検証する（エラーがあれば失敗）"
 	@echo "strict        警告も失敗として扱う"
 	@echo "sync          各文書末尾の関連ドキュメントを再生成する"
@@ -28,6 +29,14 @@ help:
 	@echo "readme-check  README の図が古ければ失敗する（CI 用）"
 	@echo "stats         ノード数・エッジ数を表示する"
 	@echo "all           check + sync + linkify + readme"
+
+# **クローンごとに要る。** .gitattributes の merge=ours は、このドライバが
+# 無効なクローンでは git が黙って無視し、通常の 3 方向マージに落ちる。
+# 警告は出ないので、保護が外れていること自体が見えない。
+# 冪等なので、取り込みの前に毎回実行してよい。
+setup:
+	@git config merge.ours.driver true
+	@echo "merge=ours ドライバを有効にした。.gitattributes の保護が効く。"
 
 check:
 	$(PYTHON) -m tools.graph check

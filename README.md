@@ -358,8 +358,12 @@ python -m tools.graph linkify
 3. `merge=ours` ドライバを有効にする。`.gitattributes` の指定はこれがないと効かない。
 
    ```bash
-   git config merge.ours.driver true
+   make setup
    ```
+
+   **クローンごとに要る。** 設定されていないと git は指定を黙って無視し、
+   通常のマージに落ちる。**警告は出ないので、保護が外れていること自体が見えない。**
+   冪等なので、取り込みの前に毎回実行してよい。
 
 4. 初回だけ `--allow-unrelated-histories` を付けてマージする。
 
@@ -382,7 +386,7 @@ python -m tools.graph upgrade
 手順はこう。
 
 ```bash
-git fetch template && git merge template/main
+make setup && git fetch template && git merge template/main
 ```
 
 ```bash
