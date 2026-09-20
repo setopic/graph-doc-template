@@ -310,3 +310,89 @@ class MarkdownLinks(unittest.TestCase):
 
 if __name__ == "__main__":
     unittest.main()
+
+
+class Readme(unittest.TestCase):
+    """README はノードではないが、決定を引く。**ここで見ないと誰も見ない。**
+
+    7 リポジトリの実測で 3 つの README が取り下げ済みの ADR を現在の根拠として
+    引いていた。1 つは**移った先の事実を古いまま述べていた**（「3 つの Bot を
+    同居」。置き換えた決定の題は「台数を問わない」）。
+    """
+
+    def setUp(self) -> None:
+        self.tmp = Path(tempfile.mkdtemp())
+        self.addCleanup(shutil.rmtree, self.tmp, True)
+
+    def issues(self, readme: str):
+        (self.tmp / "README.md").write_text(readme, encoding="utf-8")
+        graph = make_graph([OLD, NEW])
+        graph.root = self.tmp
+        return rule_g020_deprecated_references(graph)
+
+    def test_bare_citation_is_flagged(self) -> None:
+        issues = self.issues("**設計の勘所。** [[ADR-0008]] による。")
+        self.assertEqual(len(issues), 1)
+        self.assertEqual(issues[0].code, "G020")
+        self.assertEqual(issues[0].severity, WARN)
+        self.assertEqual(issues[0].location, "README.md")
+
+    def test_successor_in_same_paragraph_is_silent(self) -> None:
+        """判定はノードと同じ。段落の中で置き換え先も指していれば黙る。"""
+        self.assertEqual(
+            self.issues("以前は [[ADR-0008]] だった（いまは [[ADR-0014]]）。"), []
+        )
+
+    def test_generated_diagram_is_ignored(self) -> None:
+        """README の図は自動生成で、取り下げたノードも題ごと並ぶ。
+
+        **コードブロックなので数えない。** ここを数えると、図を持つ README が
+        すべて鳴る。
+        """
+        readme = """説明。
+
+```mermaid
+graph LR
+  A["[[ADR-0008]]"]
+```
+"""
+        self.assertEqual(self.issues(readme), [])
+
+    def test_relative_links_resolve_from_the_repository_root(self) -> None:
+        """**README はリポジトリの根から書く。** ノードは自分のディレクトリから。
+
+        基準を取り違えるとリンクが解決できず、**黙って 0 件になる。**
+        """
+        old = Node(
+            id="ADR-0008",
+            type="adr",
+            title="ADR-0008",
+            status="deprecated",
+            tags=[],
+            path=self.tmp / "docs" / "adr-0008.md",
+            rel="docs/adr-0008.md",
+            meta={
+                "id": "ADR-0008",
+                "type": "adr",
+                "title": "ADR-0008",
+                "status": "deprecated",
+            },
+            body="",
+        )
+        graph = make_graph([old, NEW])
+        graph.root = self.tmp
+        (self.tmp / "README.md").write_text(
+            "**設計の勘所。** [ADR-0008](docs/adr-0008.md) による。", encoding="utf-8"
+        )
+        issues = rule_g020_deprecated_references(graph)
+        self.assertEqual(len(issues), 1)
+        self.assertEqual(issues[0].location, "README.md")
+
+    def test_missing_readme_is_silent(self) -> None:
+        graph = make_graph([OLD, NEW])
+        graph.root = self.tmp
+        self.assertEqual(rule_g020_deprecated_references(graph), [])
+
+    def test_partial_graph_without_root_is_silent(self) -> None:
+        """部分グラフには root が無い。**検査が落ちてはいけない。**"""
+        self.assertEqual(rule_g020_deprecated_references(make_graph([OLD, NEW])), [])

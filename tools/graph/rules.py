@@ -916,13 +916,17 @@ def paragraphs(body: str) -> list[str]:
     return PARAGRAPH_RE.split(strip_non_prose(body))
 
 
-def _referenced_ids(text: str, node: Node, by_path: dict[Path, Node]) -> set[str]:
-    """その断片が指しているノードの id。解決できないリンクは無視する（G004 の仕事）。"""
+def _referenced_ids(text: str, base: Path, by_path: dict[Path, Node]) -> set[str]:
+    """その断片が指しているノードの id。解決できないリンクは無視する（G004 の仕事）。
+
+    `base` は相対リンクを解決する起点。**ノードは自分のディレクトリ、
+    README はリポジトリの根**を渡す。書き方の基準が違うだけで、判定は同じ。
+    """
     found = {raw.strip() for raw in WIKILINK_RE.findall(text)}
     for href in MDLINK_RE.findall(text):
         if not href.endswith(".md") or "://" in href:
             continue
-        linked = by_path.get((node.path.parent / href).resolve())
+        linked = by_path.get((base / href).resolve())
         if linked is not None:
             found.add(linked.id)
     return found
@@ -973,17 +977,32 @@ def unacknowledged_citations(
     「あちらはこう決めていた」と書くのは仕事のうちで、直接の置き換え先でも、
     2 つ前の決定でも変わらない。
     """
+    return _unacknowledged(node.body, node.path.parent, node.id, graph, replaced_by)
+
+
+def _unacknowledged(
+    body: str,
+    base: Path,
+    self_id: str | None,
+    graph: Graph,
+    replaced_by: dict[str, set[str]],
+) -> list[str]:
+    """`unacknowledged_citations` の本体。**ノードでない文章にも当てる。**
+
+    `self_id` はその文章自身のノード id。README のようにノードでないものは
+    `None` を渡す。**置き換えた側の免除が効かなくなるだけ**で、他は同じ。
+    """
     by_path = {n.path.resolve(): n for n in graph.nodes.values()}
     unacknowledged: set[str] = set()
 
-    for block in paragraphs(node.body):
-        here = _referenced_ids(block, node, by_path)
+    for block in paragraphs(body):
+        here = _referenced_ids(block, base, by_path)
         for target_id in here:
             target = graph.nodes.get(target_id)
             if target is None or target.status != "deprecated":
                 continue
             successors = replaced_by.get(target_id, set())
-            if node.id in successors:
+            if self_id is not None and self_id in successors:
                 continue  # 置き換えた側。指さないほうがおかしい
             if successors & here:
                 continue  # その場で置き換え先も指している
@@ -1035,30 +1054,63 @@ def rule_g020_deprecated_references(graph: Graph) -> list[Issue]:
         if schema.is_immutable_record(node.type, node.status):
             continue
         stale = unacknowledged_citations(node, graph, replaced_by)
-        if not stale:
-            continue
+        if stale:
+            issues.append(_g020_issue(stale, replaced_by, node.rel))
 
-        named = []
-        for target_id in stale:
-            successors = sorted(replaced_by.get(target_id, set()))
-            if successors:
-                named.append(f"{target_id}（置き換え先: {' / '.join(successors)}）")
-            else:
-                named.append(f"{target_id}（置き換え先なし）")
-
-        issues.append(
-            Issue(
-                "G020",
-                WARN,
-                "取り下げた決定を、断りなく引いています: "
-                + " / ".join(named)
-                + "。生きている決定に差し替えてください"
-                "（歴史として引いているならそのままでよい）",
-                node.rel,
-            )
-        )
-
+    issues.extend(_readme_citations(graph, replaced_by))
     return issues
+
+
+def _g020_issue(
+    stale: list[str], replaced_by: dict[str, set[str]], location: str
+) -> Issue:
+    named = []
+    for target_id in stale:
+        successors = sorted(replaced_by.get(target_id, set()))
+        if successors:
+            named.append(f"{target_id}（置き換え先: {' / '.join(successors)}）")
+        else:
+            named.append(f"{target_id}（置き換え先なし）")
+
+    return Issue(
+        "G020",
+        WARN,
+        "取り下げた決定を、断りなく引いています: "
+        + " / ".join(named)
+        + "。生きている決定に差し替えてください"
+        "（歴史として引いているならそのままでよい）",
+        location,
+    )
+
+
+def _readme_citations(
+    graph: Graph, replaced_by: dict[str, set[str]]
+) -> list[Issue]:
+    """README も決定を引く。**ノードではないので、ここで見ないと誰も見ない。**
+
+    実測で、7 リポジトリのうち 3 つの README が取り下げ済みの ADR を現在の
+    根拠として引いていた。1 つは**移った先の事実を古いまま述べていた**
+    （「3 つの Bot を同居」。置き換えた決定の題は「台数を問わない」）。
+    **README はノードより読まれるのに、検査はノードより薄かった。**
+
+    **見るのは README.md だけ。** `CONTRIBUTING.md` と `CLAUDE.md` は実測で
+    0 件で、`CLAUDE.md` は派生が共有しているため、テンプレート側の 1 件が
+    全派生で鳴る。
+
+    リンクの基準はリポジトリの根。README はそう書くためである。
+    """
+    if graph.root is None:
+        return []
+    readme = graph.root / "README.md"
+    if not readme.is_file():
+        return []
+    try:
+        body = readme.read_text(encoding="utf-8")
+    except OSError:
+        return []          # 読めないことを G020 の仕事にしない
+
+    stale = _unacknowledged(body, graph.root, None, graph, replaced_by)
+    return [_g020_issue(stale, replaced_by, "README.md")] if stale else []
 
 
 # --------------------------------------------------------------------------
