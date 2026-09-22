@@ -17,6 +17,10 @@ AUTO_BLOCK_RE = re.compile(
     re.escape(schema.AUTO_BLOCK_START) + r".*?" + re.escape(schema.AUTO_BLOCK_END),
     re.DOTALL,
 )
+TERMS_BLOCK_RE = re.compile(
+    re.escape(schema.TERMS_START) + r".*?" + re.escape(schema.TERMS_END),
+    re.DOTALL,
+)
 FENCED_CODE_RE = re.compile(r"```.*?```", re.DOTALL)
 INLINE_CODE_RE = re.compile(r"`[^`\n]*`")
 HTML_COMMENT_RE = re.compile(r"<!--.*?-->", re.DOTALL)
@@ -41,8 +45,12 @@ def strip_auto_block(text: str) -> str:
 
     自動生成されたバックリンクをエッジとして数えてしまうと、
     到達可能性も循環検出も自作自演で成立してしまうため必ず除外する。
+
+    **用語の一覧も除く。** 各ドメインノードの表の写しなので、中のリンクを数えると
+    目次が ADR やユースケースを指していることになる。変更の検出（`G015`）でも、
+    一覧が作り直されただけの目次を「動いた」と数えない。
     """
-    return AUTO_BLOCK_RE.sub("", text)
+    return TERMS_BLOCK_RE.sub("", AUTO_BLOCK_RE.sub("", text))
 
 
 def load(root: Path) -> Graph:

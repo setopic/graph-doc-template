@@ -105,6 +105,18 @@ class Prompt(unittest.TestCase):
         self.assertIn("参加", prompt)
         self.assertIn("エントリー", prompt)
 
+    def test_carries_the_terms_of_domain_nodes_it_does_not_depend_on(self):
+        """**依存先に絞らない。** 兄弟や上流のノードの語も渡さないと、A003 が揺れを拾えない。"""
+        sibling = node("DOM-14", body=(
+            "## 用語\n\n"
+            "| 用語 | 意味 | 旧称 |\n"
+            "| --- | --- | --- |\n"
+            "| 棄権 | 対戦を行えなくなったこと | — |\n"
+        ))
+        upstream = node("DOM-01", body="## 定義\n両チームが辞退した場合など。\n")
+        prompt = review.build_prompt(make_graph([sibling, upstream]), upstream)
+        self.assertIn("棄権（DOM-14）: 対戦を行えなくなったこと", prompt)
+
 
 class ReviewNode(unittest.TestCase):
     def test_uses_the_injected_transport_and_never_calls_the_network(self):

@@ -1,6 +1,6 @@
 """本文の質を AI に見てもらう（`graph review`）。
 
-**`check` とは性質が違う。** `check` の G001〜G014 は同じ入力なら同じ結果が出て、
+**`check` とは性質が違う。** `check` の G0xx は同じ入力なら同じ結果が出て、
 CI がそれを強制する。ここで出る指摘は**再現しない**。だからコードの名前空間を
 `A001`〜 に分け、CI では回さず、終了コードも常に 0 にしてある。
 
@@ -19,7 +19,7 @@ from dataclasses import dataclass
 
 from . import schema
 from .model import Graph, Node
-from .rules import forbidden_terms, sections
+from .rules import forbidden_terms, sections, term_rows
 
 API_URL = "https://api.anthropic.com/v1/messages"
 API_VERSION = "2023-06-01"
@@ -34,7 +34,7 @@ API_KEY_ENV = "ANTHROPIC_API_KEY"
 FINDING_CODES: dict[str, str] = {
     "A001": "曖昧表現",
     "A002": "冗長表現",
-    "A003": "用語の不統一（G013 が届かない範囲）",
+    "A003": "用語の不統一（同じ意味のことを、用語表とは別の語で書いている）",
     "A004": "必須説明の欠落・粒度の不揃い",
     "A005": "「前提 → 本文 → まとめ」の構造が成立していない",
     "A006": "このノードが何を説明するものか不明瞭",
@@ -59,6 +59,9 @@ SYSTEM_PROMPT = f"""あなたは設計文書のレビュアーです。日本語
 - 内容の正しさを疑わない。**書かれている事実は正しいものとして扱う**
 - 好みの問題を指摘しない。**直さなくても通じる**なら指摘しない
 - 指摘が無ければ空の配列を返す。**無理に見つけない**
+- **A003 は、渡した「ドメインの用語」と同じ意味のことを、別の語で書いている箇所だけが対象。**
+  用語表の語をそのまま使っていれば指摘しない。「使わない語」を使っていれば指摘する。
+  どの用語にも当たらない語は、新しい概念かもしれないので指摘しない
 - **A007 は数えてから指摘する。** 「理由は 3 つある」のように**個数を宣言し、
   直後にその列挙が続く**場合だけが対象。数えて合っていれば指摘しない。
   「1 つだけ試す」「1 つある」のように**列挙の個数を指していない用法は対象外**
@@ -138,18 +141,26 @@ def call_api(payload: dict, api_key: str) -> dict:
         raise ReviewError(f"API に接続できません: {error.reason}") from error
 
 
-def vocabulary_for(graph: Graph, node: Node) -> dict[str, tuple[str, str]]:
-    """依存先が禁じている言い換えを集める。
+def vocabulary_for(graph: Graph, node: Node) -> list[tuple[str, str, str, list[str]]]:
+    """全ドメインノードの用語を `(ノード id, 用語, 意味, 使わない語)` で集める。
 
-    G013 は `depends_on` を辿って完全一致で見るが、届かない揺れがある
-    （上位層、兄弟ノード）。**そこを人の目の代わりに見てもらう。**
+    **依存先に絞らない。** G013 は依存の向きにしか届かず、上位層と兄弟ノードの
+    揺れが見えない。そこを見てもらうのが A003 なので、依存先の語だけを渡しても
+    届かない（上流の大会のノードが、兄弟の「棄権」を「辞退」と書いていた例がある）。
+    量はいちばん多い派生で約 4,000 字（1.20.0）。
     """
-    terms: dict[str, tuple[str, str]] = {}
-    for edge in node.out_edges("depends_on") + node.out_edges("refines"):
-        target = graph.nodes.get(edge.dst)
-        if target is not None:
-            terms.update(forbidden_terms(target.body))
-    return terms
+    vocabulary: list[tuple[str, str, str, list[str]]] = []
+    for owner in graph.sorted_nodes():
+        if owner.type != "domain":
+            continue
+        avoided: dict[str, list[str]] = {}
+        for word, (term, _note) in forbidden_terms(owner.body).items():
+            avoided.setdefault(term, []).append(word)
+        for row in term_rows(owner.body):
+            term = row.get(schema.TERM_COLUMN, "")
+            meaning = row.get(schema.TERM_MEANING_COLUMN, "")
+            vocabulary.append((owner.id, term, meaning, avoided.get(term, [])))
+    return vocabulary
 
 
 def build_prompt(graph: Graph, node: Node) -> str:
@@ -165,13 +176,14 @@ def build_prompt(graph: Graph, node: Node) -> str:
             "**節の有無は別の検査が見ているので指摘しないこと。**"
         )
 
-    terms = vocabulary_for(graph, node)
-    if terms:
+    vocabulary = vocabulary_for(graph, node)
+    if vocabulary:
         rows = "\n".join(
-            f"- {word}: 正しくは「{term}」{f'（{note}）' if note else ''}"
-            for word, (term, note) in sorted(terms.items())
+            f"- {term}（{owner_id}）: {meaning}"
+            + (f"。使わない語: {'、'.join(avoided)}" if avoided else "")
+            for owner_id, term, meaning, avoided in vocabulary
         )
-        parts.append(f"# 依存先が禁じている言い換え\n\n{rows}")
+        parts.append(f"# ドメインの用語（全ドメインノード）\n\n{rows}")
 
     parts.append(f"# 本文\n\n{node.body.strip()}")
     return "\n\n".join(parts)

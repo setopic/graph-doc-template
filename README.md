@@ -61,7 +61,7 @@ python -m tools.graph render --format mermaid --out docs/graph.mmd
 docs/
   index.md              グラフのルート。全ノードはここから辿れること
   00-meta/              規約とテンプレート（グラフの語彙そのもの）
-    graph-rules.md      ルール ID G001〜G021 と直し方
+    graph-rules.md      ルール ID G001〜G022 と直し方
     node-types.md       ノード種別・接頭辞・置き場所・層
     templates/          new コマンドが使う雛形（グラフには含めない）
   10-architecture/      層 10: 構成要素と責務、境界
@@ -165,7 +165,7 @@ python -m tools.graph render --format mermaid --focus DOM-01
 | `python -m tools.graph check --format json` | CI やエディタ連携向け |
 | `python -m tools.graph check --since origin/main` | `G015`（追従漏れ）で見る変更の窓を広げる |
 | `python -m tools.graph check --no-history` | git を見ない（`G011` / `G015` / `G017` を飛ばす） |
-| `python -m tools.graph sync` | 各文書末尾の「関連ドキュメント」を再生成 |
+| `python -m tools.graph sync` | 各文書末尾の「関連ドキュメント」、目次の一覧、ドメインの目次の「用語の一覧」を再生成 |
 | `python -m tools.graph sync --check` | 再生成が必要なら終了コード 1（CI 用） |
 | `python -m tools.graph linkify` | 本文の `[[ID]]` を相対リンクに直す |
 | `python -m tools.graph linkify --check` | 直す必要があれば終了コード 1（CI 用） |
@@ -240,7 +240,7 @@ contract | CON-02 | キャンセル API | cancel-api | draft | contract-http
 | `G010` | `related` が片側だけ（警告） |
 | `G011` | `draft` / `review` のまま長期間放置（警告。git 履歴を使う） |
 | `G012` | `depends_on` で参照されすぎ（警告。分割の合図） |
-| `G013` | 依存先が「使ってはいけない言い換え」に挙げた語の使用（警告） |
+| `G013` | 依存先の用語表が「旧称」に挙げた語の使用（警告。1.19 までの「使ってはいけない言い換え」も読む） |
 | `G014` | 種別ごとに決めた必須の節が無い（警告） |
 | `G015` | 依存先を変えたのに、依存元を見ていない（警告。git の変更の窓を見る） |
 | `G016` | `implemented_by` の指し先が存在しない |
@@ -249,9 +249,10 @@ contract | CON-02 | キャンセル API | cancel-api | draft | contract-http
 | `G019` | Markdown の表が途中で切れている（段落や空行が挟まっている） |
 | `G020` | 取り下げた決定を、断りなく現在の根拠として引いている（警告） |
 | `G021` | 自動生成ブロックより後ろに本文が残っている |
+| `G022` | 同じ用語が複数のドメインノードの用語表にあり、定義元へのリンクが無い（警告） |
 
 `G001`〜`G008` と `G016` は構造の誤りで、直さなければ壊れている。
-`G009`〜`G015` と `G017`・`G020` は**健全性の警告**で、承知のうえで放置してもよい
+`G009`〜`G015` と `G017`・`G020`・`G022` は**健全性の警告**で、承知のうえで放置してもよい
 （`--strict` で失敗扱いにできる）。
 `G018` は**近づいていれば警告、達していればエラー**（その時点で図は描画されていない）。
 **`G019` と `G021` はエラー**（切れた行は既にただの文字列として出ており、

@@ -31,7 +31,7 @@ RULE_INDEX: dict[str, str] = {
     "G010": "related が片側にしか書かれていない",
     "G011": "確定していないまま長期間放置されている",
     "G012": "参照されすぎている（分割を検討）",
-    "G013": "依存先が禁じた言い換えを使っている",
+    "G013": "依存先の用語表が使わない語（旧称）を使っている",
     "G014": "テンプレートの必須の節が無い",
     "G015": "依存先が変わったのに追従していない",
     "G016": "implemented_by の指し先が存在しない",
@@ -40,6 +40,7 @@ RULE_INDEX: dict[str, str] = {
     "G019": "Markdown の表が途中で切れている",
     "G020": "取り下げた決定を現在の根拠として引いている",
     "G021": "自動生成ブロックより後ろに本文がある",
+    "G022": "同じ用語が複数のドメインノードで定義されている",
 }
 
 
@@ -74,6 +75,7 @@ def check_all(
         rule_g019_broken_tables,
         rule_g020_deprecated_references,
         rule_g021_content_after_auto_block,
+        rule_g022_duplicate_terms,
     ):
         issues.extend(rule(graph))
 
@@ -426,74 +428,110 @@ def rule_g010_related_symmetry(graph: Graph) -> list[Issue]:
 
 
 # --------------------------------------------------------------------------
-# G013: 用語の一貫性
+# 用語表（G013 / G022 / 用語の一覧 / review の A003 が読む）
 # --------------------------------------------------------------------------
 # 「## 用語」の節。次の同レベル見出しか文末まで。
 _TERM_SECTION_RE = re.compile(
     rf"^##\s+{re.escape(schema.TERM_SECTION_HEADING)}\s*$(.*?)(?=^##\s|\Z)",
     re.MULTILINE | re.DOTALL,
 )
-# セル末尾の丸括弧。禁止の理由か、使ってよい条件が入っている
+# セル末尾の丸括弧。旧称になった経緯か、使ってよい条件が入っている
 _TRAILING_NOTE_RE = re.compile(r"[（(]([^）)]*)[）)]\s*$")
 _INNER_PAREN_RE = re.compile(r"[（(][^）)]*[）)]")
 _SEPARATOR_RE = re.compile(r"[、,]")
+_EMPHASIS_RE = re.compile(r"\*\*|__")
 _SNIPPET_PAD = 20
 
 
-def _table_rows(section: str) -> list[list[str]]:
-    """Markdown の表を行ごとのセル一覧にする。区切り行（`| --- |`）は落とす。"""
-    rows: list[list[str]] = []
-    for line in section.splitlines():
-        line = line.strip()
-        if not line.startswith("|"):
+def _cells(line: str) -> list[str]:
+    return [cell.strip() for cell in line.strip().strip("|").split("|")]
+
+
+def _is_separator(cells: list[str]) -> bool:
+    return all(set(cell) <= {"-", ":", " "} for cell in cells)
+
+
+def term_table_lines(body: str) -> list[str]:
+    """「用語」の節にある最初の表を、行のまま返す。用語表でなければ空。
+
+    **用語が空の行（雛形の空行）は落とす。** 見出しと区切りの行は残す。
+    用語の一覧（`sync`）が、ノードの表をそのまま写すのに使う。
+    """
+    section = _TERM_SECTION_RE.search(body)
+    if section is None:
+        return []
+
+    lines: list[str] = []
+    for line in section.group(1).splitlines():
+        if line.strip().startswith("|"):
+            lines.append(line.strip())
+        elif lines:
+            break  # 最初の表が終わった
+
+    if not lines:
+        return []
+    header = _cells(lines[0])
+    if schema.TERM_COLUMN not in header:
+        return []  # 見出しが違う表。用語表ではないので触らない
+    term_at = header.index(schema.TERM_COLUMN)
+
+    rest = lines[1:]
+    separator = [line for line in rest[:1] if _is_separator(_cells(line))]
+    rows = []
+    for line in rest[len(separator) :]:
+        cells = _cells(line)
+        if _is_separator(cells) or term_at >= len(cells) or not cells[term_at]:
             continue
-        cells = [cell.strip() for cell in line.strip("|").split("|")]
-        if all(set(cell) <= {"-", ":", " "} for cell in cells):
+        rows.append(line)
+    if not rows:
+        return []
+    return [lines[0], *separator, *rows]
+
+
+def term_rows(body: str) -> list[dict[str, str]]:
+    """「用語」表を、行ごとの `{列の見出し: セル}` にする。
+
+    列は位置ではなく見出しで探す。列が増えても壊れないようにするため。
+    """
+    lines = term_table_lines(body)
+    if not lines:
+        return []
+    header = _cells(lines[0])
+    rows = []
+    for line in lines[1:]:
+        cells = _cells(line)
+        if _is_separator(cells):
             continue
-        rows.append(cells)
+        rows.append({name: cells[i] if i < len(cells) else "" for i, name in enumerate(header)})
     return rows
 
 
 def forbidden_terms(body: str) -> dict[str, tuple[str, str]]:
-    """「用語」表から `{使ってはいけない語: (正しい用語, 注記)}` を作る。
+    """用語表から `{使わない語: (正しい用語, 注記)}` を作る。
 
-    列は位置ではなく見出しで探す。列が増えても壊れないようにするため。
+    読むのは「旧称」列と、1.19 までの「使ってはいけない言い換え」列
+    （`schema.TERM_OLD_NAME_COLUMNS`）。**古い列名も読み続ける。** 読まなくなると、
+    取り込んだ派生で `G013` が黙って止まる。
     """
-    section = _TERM_SECTION_RE.search(body)
-    if section is None:
-        return {}
-
-    rows = _table_rows(section.group(1))
-    if not rows:
-        return {}
-
-    header = rows[0]
-    try:
-        term_at = header.index(schema.TERM_COLUMN)
-        forbidden_at = header.index(schema.TERM_FORBIDDEN_COLUMN)
-    except ValueError:
-        return {}  # 見出しが違う表。用語表ではないので触らない
-
     found: dict[str, tuple[str, str]] = {}
-    for cells in rows[1:]:
-        if max(term_at, forbidden_at) >= len(cells):
-            continue
-        term = cells[term_at]
-        raw = cells[forbidden_at]
-        if not term or not raw:
-            continue  # 雛形の空行
-
-        # 末尾の括弧はセル全体にかかる注記として扱う。
-        # 「承認、昇格（第三者が判断する語感になる）」の理由は両方にかかっている
-        note_match = _TRAILING_NOTE_RE.search(raw)
-        note = note_match.group(1).strip() if note_match else ""
-        listed = _TRAILING_NOTE_RE.sub("", raw)
-
-        for chunk in _SEPARATOR_RE.split(listed):
-            word = _INNER_PAREN_RE.sub("", chunk).strip()
-            if len(word) < schema.TERM_MIN_LENGTH:
+    for row in term_rows(body):
+        term = row.get(schema.TERM_COLUMN, "")
+        for column in schema.TERM_OLD_NAME_COLUMNS:
+            raw = row.get(column, "")
+            if not term or not raw:
                 continue
-            found.setdefault(word, (term, note))
+
+            # 末尾の括弧はセル全体にかかる注記として扱う。
+            # 「スコア、点数（文字列だった頃の名前）」の注記は両方にかかっている
+            note_match = _TRAILING_NOTE_RE.search(raw)
+            note = note_match.group(1).strip() if note_match else ""
+            listed = _TRAILING_NOTE_RE.sub("", raw)
+
+            for chunk in _SEPARATOR_RE.split(listed):
+                word = _INNER_PAREN_RE.sub("", chunk).strip()
+                if len(word) < schema.TERM_MIN_LENGTH:
+                    continue
+                found.setdefault(word, (term, note))
 
     return found
 
@@ -526,14 +564,15 @@ def _snippet(text: str, index: int, word: str) -> str:
 
 
 def rule_g013_term_consistency(graph: Graph) -> list[Issue]:
-    """依存先が「使ってはいけない言い換え」に挙げた語の使用を警告する。
+    """依存先の用語表が「旧称」に挙げた語の使用を警告する。
 
-    規約の「`depends_on` に挙げたノードの用語だけを使って書く」を機械で見る。
-    これまで唯一、人の注意力だけに任せていた条項だった。
+    用語は**同じ意味なら同じ用語**で揃える。言い換えを並べて塞ぐことはしない
+    （並べ尽くせず、文脈で意味が変わる語で断り書きが増え続けた。1.20.0）。
+    ただし**改名で使わなくなった語は、文字列で確実に言える。** そこだけを機械で見る。
 
-    **語の意味までは分からない。** 別の概念について同じ語を使っている場合や、
-    「承認は挟まない」のように否定するために持ち出した場合も引っかかる。
-    だから警告に留め、判断の材料（注記と前後の文）を出すところまでを仕事とする。
+    **語の意味までは分からない。** 旧称が別の概念の名前として正しく使われている場合や、
+    否定するために持ち出した場合も引っかかる。だから警告に留め、判断の材料
+    （注記と前後の文）を出すところまでを仕事とする。
     """
     vocabulary = {
         node.id: terms
@@ -545,7 +584,7 @@ def rule_g013_term_consistency(graph: Graph) -> list[Issue]:
 
     issues: list[Issue] = []
     for node in graph.sorted_nodes():
-        # 用語表そのものは対象外。禁止語を「挙げている」ことは「使っている」ことではない
+        # 用語表そのものは対象外。旧称を「挙げている」ことは「使っている」ことではない
         text = strip_non_prose(_TERM_SECTION_RE.sub(" ", node.body))
 
         for owner_id in _prerequisites(graph, node.id):
@@ -559,7 +598,7 @@ def rule_g013_term_consistency(graph: Graph) -> list[Issue]:
                     Issue(
                         "G013",
                         WARN,
-                        f"{word!r} は {owner_id} が使ってはいけない言い換えに挙げています"
+                        f"{word!r} は {owner_id} の用語表が使わない語に挙げています"
                         f"{where}。{term!r} を使ってください{reason}"
                         f" / {_snippet(text, text.find(word), word)}",
                         node.rel,
@@ -1184,4 +1223,73 @@ def rule_g021_content_after_auto_block(graph: Graph) -> list[Issue]:
             )
         )
 
+    return issues
+
+
+# --------------------------------------------------------------------------
+# G022: 同じ用語が複数のドメインノードで定義されている
+# --------------------------------------------------------------------------
+def _linked_ids(by_path: dict[Path, str], graph: Graph, node: Node, text: str) -> set[str]:
+    """セルの中のリンクが指しているノードの id。loader と同じく、ノードの場所から解決する。"""
+    ids = {raw.strip() for raw in WIKILINK_RE.findall(text) if raw.strip() in graph.nodes}
+    for href in MDLINK_RE.findall(text):
+        target = by_path.get((node.path.parent / href.split("#", 1)[0]).resolve())
+        if target is not None:
+            ids.add(target)
+    return ids
+
+
+def rule_g022_duplicate_terms(graph: Graph) -> list[Issue]:
+    """同じ用語が複数のドメインノードの用語表にあり、定義元が決まっていないものを警告する。
+
+    **同じ意味なら同じ用語で、定義は 1 か所に置く。** 別の意味なら語を分ける。
+    `G013` は依存の向きにしか届かないので、**兄弟ノードが同じ語を別の意味で
+    定義していても、これまで誰も気づけなかった**（META-01 の G013 の節）。
+
+    **意図した再掲は黙る。** 他のノードの語を自分の表にも載せるときは、
+    「意味」の欄から定義元へリンクする。同じ語を載せている行のうち、
+    **他の定義元へリンクしていない行が 1 つだけなら、それが定義元である。**
+
+    実測（1.20.0）: tournament-bot の重複 5 件のうち 3 件がリンクつきの再掲で、
+    鳴るのは 2 件（別の意味で 2 回定義されていた）。ほかの派生 4 つは 0 件。
+
+    **リンクは「承知している」印にすぎない。** 同じ意味かどうかまでは見ない。
+    """
+    by_path = {n.path.resolve(): n.id for n in graph.nodes.values()}
+    defined: dict[str, list[tuple[Node, str]]] = {}
+    for node in graph.sorted_nodes():
+        if node.type != "domain":
+            continue
+        for row in term_rows(node.body):
+            term = _EMPHASIS_RE.sub("", row.get(schema.TERM_COLUMN, "")).strip()
+            if term:
+                defined.setdefault(term, []).append(
+                    (node, row.get(schema.TERM_MEANING_COLUMN, ""))
+                )
+
+    issues: list[Issue] = []
+    for term, owners in sorted(defined.items()):
+        ids = {node.id for node, _ in owners}
+        if len(ids) < 2:
+            continue
+        unlinked = sorted(
+            {
+                node.id
+                for node, meaning in owners
+                if not (_linked_ids(by_path, graph, node, meaning) & (ids - {node.id}))
+            }
+        )
+        if len(unlinked) < 2:
+            continue
+        issues.append(
+            Issue(
+                "G022",
+                WARN,
+                f"{term!r} が {' / '.join(sorted(ids))} の用語表で定義されていて、"
+                f"{' / '.join(unlinked)} のどれも他の定義元へリンクしていません。"
+                "同じ意味なら定義を 1 か所に置き、ほかの行は「意味」から定義元へリンクしてください。"
+                "別の意味なら語を分けてください",
+                graph.nodes[unlinked[0]].rel,
+            )
+        )
     return issues

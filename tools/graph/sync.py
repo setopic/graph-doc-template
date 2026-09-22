@@ -7,6 +7,11 @@ loader が読み込み時に取り除くのでグラフの入力にはならな�
 目次ノードだけは扱いが違う。こちらは**一覧ブロックを丸ごと作り直す**。
 中身は「同じディレクトリにあるノード」で機械的に決まり、
 `<!-- graph:children:start -->` の外に書いた案内文には触らない。
+
+**ドメインの目次（IDX-DOM）には、用語の一覧も作る。** 各ドメインノードの
+「用語」表を写したもので、同じ意味なら同じ用語を使うために、既にある語を
+1 か所で引けるようにする。**手で集めた用語集は検査の効かない写しになるが、
+これは `sync --check` が最新かを見るので写しにならない。**
 """
 
 from __future__ import annotations
@@ -15,8 +20,9 @@ import re
 from pathlib import Path
 
 from . import schema
-from .loader import AUTO_BLOCK_RE
+from .loader import AUTO_BLOCK_RE, TERMS_BLOCK_RE
 from .model import Graph, Node
+from .rules import term_table_lines
 
 CHILDREN_RE = re.compile(
     re.escape(schema.CHILDREN_START) + r".*?" + re.escape(schema.CHILDREN_END),
@@ -52,6 +58,59 @@ def build_children_block(graph: Graph, index_node: Node) -> str:
         lines.append(f"- [{child.id} {child.title}](./{child.path.name})")
     lines.append(schema.CHILDREN_END)
     return "\n".join(lines)
+
+
+def _is_domain_index(node: Node) -> bool:
+    return node.type == "index" and node.path.parent.name == schema.NODE_TYPES["domain"]["dir"]
+
+
+def build_terms_block(graph: Graph, index_node: Node) -> str | None:
+    """用語の一覧を作る。同じディレクトリのドメインノードを id 順に、ノードごとの節で並べる。
+
+    **表はノードのものをそのまま写す。** 目次はドメインノードと同じディレクトリに
+    あるので、「意味」の欄のリンクも書き換えずに効く。用語表を持つノードが
+    無ければ `None` を返す。
+    """
+    directory = index_node.path.parent
+    sections: list[str] = []
+    for node in sorted(graph.nodes.values(), key=lambda n: _id_key(n.id)):
+        if node.type != "domain" or node.path.parent != directory:
+            continue
+        lines = term_table_lines(node.body)
+        if not lines:
+            continue
+        sections.append(f"### [{node.id} {node.title}](./{node.path.name})\n\n" + "\n".join(lines))
+
+    if not sections:
+        return None
+    return "\n".join(
+        [
+            schema.TERMS_START,
+            "",
+            "## 用語の一覧（自動生成 / 手で編集しない）",
+            "",
+            "各ドメインノードの「用語」表を集めたもの。**直すときは元のノードの表を直す。**",
+            "同じ意味のことを書くときは、ここにある語を使う。",
+            "",
+            "\n\n".join(sections),
+            "",
+            schema.TERMS_END,
+        ]
+    )
+
+
+def _apply_terms_block(graph: Graph, index_node: Node, text: str) -> str:
+    """一覧を入れ替える。**無ければ末尾に足す**（index.md は派生で merge=ours のため）。"""
+    block = build_terms_block(graph, index_node)
+    if TERMS_BLOCK_RE.search(text):
+        if block is None:
+            block = "\n".join(
+                [schema.TERMS_START, "", "_用語表を持つドメインノードがまだありません。_", "", schema.TERMS_END]
+            )
+        return TERMS_BLOCK_RE.sub(lambda _: block, text, count=1)
+    if block is None:
+        return text
+    return text.rstrip("\n") + "\n\n" + block + "\n"
 
 
 def build_block(graph: Graph, node: Node) -> str:
@@ -113,10 +172,12 @@ def sync(graph: Graph, *, dry_run: bool = False) -> list[str]:
         if node.type == "index":
             # 目次は一覧ブロックだけを作り直す。案内文はそのまま
             original = node.path.read_text(encoding="utf-8")
-            if not CHILDREN_RE.search(original):
-                continue
-            block = build_children_block(graph, node)
-            updated = CHILDREN_RE.sub(lambda _: block, original, count=1)
+            updated = original
+            if CHILDREN_RE.search(updated):
+                block = build_children_block(graph, node)
+                updated = CHILDREN_RE.sub(lambda _: block, updated, count=1)
+            if _is_domain_index(node):
+                updated = _apply_terms_block(graph, node, updated)
             if updated != original:
                 changed.append(node.rel)
                 if not dry_run:

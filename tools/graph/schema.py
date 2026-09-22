@@ -150,12 +150,19 @@ def is_immutable_record(node_type: str, status: str) -> bool:
 #       変更時の影響範囲が広くなりすぎる前に分割を検討する。
 MAX_INCOMING_DEPENDENCIES = 8
 
-# G013: 用語の一貫性。ドメインノードの「用語」表に挙げた「使ってはいけない言い換え」が、
-#       そのノードに依存している文書で使われていないかを見る。
-#       見出しと列名は文書の言語に依存するので、ここで差し替えられるようにしてある。
+# ドメインノードの「用語」表。G013・G022・用語の一覧・review の A003 が読む。
+# 見出しと列名は文書の言語に依存するので、ここで差し替えられるようにしてある。
 TERM_SECTION_HEADING = "用語"
 TERM_COLUMN = "用語"
+TERM_MEANING_COLUMN = "意味"
+
+# G013: 「旧称」列に挙げた語（改名で使わなくなった語）が、そのノードに依存している
+#       文書で使われていないかを見る。**言い換えは並べない。** 同じ意味なら同じ用語を使う。
+TERM_OLD_NAME_COLUMN = "旧称"
+# 1.19 までの列名。**読み続ける。** 見出しが合わない表は用語表として読まないので、
+# 読むのをやめると、取り込んだ派生で G013 が黙って止まる。
 TERM_FORBIDDEN_COLUMN = "使ってはいけない言い換え"
+TERM_OLD_NAME_COLUMNS = (TERM_OLD_NAME_COLUMN, TERM_FORBIDDEN_COLUMN)
 
 # 短すぎる語は本文のどこにでも現れるため対象から外す（誤検知が実害を超える）。
 TERM_MIN_LENGTH = 2
@@ -214,7 +221,7 @@ EXCLUDE_PREFIXES = ("00-meta/templates",)
 #       - tournament/views.py
 #
 # **書かなければ何も起きない。** 文書だけのリポジトリでは 1 件も宣言されないので、
-# G016 も G017 も発火しない（用語表の「使ってはいけない言い換え」と同じ扱い）。
+# G016 も G017 も発火しない（用語表の「旧称」と同じ扱い）。
 #
 # **これはエッジではない。** 層（G007）にも循環（G006）にも到達性（G005）にも
 # 関係しない。ソースはノードではなく、グラフの外にある指し先である。
@@ -246,6 +253,12 @@ MERMAID_WARN_EDGES = 450
 # 目次の一覧ブロックの目印。sync が中身を作り直す
 CHILDREN_START = "<!-- graph:children:start -->"
 CHILDREN_END = "<!-- graph:children:end -->"
+
+# ドメインの目次（IDX-DOM）に sync が作る、用語の一覧の目印。
+# **無ければ sync が末尾に足す。** index.md は派生で merge=ours なので、
+# テンプレートが目印を入れても派生には届かない。
+TERMS_START = "<!-- graph:terms:start -->"
+TERMS_END = "<!-- graph:terms:end -->"
 
 
 def prefix_of(node_type: str) -> str:
