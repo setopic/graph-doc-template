@@ -41,6 +41,7 @@ RULE_INDEX: dict[str, str] = {
     "G020": "取り下げた決定を現在の根拠として引いている",
     "G021": "自動生成ブロックより後ろに本文がある",
     "G022": "同じ用語が複数のドメインノードで定義されている",
+    "G023": "契約が「対応」に挙げたユースケースを depends_on に書いていない",
 }
 
 
@@ -76,6 +77,7 @@ def check_all(
         rule_g020_deprecated_references,
         rule_g021_content_after_auto_block,
         rule_g022_duplicate_terms,
+        rule_g023_contract_use_cases,
     ):
         issues.extend(rule(graph))
 
@@ -1290,6 +1292,92 @@ def rule_g022_duplicate_terms(graph: Graph) -> list[Issue]:
                 "同じ意味なら定義を 1 か所に置き、ほかの行は「意味」から定義元へリンクしてください。"
                 "別の意味なら語を分けてください",
                 graph.nodes[unlinked[0]].rel,
+            )
+        )
+    return issues
+
+
+# --------------------------------------------------------------------------
+# G023: 契約が「対応」に挙げたユースケースを depends_on に書いていない
+# --------------------------------------------------------------------------
+# HTTP の契約の雛形は、表ではなく 1 行で書かせる（`対応するユースケース: [[UC-01]]`）
+_CORRESPONDENCE_LINE_RE = re.compile(r"^\s*対応するユースケース\s*[:：](.*)$", re.MULTILINE)
+_BARE_ID_RE = re.compile(r"\b[A-Z]{2,5}-\d{2,4}\b")
+
+
+def _use_cases_in(by_path: dict[Path, str], graph: Graph, node: Node, text: str) -> set[str]:
+    ids = _linked_ids(by_path, graph, node, text)
+    ids |= {i for i in _BARE_ID_RE.findall(text) if i in graph.nodes}
+    return {i for i in ids if graph.nodes[i].type == "usecase"}
+
+
+def contract_use_cases(by_path: dict[Path, str], graph: Graph, node: Node) -> set[str]:
+    """契約の本文が「対応」として挙げたユースケース。
+
+    読むのは、**見出しが「対応」で始まる表の列**（対応・対応するユースケース・
+    対応する例外フロー）と、**「対応するユースケース:」の行**だけである。
+    本文の道案内のリンクまで読むと、tournament-bot だけで 29 件当たった（1.21.0）。
+    """
+    body = strip_non_prose(node.body)  # 雛形の記入案内（HTML コメント）に [[UC-xx]] がある
+    found: set[str] = set()
+    for match in _CORRESPONDENCE_LINE_RE.finditer(body):
+        found |= _use_cases_in(by_path, graph, node, match.group(1))
+
+    header: list[str] | None = None
+    for line in body.splitlines():
+        stripped = line.strip()
+        if not stripped.startswith("|"):
+            header = None
+            continue
+        cells = _cells(stripped)
+        if _is_separator(cells):
+            continue
+        if header is None:
+            header = cells
+            continue
+        for index, name in enumerate(header):
+            if name.startswith("対応") and index < len(cells):
+                found |= _use_cases_in(by_path, graph, node, cells[index])
+    return found
+
+
+def rule_g023_contract_use_cases(graph: Graph) -> list[Issue]:
+    """契約が「対応」に挙げたユースケースが、`depends_on` に無いことを警告する。
+
+    規約は「契約ノードは必ず対応するユースケースを `depends_on` に持つ」。
+    **同じことを本文にも書かせているので、片方だけ書き忘れる。** 本文のリンクは
+    リンク切れしか見られず、書き忘れると、そのユースケースを書き換えても `G015` が
+    契約を挙げず、`G013` もユースケースの先の用語表を契約に当てない。
+
+    実例（1.21.0）: tournament-bot で 4 つの契約から 10 本、gacha-monitor で 2 本が
+    抜けていた。棄権のボタンを定義していた契約が UC-38 に依存しておらず、
+    DOM-14 の用語表が届いていなかった。
+
+    **「UC-25 と同じ」のように振る舞いを借りている行も数える。** 借りている UC が
+    その振る舞いの仕様そのもので、変われば契約も見直すことになる。
+
+    警告に留める。**PR では書いている途中で止めず**、main の `--strict` で落とす。
+    """
+    by_path = {n.path.resolve(): n.id for n in graph.nodes.values()}
+    issues: list[Issue] = []
+    for node in graph.sorted_nodes():
+        if node.type != "contract":
+            continue
+        declared = {
+            edge.dst
+            for edge in node.edges
+            if edge.kind in ("depends_on", "refines") and edge.resolved
+        }
+        missing = sorted(contract_use_cases(by_path, graph, node) - declared)
+        if not missing:
+            continue
+        issues.append(
+            Issue(
+                "G023",
+                WARN,
+                f"「対応」に {' / '.join(missing)} を挙げていますが、depends_on にありません。"
+                "受け持っているなら depends_on に足してください",
+                node.rel,
             )
         )
     return issues
