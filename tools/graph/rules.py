@@ -1356,7 +1356,7 @@ def rule_g023_contract_use_cases(graph: Graph) -> list[Issue]:
     **「UC-25 と同じ」のように振る舞いを借りている行も数える。** 借りている UC が
     その振る舞いの仕様そのもので、変われば契約も見直すことになる。
 
-    警告に留める。**PR では書いている途中で止めず**、main の `--strict` で落とす。
+    警告にしてある。**ブランチへの push では止めず**、PR と main の `--strict` で落とす。
     """
     by_path = {n.path.resolve(): n.id for n in graph.nodes.values()}
     issues: list[Issue] = []

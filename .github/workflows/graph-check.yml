@@ -22,23 +22,28 @@ jobs:
       - name: テストを走らせる
         run: python -m unittest discover -s tests -t .
 
-      # main では警告も失敗にする（--strict）。
-      # 開発中のブランチと PR では警告を出すだけにして、作業の途中で止めない。
-      # 警告（G009〜G015）は「直すべきだが、今すぐ壊れてはいない」もの。
+      # main への push と PR では警告も失敗にする（--strict）。
+      # それ以外のブランチへの push では警告を出すだけにして、作業の途中で止めない。
       #
-      # PR では G015（追従漏れ）の窓を base ブランチまで広げる。
-      # 「この PR で依存先を変えたが、依存元を見ていない」の一覧が出る。
-      # 失敗にはしない。追従が要るかどうかは人が決める。
-      - name: グラフを検証する（main は strict / PR は追従漏れも見る）
+      # PR でも --strict を走らせるのは、PR が緑のまま main が落ちたため
+      # （graph-doc-template#6。tournament-bot で 3 回続けてマージし、約 10 時間気づかなかった）。
+      # --since を付けない --strict では G015 / G017 は出ない（変更の窓が空になる）。
+      # 落ちるのはグラフそのものの警告とエラーだけで、マージした後の main と同じ判定になる。
+      #
+      # PR では別に、G015（追従漏れ）と G017 の窓を base ブランチまで広げて一覧を出す。
+      # こちらは失敗にしない。「見たか」を聞く警告で、追従が要るかどうかは人が決める。
+      - name: グラフを検証する（main と PR は strict / PR は追従漏れも見る）
         run: |
           if [ "${{ github.ref }}" = "refs/heads/main" ] && [ "${{ github.event_name }}" = "push" ]; then
             echo "main への push なので --strict で検証します"
             python -m tools.graph check --strict
           elif [ "${{ github.event_name }}" = "pull_request" ]; then
-            echo "PR なので origin/${{ github.base_ref }} との差分で G015 も見ます"
+            echo "PR なので origin/${{ github.base_ref }} との差分で G015 / G017 も見ます（失敗にはしません）"
             python -m tools.graph check --since "origin/${{ github.base_ref }}"
+            echo "マージした後の main と同じ判定を --strict で走らせます"
+            python -m tools.graph check --strict
           else
-            echo "警告は失敗にしません（main への push だけ --strict）"
+            echo "警告は失敗にしません（main への push と PR だけ --strict）"
             python -m tools.graph check
           fi
 
