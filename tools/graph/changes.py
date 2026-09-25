@@ -73,6 +73,10 @@ def _prose_changed(root: Path, base: str, rel: str) -> bool:
     """`graph:auto` を除いた本文が `base` から変わっているか。
 
     読めない側（新規ファイル・削除済み）は変更として扱う。
+
+    **作業ツリー側も、`git show` と同じく `errors="replace"` で読む。**
+    画像などテキストでないファイルを厳格に読むと、`UnicodeDecodeError` で check ごと落ちる
+    （setopic/graph-doc-template#13）。両側を同じ読み方にそろえれば、中身が変わったかは比較で分かる。
     """
     old = _run(root, ["show", f"{base}:{rel}"])
     if old is None:
@@ -80,7 +84,7 @@ def _prose_changed(root: Path, base: str, rel: str) -> bool:
 
     path = root / rel
     try:
-        new = path.read_text(encoding="utf-8")
+        new = path.read_text(encoding="utf-8", errors="replace")
     except OSError:
         return True
 
