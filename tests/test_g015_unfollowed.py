@@ -130,6 +130,23 @@ class UnfollowedChanges(unittest.TestCase):
         _, within = run_check(self.tmp, "--since", "HEAD~1")
         self.assertIn("G015", within)
 
+    def test_changed_binary_file_does_not_crash(self):
+        """画像などテキストでないファイルを描き直しても、check は落ちない（#13）。"""
+        image = self.tmp / "art.png"
+        image.write_bytes(bytes([0x89, 0x50, 0x4E, 0x47, 0x00, 0xFF]))
+        git(self.tmp, "add", "-A")
+        git(self.tmp, "commit", "-q", "-m", "画像を足す")
+        image.write_bytes(bytes([0x89, 0x50, 0x4E, 0x47, 0x01, 0xFE]))
+
+        code, output = run_check(self.tmp)
+        self.assertEqual(code, 0)
+        self.assertNotIn("G015", output)
+
+        git(self.tmp, "add", "-A")
+        git(self.tmp, "commit", "-q", "-m", "画像を描き直す")
+        code, _ = run_check(self.tmp, "--since", "HEAD~1")
+        self.assertEqual(code, 0)
+
 
 class WithoutGit(unittest.TestCase):
     """git リポジトリでなくても check は動く。"""

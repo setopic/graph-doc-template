@@ -26,6 +26,20 @@ python -m tools.graph --version
 
 ---
 
+## 1.22.1 — 2026-09-25
+
+### 直したもの
+
+**画像などテキストでないファイルを変更していると、`check` が例外で落ちていた**（setopic/graph-doc-template#13）。
+
+`G015`・`G017` の窓を作るとき、変わったファイルの本文を比べる。base 側は `git show` で
+`errors="replace"` として読むのに、作業ツリー側は厳格な UTF-8 で読んでいたので、
+**既存の PNG を描き直すと `UnicodeDecodeError` になった。** PR の CI は `check --since origin/<base>` を走らせるので、
+画像を描き直す PR は CI が落ちる（medieval-idle で起きた）。新しく足した画像では起きない。
+
+作業ツリー側も `errors="replace"` で読み、base 側とそろえた。テストを足した（`tests/test_g015_unfollowed.py`）。
+取り込む側の作業は無い。
+
 ## 1.22.0 — 2026-09-23
 
 ### 変更
