@@ -146,6 +146,12 @@ class RuleG018Test(unittest.TestCase):
         self.assertEqual(issues[0].severity, ERROR)
         self.assertIn("--aggregate", issues[0].message)
 
+    def test_error_points_to_graph_mk(self) -> None:
+        """置き場所はgraph.mkである。テンプレートはMakefileを配るので、Makefileに足すと取り込みで競合する。"""
+        issues = self._issues(schema.MERMAID_MAX_EDGES)
+        self.assertIn("graph.mk", issues[0].message)
+        self.assertNotIn("Makefile", issues[0].message)
+
 
 class AggregateRenderTest(unittest.TestCase):
     def _graph(self, usecase_count: int) -> Graph:

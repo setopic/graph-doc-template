@@ -833,7 +833,7 @@ def rule_g018_diagram_size(graph: Graph) -> list[Issue]:
                 f"READMEの図のエッジが{count}本で、GitHubの上限の"
                 f"{schema.MERMAID_MAX_EDGES}本に達している。"
                 "GitHub上では図が描画されない。"
-                "MakefileのREADME_GRAPH_ARGSに--aggregateを足して、"
+                "graph.mkにREADME_GRAPH_ARGS = --aggregateを置いて、"
                 "型ごとにまとめる",
                 "README.md",
             )
