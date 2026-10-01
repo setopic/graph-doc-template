@@ -22,7 +22,12 @@ TERMS_BLOCK_RE = re.compile(
     re.DOTALL,
 )
 FENCED_CODE_RE = re.compile(r"```.*?```", re.DOTALL)
-INLINE_CODE_RE = re.compile(r"`[^`\n]*`")
+# コードスパン。開きと同じ数のバッククォートで閉じる（CommonMark）。
+# 1つだけを数えると、`` ` `` のようにバッククォートを含むコードスパンの後ろで
+# 組み合わせがずれ、同じ行のコードの中と外が入れ替わる（#24）。行はまたがない。
+# rename の PROTECTED_RE も、この形を使う。つないで使うので、番号ではなく名前で参照する。
+INLINE_CODE_PATTERN = r"(?<!`)(?P<ticks>`+)(?!`)[^\n]+?(?<!`)(?P=ticks)(?!`)"
+INLINE_CODE_RE = re.compile(INLINE_CODE_PATTERN)
 HTML_COMMENT_RE = re.compile(r"<!--.*?-->", re.DOTALL)
 
 
