@@ -93,6 +93,7 @@ graph LR
     META-01["META-01<br/>グラフの規約"]
     META-02["META-02<br/>ノード種別と層"]
     META-03["META-03<br/>本文のレビュー（AI）"]
+    META-07["META-07<br/>issueとPRの流れ"]
   end
   subgraph architecture["アーキテクチャ"]
     ARCH-01["ARCH-01<br/>システム全体構成"]
@@ -118,8 +119,10 @@ graph LR
   DOM-01 -->|depends_on| ARCH-01
   META-01 -.->|related| META-02
   META-01 -.->|related| META-03
+  META-01 -.->|related| META-07
   META-02 -.->|related| META-01
   META-03 -.->|related| META-01
+  META-07 -.->|related| META-01
   UC-01 -->|depends_on| DOM-01
   classDef draft stroke-dasharray: 4\,3;
   classDef deprecated opacity:0.5;
@@ -320,6 +323,14 @@ python -m tools.graph linkify
    git fetch template && git merge template/main --allow-unrelated-histories
    ```
 
+5. issueの型が使うラベルを作る（[META-07](docs/00-meta/issue-pr-flow.md)）。
+
+   ```bash
+   gh label clone setopic/graph-doc-template
+   ```
+
+   ラベルの実体が無いと、`labels:`の指定は何も言わずに無視される。issueは立つが、ラベルが付かないまま残る。`gh`の組み込みのコマンドで、すでにあるラベルは飛ばすので、何度実行してもよい。
+
 ### 取り込む
 
 まず、テンプレートとの差を調べる。このコマンドは読み取りだけで、何も書き込まない。
@@ -368,6 +379,8 @@ python -m tools.graph check && python -m tools.graph sync
 | 3 | `python -m tools.graph sync --check` | 関連ドキュメント・目次の一覧・用語の一覧が最新か |
 | 4 | `python -m tools.graph linkify --check` | 本文の`[[ID]]`が相対リンクに直っているか |
 | 5 | `make readme-check` | READMEの図が最新か |
+
+PRのときは、別のジョブ（`refs`）が、PRの本文に書いたノードのidが実在するかも確かめる（[META-07](docs/00-meta/issue-pr-flow.md)）。
 
 5つ目は、`render --into README.md --check`を`make`経由で呼ぶ。`graph.mk`の`README_GRAPH_ARGS`（`--aggregate`など）を効かせるためである。5つ目があるので、グラフを変えたままREADMEの図を更新し忘れると、CIが落ちる。
 

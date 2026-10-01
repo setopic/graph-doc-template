@@ -7,6 +7,7 @@ tags: [meta, rules]
 related:
   - META-02
   - META-03
+  - META-07
 ---
 
 # グラフの規約
@@ -732,11 +733,13 @@ python -m tools.graph new --type contract --template contract-http --id CON-02 -
 
 - [META-02 ノード種別と層](./node-types.md)
 - [META-03 本文のレビュー（AI）](./ai-review.md)
+- [META-07 issueとPRの流れ](./issue-pr-flow.md)
 
 このノードを参照しているノード
 
 - (decides) [ADR-0001 設計文書をグラフとして管理する](../50-adr/adr-0001-graph-driven-docs.md)
 - (related) [META-02 ノード種別と層](./node-types.md)
 - (related) [META-03 本文のレビュー（AI）](./ai-review.md)
+- (related) [META-07 issueとPRの流れ](./issue-pr-flow.md)
 
 <!-- graph:auto:end -->

@@ -189,6 +189,10 @@ python -m tools.graph render --format mermaid --focus DOM-01 --depth 1
 
 動作を保証するPythonの下限は、`version.py`の`MIN_PYTHON`である。開発機・CI・本番で実際に回している版で、願望ではない。下限を動かすなら、CIの`python-version`とREADMEも同時に直す。ずれると`test_python_floor`が落ちる。
 
+## issueとPR
+
+issueの型、決まったことの移し先、PRの粒度、PRに書くノードのidは、[META-07](docs/00-meta/issue-pr-flow.md)にある。issueを立てる前と、PRを出す前に、毎回そちらを読む。
+
 ## 要件が曖昧なとき
 
 書き始める前に詰める。`.claude/skills/grill/`にスキルがある。

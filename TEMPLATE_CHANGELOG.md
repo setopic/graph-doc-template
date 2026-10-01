@@ -26,6 +26,50 @@ python -m tools.graph --version
 
 ---
 
+## 1.25.0 — 2026-10-02
+
+### 追加
+
+issueとPRの流れを、[META-07](docs/00-meta/issue-pr-flow.md)として、検証ツールの層から配るようにした（setopic/graph-doc-template#3）。これまでissueの型・PRの粒度・PRのidの確認・Projectへの自動追加は、統合型の層（graph-project-template）にしか無かった。文書だけの派生（ops-docs・discord-bot-docs）には、見つけたことを置く場所が無かった。文書の課題もProjectで管理し、文書の検査にもCIを使うべきなので、CIと自動化も含めて文書の側で扱う。
+
+| 足したもの | 内容 |
+| --- | --- |
+| META-07（`docs/00-meta/issue-pr-flow.md`） | issueの型、決まったことの移し先、上流へ出す導線、Projectへの追加、PRの粒度、PRに書くノードのid |
+| `.github/ISSUE_TEMPLATE/` | 要件・問題・TODOの雛形と、上流へのリンク（`config.yml`） |
+| `.github/pull_request_template.md` | PRの雛形 |
+| `.github/scripts/check_refs.py`と`tests/test_check_refs.py` | PRの本文のidが実在するかを確かめる |
+| `graph-check.yml`の`refs`ジョブ | PRのときだけ、`check_refs.py`を回す |
+| `.github/workflows/add-to-project.yml` | issueとPRをGitHub Projectに載せる。設定したリポジトリでだけ動く |
+
+統合型の層から移したもので、中身はほぼそのままである。META-05を参照していた箇所は、META-07かCLAUDE.mdの節を参照するように直した。
+
+PRの粒度は、統合型の層の0.11.0で決めたものを、FindyのPull requestの粒度の考え方を受けて見直した。
+
+| 見直したこと | 内容 |
+| --- | --- |
+| 粒度とサイズ | 判定するのは粒度（内容が1つか）で、サイズ（行数）ではない。内容が1つなら、行数が多くてもよい。400行は分ける理由ではなく、複数のことが混ざっていないかを確かめる合図にした |
+| 混ぜてよい整理 | 意味も動きも変えない誤字の修正など、本体の変更と一緒に戻っても困らないものだけにした。識別子の改名やコードの移動は、小さくても別のPRにする |
+| 迷ったら小さく | 足した |
+| 積み重ねたPR | 前のPRをマージしても、そのブランチをすぐには消さない。消すと、それを向き先にしていた次のPRが閉じられる |
+
+同じ話題を複数の文書で扱わないよう、issueとPRの話題はMETA-07を正とした。`/grill`と要件の雛形にあった「決まったことの移し先」の表は、META-07への参照にした。CLAUDE.mdには、META-07を読むよう案内する節を足した。META-01の`related`にMETA-07を足したので、目次（`merge=ours`）に載っていない派生でも、META-07はルートから辿れる。
+
+`META`の番号は、層の間で共有している。検証ツールの層は01〜03と07を、統合型の層は04〜06を使う。`node-types.md`に書いた。
+
+### 取り込む側の作業
+
+必須の作業は無い。通常のマージで済む。次のことは、派生の種類に応じて行う。
+
+| 派生 | 作業 |
+| --- | --- |
+| 文書だけの派生 | issueの型のラベルを作る（READMEの「最初に一度だけ」の5）。Projectに載せたいなら、`add-to-project.yml`の冒頭の手順で設定する |
+| 統合型の層とその派生 | graph-project-templateの取り込みの手順に従う。同じ場所にあるissueとPRの雛形、`check_refs.py`、`add-to-project.yml`は、テンプレート側を採る |
+| すべて | PRを出すなら、本文にノードのidか、行の頭に`なし`を書く。書かないと、`refs`のジョブが落ちる |
+
+`docs/index.md`は`merge=ours`なので、「最初に読む文書」にMETA-07は入らない。入れたいときは手で足す。
+
+---
+
 ## 1.24.3 — 2026-10-01
 
 ### 直したもの

@@ -1,0 +1,61 @@
+# issue と PR を GitHub Project に載せる。**載せるだけ**で、列（Status）の移動は
+# Project の組み込みのワークフロー（閉じたら Done など）に任せる。
+#
+# **先に Project の組み込みの Auto-add を使う。** トークンが要らず、このファイルも要らない。
+#
+#   Project の右上のメニュー → Workflows → Auto-add to project → Edit
+#     Filters でリポジトリを選び、絞り込みを is:issue,pr にして Save and turn on workflow
+#     2 つ目のリポジトリは、Auto-add to project の「…」→ Duplicate workflow で足す
+#
+# **このファイルは、Auto-add の数が足りないときに使う。** Auto-add は 1 つで
+# 1 リポジトリしか覆えず、作れる数にプランの上限がある（Free は 1、Pro と Team は 5）。
+# こちらは数の上限が無い代わりに、PAT を秘密に置くことになる。
+#
+# **設定が無ければ何もしない。** 次の 2 つが揃ったリポジトリでだけ動く。
+# テンプレートは Project を持たないので、取り込んだだけの派生では CI も落ちない。
+#
+#   Settings → Secrets and variables → Actions
+#     Variables: PROJECT_URL         https://github.com/users/<持ち主>/projects/<番号>
+#     Secrets:   ADD_TO_PROJECT_PAT  classic の PAT。project スコープ（非公開なら repo も）
+#
+# **秘密を先に置く。** URL だけ先に置くと、issue と PR のたびに警告が出る。
+#
+# **GITHUB_TOKEN では Projects v2 に書けない。** だから PAT が要る。
+# Project はリポジトリと同じ持ち主の下に作る。持ち主が違うと、issue ではなく
+# 下書きとして載る（actions/add-to-project の仕様）。
+#
+# **ボードの「済」は 2 つの意味を持つ。** issue を閉じるのは答えが出て文書へ移したとき
+# （META-07）で、PR を閉じるのは入ったとき。ビューを is:issue と is:pr で分けて見る。
+#
+# 限界: フォークからの PR は載らない（pull_request には秘密が渡らない）。
+# 外から PR を受けるようになったら pull_request_target に変える。
+# このワークフローはコードを checkout しないので、変えても安全に保てる。
+name: add-to-project
+
+on:
+  issues:
+    types: [opened, reopened, transferred]
+  pull_request:
+    types: [opened, reopened]
+
+# PAT だけで動く。GITHUB_TOKEN には何も与えない。
+permissions: {}
+
+jobs:
+  add:
+    if: vars.PROJECT_URL != ''
+    runs-on: ubuntu-latest
+    # 秘密は if で直接見られないので、ジョブの環境変数を経由する。
+    env:
+      HAS_PAT: ${{ secrets.ADD_TO_PROJECT_PAT != '' }}
+    steps:
+      - uses: actions/add-to-project@v2
+        if: env.HAS_PAT == 'true'
+        with:
+          project-url: ${{ vars.PROJECT_URL }}
+          github-token: ${{ secrets.ADD_TO_PROJECT_PAT }}
+
+      # URL だけ設定して PAT を忘れると、緑のまま何も載らない。落とさずに知らせる。
+      - name: PAT が無い
+        if: env.HAS_PAT != 'true'
+        run: echo "::warning::PROJECT_URL はあるが ADD_TO_PROJECT_PAT が無いため、Project に載せません"

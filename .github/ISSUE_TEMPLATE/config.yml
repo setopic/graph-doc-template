@@ -1,0 +1,11 @@
+blank_issues_enabled: true
+
+# テンプレート由来のものは、上流に出す。理由と層の見分け方は、META-07の
+# 「テンプレート由来のものは上流に出す」にある。ここが持つのは、上流への導線だけである。
+contact_links:
+  - name: テンプレートへの報告（検証ツールの層）
+    url: https://github.com/setopic/graph-doc-template/issues/new
+    about: tools/graphとG0xxの検査、issueとPRの流れの話。どの派生で、何をしていて気づいたかを書く
+  - name: テンプレートへの報告（統合型の層）
+    url: https://github.com/setopic/graph-project-template/issues/new
+    about: 文書と実装の同居・実装のCI・配置の話
