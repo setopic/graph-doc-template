@@ -157,7 +157,7 @@ class TermsBlock(unittest.TestCase):
         self.run_sync()
         text = self.text(IDX_DOM)
         self.assertIn(schema.TERMS_START, text)
-        self.assertIn("まだありません", text)
+        self.assertIn("まだ無い", text)
 
     def test_links_in_the_list_are_not_edges_of_the_index(self):
         """一覧は写しなので、中のリンクで目次がユースケースを指していることにしない。"""

@@ -181,11 +181,11 @@ python -m tools.graph rename --from IDX-API --to IDX-CON --path docs/40-contract
 
 ## 関連ドキュメント（自動生成 / 手で編集しない）
 
-**related** — 依存はしないが併読すべきノード
+`related`: 依存はしないが、一緒に読むべきノード
 
 - [META-01 グラフの規約](./graph-rules.md)
 
-**このノードを参照しているノード**
+このノードを参照しているノード
 
 - (related) [META-01 グラフの規約](./graph-rules.md)
 

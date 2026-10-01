@@ -1,17 +1,17 @@
-"""各ノードの末尾に「関連ドキュメント」ブロックを再生成する。
+"""各ノードの末尾に、「関連ドキュメント」のブロックを作り直す。
 
 手で書いたリンク（フロントマターと本文）を正とし、その逆引き（誰から参照
 されているか）だけを自動で埋める。ブロックはマーカーで囲まれていて、
-loader が読み込み時に取り除くのでグラフの入力にはならない。
+loaderが読み込むときに取り除くので、グラフの入力にはならない。
 
-目次ノードだけは扱いが違う。こちらは**一覧ブロックを丸ごと作り直す**。
-中身は「同じディレクトリにあるノード」で機械的に決まり、
-`<!-- graph:children:start -->` の外に書いた案内文には触らない。
+目次ノードだけは扱いが違い、一覧ブロックを丸ごと作り直す。
+中身は「同じディレクトリにあるノード」で機械的に決まる。
+`<!-- graph:children:start -->`の外に書いた案内文には触らない。
 
-**ドメインの目次（IDX-DOM）には、用語の一覧も作る。** 各ドメインノードの
-「用語」表を写したもので、同じ意味なら同じ用語を使うために、既にある語を
-1 か所で引けるようにする。**手で集めた用語集は検査の効かない写しになるが、
-これは `sync --check` が最新かを見るので写しにならない。**
+ドメインの目次（IDX-DOM）には、用語の一覧も作る。各ドメインノードの
+「用語」表を写したもので、同じ意味なら同じ用語を使えるよう、すでにある語を
+1か所で調べられるようにする。**手で集めた用語集は検査のかからない写しになるが、
+この一覧は`sync --check`が最新かどうかを確かめるので、写しにはならない。**
 """
 
 from __future__ import annotations
@@ -28,7 +28,7 @@ CHILDREN_RE = re.compile(
     re.escape(schema.CHILDREN_START) + r".*?" + re.escape(schema.CHILDREN_END),
     re.DOTALL,
 )
-# "DOM-01" を ("DOM", 1) にして、DOM-2 が DOM-10 より前に来るようにする
+# "DOM-01"を("DOM", 1)にして、DOM-2がDOM-10より前に来るようにする
 ID_RE = re.compile(r"^(.*?)-(\d+)$")
 
 
@@ -40,11 +40,11 @@ def _id_key(node_id: str) -> tuple[str, int, str]:
 
 
 def build_children_block(graph: Graph, index_node: Node) -> str:
-    """目次の一覧ブロックを作る。同じディレクトリのノードを id 順に並べる。
+    """目次の一覧ブロックを作る。同じディレクトリのノードを、id順に並べる。
 
-    **手で書き足す必要をなくすためにある。** 登録漏れは `G005`（孤立ノード）
-    として出るが、そもそも漏れようがないほうがよい。改題への追随も同じで、
-    タイトルはフロントマターにあるのだから機械が拾えばよい。
+    手で書き足す必要をなくすためにある。登録漏れは`G005`（孤立ノード）として
+    出るが、そもそも漏れようがないほうがよい。改題への追随も同じで、
+    題はフロントマターにあるのだから、機械が拾えばよい。
     """
     directory = index_node.path.parent
     children = [
@@ -65,11 +65,11 @@ def _is_domain_index(node: Node) -> bool:
 
 
 def build_terms_block(graph: Graph, index_node: Node) -> str | None:
-    """用語の一覧を作る。同じディレクトリのドメインノードを id 順に、ノードごとの節で並べる。
+    """用語の一覧を作る。同じディレクトリのドメインノードをid順に、ノードごとの節で並べる。
 
-    **表はノードのものをそのまま写す。** 目次はドメインノードと同じディレクトリに
-    あるので、「意味」の欄のリンクも書き換えずに効く。用語表を持つノードが
-    無ければ `None` を返す。
+    表は、ノードのものをそのまま写す。目次はドメインノードと同じディレクトリに
+    あるので、「意味」の欄のリンクも、書き換えずにそのまま使える。用語表を持つ
+    ノードが無ければ、`None`を返す。
     """
     directory = index_node.path.parent
     sections: list[str] = []
@@ -89,7 +89,7 @@ def build_terms_block(graph: Graph, index_node: Node) -> str | None:
             "",
             "## 用語の一覧（自動生成 / 手で編集しない）",
             "",
-            "各ドメインノードの「用語」表を集めたもの。**直すときは元のノードの表を直す。**",
+            "各ドメインノードの「用語」表を集めたものである。直すときは、元のノードの表を直す。",
             "同じ意味のことを書くときは、ここにある語を使う。",
             "",
             "\n\n".join(sections),
@@ -100,12 +100,12 @@ def build_terms_block(graph: Graph, index_node: Node) -> str | None:
 
 
 def _apply_terms_block(graph: Graph, index_node: Node, text: str) -> str:
-    """一覧を入れ替える。**無ければ末尾に足す**（index.md は派生で merge=ours のため）。"""
+    """一覧を入れ替える。無ければ末尾に足す（index.mdは、派生ではmerge=oursのため）。"""
     block = build_terms_block(graph, index_node)
     if TERMS_BLOCK_RE.search(text):
         if block is None:
             block = "\n".join(
-                [schema.TERMS_START, "", "_用語表を持つドメインノードがまだありません。_", "", schema.TERMS_END]
+                [schema.TERMS_START, "", "_用語表を持つドメインノードは、まだ無い。_", "", schema.TERMS_END]
             )
         return TERMS_BLOCK_RE.sub(lambda _: block, text, count=1)
     if block is None:
@@ -123,7 +123,7 @@ def build_block(graph: Graph, node: Node) -> str:
         if not targets:
             continue
         wrote_any = True
-        lines.append(f"**{kind}** — {schema.EDGE_KINDS[kind]['desc']}")
+        lines.append(f"`{kind}`: {schema.EDGE_KINDS[kind]['desc']}")
         lines.append("")
         for target_id in sorted(set(targets)):
             target = graph.nodes[target_id]
@@ -138,7 +138,7 @@ def build_block(graph: Graph, node: Node) -> str:
 
     if incoming:
         wrote_any = True
-        lines.append("**このノードを参照しているノード**")
+        lines.append("このノードを参照しているノード")
         lines.append("")
         for kind in sorted(incoming):
             for source_id in sorted(incoming[kind]):
@@ -149,7 +149,7 @@ def build_block(graph: Graph, node: Node) -> str:
         lines.append("")
 
     if not wrote_any:
-        lines.append("_まだリンクがありません。孤立ノードのままにしないこと。_")
+        lines.append("_まだリンクが無い。孤立ノードのままにしないこと。_")
         lines.append("")
 
     lines.append(schema.AUTO_BLOCK_END)
@@ -170,7 +170,7 @@ def sync(graph: Graph, *, dry_run: bool = False) -> list[str]:
 
     for node in graph.sorted_nodes():
         if node.type == "index":
-            # 目次は一覧ブロックだけを作り直す。案内文はそのまま
+            # 目次は、一覧ブロックだけを作り直す。案内文はそのまま残す
             original = node.path.read_text(encoding="utf-8")
             updated = original
             if CHILDREN_RE.search(updated):

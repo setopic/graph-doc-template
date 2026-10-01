@@ -64,11 +64,11 @@ related: []
 
 ## 関連ドキュメント（自動生成 / 手で編集しない）
 
-**depends_on** — この文書が成立するために前提となるノード
+`depends_on`: この文書が成立するために前提となるノード
 
 - [DOM-01 予約](../20-domain/dom-01-sample-booking.md)
 
-**このノードを参照しているノード**
+このノードを参照しているノード
 
 - (depends_on) [CON-01 予約確定エンドポイント](../40-contracts/con-01-sample-confirm-booking.md)
 

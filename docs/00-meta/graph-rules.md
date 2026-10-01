@@ -728,12 +728,12 @@ python -m tools.graph new --type contract --template contract-http --id CON-02 -
 
 ## 関連ドキュメント（自動生成 / 手で編集しない）
 
-**related** — 依存はしないが併読すべきノード
+`related`: 依存はしないが、一緒に読むべきノード
 
 - [META-02 ノード種別と層](./node-types.md)
 - [META-03 本文のレビュー（AI）](./ai-review.md)
 
-**このノードを参照しているノード**
+このノードを参照しているノード
 
 - (decides) [ADR-0001 設計文書をグラフとして管理する](../50-adr/adr-0001-graph-driven-docs.md)
 - (related) [META-02 ノード種別と層](./node-types.md)

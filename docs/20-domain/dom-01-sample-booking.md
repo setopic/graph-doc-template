@@ -61,11 +61,11 @@ related: []
 
 ## 関連ドキュメント（自動生成 / 手で編集しない）
 
-**depends_on** — この文書が成立するために前提となるノード
+`depends_on`: この文書が成立するために前提となるノード
 
 - [ARCH-01 システム全体構成](../10-architecture/arch-01-sample-system-overview.md)
 
-**このノードを参照しているノード**
+このノードを参照しているノード
 
 - (depends_on) [CON-01 予約確定エンドポイント](../40-contracts/con-01-sample-confirm-booking.md)
 - (depends_on) [UC-01 予約を確定する](../30-usecases/uc-01-sample-confirm-booking.md)

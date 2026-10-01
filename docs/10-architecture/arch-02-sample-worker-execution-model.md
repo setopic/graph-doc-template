@@ -64,7 +64,7 @@ related: []
 
 ## 関連ドキュメント（自動生成 / 手で編集しない）
 
-**refines** — 分割元のノード（1 つの文書を分けたときだけ使う。前提は depends_on）
+`refines`: 分割元のノード（1つの文書を分けたときだけ使う。前提はdepends_on）
 
 - [ARCH-01 システム全体構成](./arch-01-sample-system-overview.md)
 

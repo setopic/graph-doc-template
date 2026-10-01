@@ -55,7 +55,7 @@ related: []
 
 ## 関連ドキュメント（自動生成 / 手で編集しない）
 
-**このノードを参照しているノード**
+このノードを参照しているノード
 
 - (decides) [ADR-0001 設計文書をグラフとして管理する](../50-adr/adr-0001-graph-driven-docs.md)
 - (depends_on) [DOM-01 予約](../20-domain/dom-01-sample-booking.md)
