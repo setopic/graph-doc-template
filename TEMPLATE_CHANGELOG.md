@@ -26,6 +26,37 @@ python -m tools.graph --version
 
 ---
 
+## 1.26.0 — 2026-10-02
+
+### 変更
+
+テンプレートの取り込みを`make update`で行い、`merge=ours`のドライバを、その取り込みのときだけ効かせるようにした（setopic/graph-doc-template#36）。
+
+これまでは`make setup`が、ドライバ（`merge.ours.driver`）をクローンに常設していた。常設すると、テンプレートの取り込み以外のマージでも`merge=ours`が効く。作業ブランチにmainを取り込んだとき、`README.md`などの相手の変更が、競合にもならずに落ちた。テンプレート本体で#35のブランチにmainを取り込んだとき、#34の`README.md`の修正が実際に落ちた。派生でも、手元で`git merge`を回せば同じことが起きる。GitHub上のPRのマージでは、独自のマージドライバは使われないので起きない。
+
+| 変えたもの | 内容 |
+| --- | --- |
+| `make update`（新設） | `git fetch template`のあと、`git -c merge.ours.driver=true merge template/main`を回す。初回は`make update UPDATE_ARGS=--allow-unrelated-histories` |
+| `make setup` | 以前の`setup`が常設したドライバの設定を外す。設定が無ければ何もしない |
+| `upgrade` | クローンにドライバが常設されているかを見ずに、`merge=ours`のファイルを「取り込んでも変わらない」側に数える。テストを足した（`tests/test_upgrade_merge_ours.py`） |
+| README | 「最初に一度だけ」と「取り込む」の手順を、`make update`に書き換えた |
+
+ドライバを常設していないクローンで`git merge template/main`を直接回すと、`merge=ours`のファイルは通常のマージになる。両側が変えていれば、何も言わずに落ちる代わりに、競合として表に出る。
+
+### 取り込む側の作業
+
+マージだけでは何も動かなくならない。ただし、次の作業をしないと、手元のマージで変更が落ちる問題が残る。
+
+| 作業 | 内容 |
+| --- | --- |
+| 常設したドライバを外す | クローンごとに一度、`make setup`を回す（以前の`setup`とは逆に、設定を外す） |
+| 取り込みの手順を変える | 次からは`make update`で取り込む。`git merge template/main`を直接使うと、`README.md`と目次が競合する |
+| READMEの手順を直す | `README.md`は`merge=ours`なので、この版のREADMEは届かない。自分のREADMEに取り込みの手順を写しているなら、`make setup && git fetch template && git merge template/main`を`make update`に直す |
+
+今回の取り込みは、まだ古い手順で行ってよい。古い`setup`がドライバを常設しているので、`merge=ours`は効く。取り込んだあとに`make setup`を回すと、設定が外れる。
+
+---
+
 ## 1.25.0 — 2026-10-02
 
 ### 追加

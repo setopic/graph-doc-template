@@ -13,10 +13,11 @@ PYTHON ?= python
 # README の図に足す引数。既定は無し（全ノードをそのまま描く）。
 README_GRAPH_ARGS ?=
 
-.PHONY: help setup check strict sync sync-check linkify linkify-check graph json readme readme-check stats all
+.PHONY: help setup update check strict sync sync-check linkify linkify-check graph json readme readme-check stats all
 
 help:
-	@echo "setup         クローンごとに要る設定を入れる（何度実行してもよい）"
+	@echo "setup         以前のsetupが常設したmerge=oursドライバの設定を外す（何度実行してもよい）"
+	@echo "update        テンプレートを取り込む（このときだけmerge=oursドライバを効かせる）"
 	@echo "check         グラフを検証する（エラーがあれば失敗）"
 	@echo "strict        警告も失敗として扱う"
 	@echo "sync          各文書末尾の関連ドキュメントを再生成する"
@@ -30,13 +31,26 @@ help:
 	@echo "stats         ノード数・エッジ数を表示する"
 	@echo "all           check + sync + linkify + readme"
 
-# **クローンごとに要る。** .gitattributes の merge=ours は、このドライバが
-# 無効なクローンでは git が黙って無視し、通常の 3 方向マージに落ちる。
-# 警告は出ないので、保護が外れていること自体が見えない。
-# 冪等なので、取り込みの前に毎回実行してよい。
+# テンプレートを取り込む。.gitattributesのmerge=oursは、プロジェクト側の内容を残すための指定で、
+# このドライバを効かせたマージでだけ働く。ドライバは、この取り込みのときだけ-cで効かせる。
+#
+# 以前はsetupでドライバをクローンに常設していた。常設すると、テンプレートの取り込み以外の
+# マージ（作業ブランチどうしのマージ）でもmerge=oursが効き、相手の変更が何も言わずに落ちる
+# （setopic/graph-doc-template#36）。
+#
+# 初回だけは、履歴を共有していないので、引数を足す。
+#   make update UPDATE_ARGS=--allow-unrelated-histories
+UPDATE_ARGS ?=
+update:
+	git fetch template
+	git -c merge.ours.driver=true merge template/main $(UPDATE_ARGS)
+
+# 以前のsetupが常設したドライバの設定を外す。設定が無ければ何もしない。何度実行してもよい。
+# 外したあとのマージは、merge=oursのファイルも通常のマージになる。両側が変えていれば、
+# 何も言わずに落ちる代わりに、競合として表に出る。
 setup:
-	@git config merge.ours.driver true
-	@echo "merge=ours ドライバを有効にした。.gitattributes の保護が効く。"
+	@git config --unset merge.ours.driver || true
+	@echo "merge=oursドライバの常設を外した。テンプレートの取り込みは make update で行う。"
 
 check:
 	$(PYTHON) -m tools.graph check

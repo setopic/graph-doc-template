@@ -87,11 +87,9 @@ def merge_ours(root: Path, paths: list[str]) -> set[str]:
     判定できなければ、空集合を返す。変更されるファイルを多めに出すのは害が小さいが、
     判定できないまま一覧から落とすと、変わるものを「変わらない」と誤って伝えることになる。
     """
-    # ドライバが設定されていない（READMEの`git config merge.ours.driver true`を
-    # していない）なら、`merge=ours`は効かず、通常のマージになる。この場合は
-    # 本当に変更されるので、一覧から落とさない
-    if not (git_run(root, ["config", "--get", "merge.ours.driver"]) or "").strip():
-        return set()
+    # 取り込みは`make update`で行い、そのときだけドライバを効かせる。だから、
+    # クローンにドライバが常設されているかどうかは見ない（setopic/graph-doc-template#36）。
+    # `make update`を使わずに取り込むと、この一覧と実際の結果がずれる。
 
     found: set[str] = set()
     for start in range(0, len(paths), ATTR_CHUNK):
