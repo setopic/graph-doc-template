@@ -1,12 +1,12 @@
 """テンプレートとの差を調べる。
 
-**何も書き込まない。** 取り込みは README の手順（`git merge template/main` ほか）で
-人が行う。このモジュールが答えるのは 1 つだけ。
+**何も書き込まない。** 取り込みは、READMEの手順（`git merge template/main`ほか）に沿って
+人が行う。このモジュールが答えるのは、次の1つだけである。
 
     「自分は遅れているか。遅れているなら、何が変わり、移行作業は要るか」
 
-これが分からないと、派生リポジトリは静かに古くなる。マージし忘れても
-何も起きないので、気づく機会が存在しない。
+これが分からないと、派生リポジトリは、気づかないうちに古くなる。マージし忘れても
+何も起きないので、気づく機会が無い。
 """
 
 from __future__ import annotations
@@ -23,11 +23,11 @@ VERSION_PATH = "tools/graph/version.py"
 CHANGELOG_PATH = "TEMPLATE_CHANGELOG.md"
 
 VERSION_RE = re.compile(r'TEMPLATE_VERSION\s*=\s*["\']([^"\']+)["\']')
-# 変更履歴の見出し: "## 1.2.0 — 2026-08-14"
+# 変更履歴の見出しの形（例: "## 1.2.0 — 2026-08-14"）
 ENTRY_RE = re.compile(r"^##\s+(\d+\.\d+\.\d+)\b(.*)$")
 
-# check-attr に一度に渡す経路の数。多すぎるとコマンド行の上限に当たる
-# （初回マージ前は差がツリー全体になり、数百件になりうる）
+# check-attrに一度に渡す経路の数。多すぎると、コマンド行の長さの上限に当たる
+# （初回のマージの前は、差がツリー全体になり、数百件になりうる）
 ATTR_CHUNK = 100
 
 
@@ -40,7 +40,7 @@ def _ref() -> str:
 
 
 def parse_version(text: str) -> tuple[int, ...] | None:
-    """"1.2.3" を (1, 2, 3) にする。数字以外が混ざったら None。"""
+    """"1.2.3"を(1, 2, 3)にする。数字以外が混ざっていたら、Noneを返す。"""
     try:
         return tuple(int(part) for part in text.strip().split("."))
     except ValueError:
@@ -52,7 +52,7 @@ def read_remote_file(root: Path, path: str) -> str | None:
 
 
 def changelog_entries(text: str, newer_than: tuple[int, ...]) -> list[tuple[str, str]]:
-    """`newer_than` より新しい版の項目を、新しい順に返す。"""
+    """`newer_than`より新しい版の項目を、新しい順に返す。"""
     entries: list[tuple[str, str]] = []
     current: str | None = None
     body: list[str] = []
@@ -71,7 +71,7 @@ def changelog_entries(text: str, newer_than: tuple[int, ...]) -> list[tuple[str,
     if current is not None:
         entries.append((current, "\n".join(body).strip()))
 
-    # 項目の末尾に付く区切り線は表示に要らない
+    # 項目の末尾に付く区切り線は、表示に要らない
     entries = [(version, text.rstrip("- \n")) for version, text in entries]
 
     return [
@@ -82,25 +82,25 @@ def changelog_entries(text: str, newer_than: tuple[int, ...]) -> list[tuple[str,
 
 
 def merge_ours(root: Path, paths: list[str]) -> set[str]:
-    """`.gitattributes` が `merge=ours` にしている経路を返す。
+    """`.gitattributes`が`merge=ours`にしている経路を返す。
 
-    判定できなければ空集合を返す。多めに出すのはただの過剰申告だが、
-    判定できないまま落とすと「変わらない」と嘘をつくことになる。
+    判定できなければ、空集合を返す。変更されるファイルを多めに出すのは害が小さいが、
+    判定できないまま一覧から落とすと、変わるものを「変わらない」と誤って伝えることになる。
     """
-    # ドライバ未設定（README の `git config merge.ours.driver true` を
-    # していない）なら `merge=ours` は効かず、素の合成になる。この場合は
-    # 本当に変更されるので落とさない
+    # ドライバが設定されていない（READMEの`git config merge.ours.driver true`を
+    # していない）なら、`merge=ours`は効かず、通常のマージになる。この場合は
+    # 本当に変更されるので、一覧から落とさない
     if not (git_run(root, ["config", "--get", "merge.ours.driver"]) or "").strip():
         return set()
 
     found: set[str] = set()
     for start in range(0, len(paths), ATTR_CHUNK):
         chunk = paths[start : start + ATTR_CHUNK]
-        # -z なら経路も値も NUL 区切りで返る。引用もエスケープも挟まらない
+        # -zなら、経路も値もNUL区切りで返る。引用符もエスケープも入らない
         out = git_run(root, ["check-attr", "-z", "merge", "--", *chunk])
         if out is None:
             return set()
-        # <経路> NUL <属性> NUL <値> の 3 つで 1 組
+        # <経路> NUL <属性> NUL <値>の3つで1組
         fields = out.split("\0")
         for i in range(0, len(fields) - 2, 3):
             if fields[i + 1] == "merge" and fields[i + 2] == "ours":
@@ -112,15 +112,15 @@ def inspect(root: Path) -> dict:
     """テンプレートとの差を調べる。書き込みは行わない。"""
     remotes = git_run(root, ["remote"])
     if remotes is None:
-        raise UpgradeError("git リポジトリではないか、git を実行できません")
+        raise UpgradeError("gitのリポジトリではないか、gitを実行できない")
     if REMOTE not in remotes.split():
         raise UpgradeError(
-            f"リモート {REMOTE!r} がありません。最初に一度だけ設定してください:\n"
+            f"リモート{REMOTE!r}が無い。最初に一度だけ、次のように設定する。\n"
             f"  git remote add {REMOTE} https://github.com/setopic/graph-doc-template.git"
         )
 
     if git_run(root, ["fetch", REMOTE]) is None:
-        raise UpgradeError(f"git fetch {REMOTE} に失敗しました（ネットワークを確認）")
+        raise UpgradeError(f"git fetch {REMOTE}に失敗した（ネットワークを確かめる）")
 
     local = parse_version(TEMPLATE_VERSION)
     raw_remote = read_remote_file(root, VERSION_PATH)
@@ -131,7 +131,7 @@ def inspect(root: Path) -> dict:
     remote = parse_version(remote_text) if remote_text else None
 
     if local is None or remote is None:
-        raise UpgradeError("版を読み取れませんでした")
+        raise UpgradeError("版を読み取れなかった")
 
     entries: list[tuple[str, str]] = []
     if remote > local:
@@ -139,17 +139,17 @@ def inspect(root: Path) -> dict:
         if changelog:
             entries = changelog_entries(changelog, local)
 
-    # 3 ドットにする。2 ドットだとツリー全体の差になり、テンプレートには無い
-    # プロジェクト固有のノードまで「変更される」ように見えてしまう。
-    # 知りたいのは「分岐したあとテンプレート側が変えた分」だけ。
+    # ドットは3つにする。2つだとツリー全体の差になり、テンプレートには無い
+    # プロジェクト固有のノードまで、変更されるように見えてしまう。
+    # 知りたいのは、分岐したあとにテンプレート側が変えた分だけである。
     diff = git_run(root, ["diff", "--name-only", f"HEAD...{_ref()}"])
     if diff is None:
-        # 共通の祖先がない（初回マージ前）。全体の差で代用する
+        # 共通の祖先が無い（初回のマージの前）。全体の差で代用する
         diff = git_run(root, ["diff", "--name-only", "HEAD", _ref()])
     files = [line for line in (diff or "").splitlines() if line.strip()]
 
-    # `merge=ours` のものは差があってもマージでは変わらない（プロジェクト側が残る）。
-    # 差分にはそのまま出てくるので、落とさないと「変更される」と嘘になる。
+    # `merge=ours`のものは、差があってもマージでは変わらない（プロジェクト側が残る）。
+    # 差分にはそのまま出てくるので、落とさないと、変わらないものを「変更される」と誤って伝える。
     ours = merge_ours(root, files)
     files = [path for path in files if path not in ours]
 
@@ -158,7 +158,7 @@ def inspect(root: Path) -> dict:
         "remote": remote_text,
         "behind": remote > local,
         "ahead": local > remote,
-        # major が上がっていれば移行作業が要る
+        # majorが上がっていれば、移行作業が要る
         "breaking": remote > local and remote[0] > local[0],
         "entries": entries,
         "files": files,

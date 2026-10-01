@@ -1,11 +1,11 @@
-"""ノードの id を変更し、全参照を追随させる。
+"""ノードのidを変え、すべての参照を追随させる。
 
-id を手で変えると、フロントマターのエッジ・本文の `[[ID]]`・目次の一覧・
-相対リンクのどれかを必ず取りこぼす。層を組み替えたとき（`schema.py` の
-接頭辞やディレクトリを変えたとき）に必要になるので、機械的に行えるようにする。
+idを手で変えると、フロントマターのエッジ・本文の`[[ID]]`・目次の一覧・
+相対リンクのどれかを必ず取りこぼす。層を組み替えたとき（`schema.py`の
+接頭辞やディレクトリを変えたとき）に必要になるので、機械的に行えるようにしてある。
 
-新しい id の接頭辞が別の種別を指す場合は、`type` の書き換えとファイルの
-移動もあわせて行う。`API-01` を `CON-01` にする、といった層の改称がこれにあたる。
+新しいidの接頭辞が別の種別を指す場合は、`type`の書き換えとファイルの
+移動もあわせて行う。`API-01`を`CON-01`にする、といった層の改称がこれにあたる。
 """
 
 from __future__ import annotations
@@ -21,13 +21,13 @@ from .model import Graph
 
 MD_LINK_RE = re.compile(r"(\]\()([^)\s]+\.md)(\))")
 
-# 書き換えてはいけない区間。loader が「リンクとして数えない場所」と同じ範囲。
-# 規約や雛形に載せた**使い方の例**まで書き換えると、意味をなさない記述になる。
+# 書き換えてはいけない区間。loaderがリンクとして数えない場所と、同じ範囲である。
+# 規約や雛形に載せた使い方の例まで書き換えると、例として使えなくなる。
 PROTECTED_RE = re.compile(r"```.*?```|" + INLINE_CODE_PATTERN + r"|<!--.*?-->", re.DOTALL)
 
 
 def _apply_outside_protected(text: str, transform) -> str:
-    """コードブロック・コードスパン・HTML コメントの外側にだけ `transform` を適用する。"""
+    """コードブロック・コードスパン・HTMLコメントの外側にだけ、`transform`を適用する。"""
     parts: list[str] = []
     last = 0
 
@@ -45,9 +45,9 @@ class RenameError(RuntimeError):
 
 
 def _token_re(node_id: str) -> re.Pattern:
-    """id を「単語として」置き換えるための正規表現。
+    """idを、単語として置き換えるための正規表現。
 
-    `API-01` が `API-010` の一部にマッチしないよう、前後に英数字とハイフンが
+    `API-01`が`API-010`の一部にマッチしないよう、前後に英数字とハイフンが
     来ないことを条件にする。
     """
     return re.compile(
@@ -56,11 +56,11 @@ def _token_re(node_id: str) -> re.Pattern:
 
 
 def _scan_targets(root: Path, docs: Path) -> list[Path]:
-    """書き換え対象のファイル一覧。
+    """書き換えの対象のファイルの一覧。
 
-    グラフは `docs/` だが、リポジトリ直下の README.md や CLAUDE.md も
-    docs の中へリンクしている。ここを見落とすと、グラフの検証は通るのに
-    表紙のリンクだけ切れる。
+    グラフは`docs/`にあるが、リポジトリの直下にあるREADME.mdやCLAUDE.mdも、
+    docsの中へリンクしている。ここを見落とすと、グラフの検証は通るのに、
+    表紙のリンクだけが切れる。
     """
     paths: dict[Path, None] = {}
     for path in sorted(docs.rglob("*.md")):
@@ -100,7 +100,7 @@ def _relative(target: Path, from_dir: Path) -> str:
 
 
 def _replace_type(text: str, new_type: str) -> str:
-    """フロントマター内の `type:` だけを書き換える。"""
+    """フロントマターの中の`type:`だけを書き換える。"""
     return set_scalar(text, "type", new_type)
 
 
@@ -114,25 +114,25 @@ def rename(
     new_path_override: Path | None = None,
     new_slug: str | None = None,
 ) -> dict:
-    """`new_path_override` は移動先を明示したいときに使う。
+    """`new_path_override`は、移動先を明示したいときに使う。
 
-    種別 `index` のようにディレクトリが決まっていないノードを別の場所へ
-    移すときに要る。リンクの張り替えは自動配置のときと同じように行う。
+    種別`index`のようにディレクトリが決まっていないノードを、別の場所へ
+    移すときに要る。リンクの張り替えは、自動で置き場所を決めるときと同じように行う。
 
-    `new_slug` はファイル名の後半だけを変えたいときに使う。**id は据え置ける。**
-    文書の題を変えるとファイル名が実態とずれるが、id を変える理由は無い
+    `new_slug`は、ファイル名の後半だけを変えたいときに使う。**idは据え置ける。**
+    文書の題を変えるとファイル名が実態とずれるが、idを変える理由は無い、
     という場面がある。
     """
     node = graph.nodes.get(old_id)
     if node is None:
-        raise RenameError(f"ノード {old_id!r} が見つかりません")
+        raise RenameError(f"ノード{old_id!r}が見つからない")
     if new_id != old_id and new_id in graph.nodes:
-        raise RenameError(f"id {new_id!r} はすでに使われています")
+        raise RenameError(f"id {new_id!r}は、すでに使われている")
     if old_id == new_id and new_slug is None:
-        raise RenameError("変更前と変更後の id が同じです（--slug で名前だけ変えられます）")
+        raise RenameError("変更前と変更後のidが同じである（--slugを使えば、名前だけを変えられる）")
     if new_slug is not None and not SLUG_RE.match(new_slug):
         raise RenameError(
-            f"slug {new_slug!r} は英小文字・数字・ハイフンだけで書いてください"
+            f"slug {new_slug!r}は、英小文字・数字・ハイフンだけで書く"
         )
 
     new_prefix = new_id.split("-")[0]
@@ -140,7 +140,7 @@ def rename(
     if new_type is None:
         known = ", ".join(sorted(spec["prefix"] for spec in schema.NODE_TYPES.values()))
         raise RenameError(
-            f"接頭辞 {new_prefix!r} に対応する種別がありません（既知: {known}）"
+            f"接頭辞{new_prefix!r}に対応する種別が無い（使える接頭辞: {known}）"
         )
 
     docs = root / schema.DOCS_DIR
@@ -154,7 +154,7 @@ def rename(
             new_path.resolve().relative_to(docs.resolve())
         except ValueError:
             raise RenameError(
-                f"移動先は {schema.DOCS_DIR}/ の中である必要があります: {new_path}"
+                f"移動先は{schema.DOCS_DIR}/の中でなければならない: {new_path}"
             ) from None
     else:
         new_path = _target_path(old_path, docs, old_id, new_id, new_type, new_slug)
@@ -162,7 +162,7 @@ def rename(
     moved = new_path != old_path
 
     if moved and new_path.exists():
-        raise RenameError(f"移動先がすでに存在します: {new_path.relative_to(root).as_posix()}")
+        raise RenameError(f"移動先がすでに存在する: {new_path.relative_to(root).as_posix()}")
 
     token = _token_re(old_id)
     edited: list[str] = []
@@ -206,7 +206,7 @@ def rename(
 
 
 def _retarget_links(text: str, from_dir: Path, old_path: Path, new_path: Path) -> str:
-    """他ファイルから、移動したファイルへのリンクを張り替える。"""
+    """ほかのファイルから、移動したファイルへのリンクを張り替える。"""
 
     def repl(match: re.Match) -> str:
         href = match.group(2)

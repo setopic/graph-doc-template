@@ -1,4 +1,4 @@
-"""グラフを Mermaid / JSON / DOT に書き出す。"""
+"""グラフを、Mermaid・JSON・DOTの形式で書き出す。"""
 
 from __future__ import annotations
 
@@ -63,11 +63,11 @@ def to_mermaid(
         arrow = _ARROW.get(edge.kind, "-->")
         lines.append(f"  {edge.src} {arrow}|{edge.kind}| {edge.dst}")
 
-    # status で色を分ける
+    # statusで色を分ける
     draft = [n.id for n in graph.sorted_nodes() if n.status == "draft"]
     deprecated = [n.id for n in graph.sorted_nodes() if n.status == "deprecated"]
-    # mermaid の style 定義はカンマ区切りなので、値に含めるカンマは \, と書く。
-    # 空白区切り（"4 3"）は仕様として定義されておらず、描画されないことがある。
+    # mermaidのstyleの定義はカンマ区切りなので、値に含めるカンマは\,と書く。
+    # 空白区切り（"4 3"）は仕様で定義されておらず、描画されないことがある。
     lines.append("  classDef draft stroke-dasharray: 4\\,3;")
     lines.append("  classDef deprecated opacity:0.5;")
     if draft:
@@ -85,14 +85,14 @@ def to_mermaid(
 
 
 def to_mermaid_aggregate(graph: Graph, include_mentions: bool = False) -> str:
-    """型ごとに 1 つの箱へまとめた図を書き出す。
+    """型ごとに1つの箱へまとめた図を、書き出す。
 
-    ノードが何件あっても箱は型の数だけ、エッジは「型 × 種別 × 型」の組み合わせ
-    だけになる。**ノードが増えても図は大きくならない**ので、GitHub の描画上限
-    （エッジ 500 本 / G018）に当たらない。
+    ノードが何件あっても、箱は型の数だけ、エッジは「型 × 種別 × 型」の組み合わせの数
+    だけになる。**ノードが増えても図は大きくならない**ので、GitHubの描画上限
+    （エッジ500本。G018）に当たらない。
 
-    引き換えに**個別のノードは見えなくなる。** 上限に近づいたリポジトリだけで
-    使うこと。小さいリポジトリで使うと、縮む余地が無いまま情報だけ失う。
+    その代わり、個別のノードは見えなくなる。上限に近づいたリポジトリだけで
+    使うこと。小さいリポジトリで使うと、図を縮める必要が無いのに、情報だけを失う。
     """
     lines = ["graph LR"]
 
@@ -105,7 +105,7 @@ def to_mermaid_aggregate(graph: Graph, include_mentions: bool = False) -> str:
         label = _escape(spec["label"])
         lines.append(f'  {spec["prefix"]}["{label}<br/>{len(nodes)} 件"]')
 
-    # (始点の型, 種別, 終点の型) ごとに本数を数える
+    # (始点の型, 種別, 終点の型)ごとに、本数を数える
     totals: dict[tuple[str, str, str], int] = {}
     for edge in _edges(graph, include_mentions):
         src = graph.nodes.get(edge.src)
@@ -113,11 +113,11 @@ def to_mermaid_aggregate(graph: Graph, include_mentions: bool = False) -> str:
         if src is None or dst is None:
             continue
         if src.type not in schema.NODE_TYPES or dst.type not in schema.NODE_TYPES:
-            continue  # 型の誤りは G003 が言う。ここでは黙って飛ばす
+            continue  # 型の誤りはG003が指摘する。ここでは何も言わずに飛ばす
         key = (src.type, edge.kind, dst.type)
         totals[key] = totals.get(key, 0) + 1
 
-    # 本数の多い順。同数なら組み合わせ名の順にして、出力を安定させる
+    # 本数の多い順に並べる。同じ数なら組み合わせの名前の順にして、出力を安定させる
     for (src_type, kind, dst_type), count in sorted(
         totals.items(), key=lambda item: (-item[1], item[0])
     ):
@@ -129,18 +129,18 @@ def to_mermaid_aggregate(graph: Graph, include_mentions: bool = False) -> str:
     return "\n".join(lines) + "\n"
 
 
-# 図の中でエッジを表している行。`A --> B` / `A -.-> B` / `A ==> B` に当たる。
+# 図の中でエッジを表している行。`A --> B`・`A -.-> B`・`A ==> B`に当たる。
 EDGE_LINE_RE = re.compile(r"^\s*[A-Za-z][\w-]*\s+(?:-->|-\.->|==>)")
 
 
 def count_edges_in_markdown(path: Path) -> int | None:
-    """Markdown のマーカー内にある図の、エッジの本数を数える。
+    """Markdownのマーカーの中にある図の、エッジの本数を数える。
 
-    **グラフからではなく、書き込まれた図そのものを数える。** そうしないと
-    `--aggregate` や `--focus` で間引いている場合に実態とずれる。GitHub が
-    描こうとするのは、あくまで README に入っている図だから。
+    **グラフからではなく、書き込まれた図そのものを数える。** そうしないと、
+    `--aggregate`や`--focus`で減らしている場合に、実態とずれる。GitHubが
+    描こうとするのは、あくまでREADMEに入っている図だからである。
 
-    マーカーが無い、またはファイルが無ければ None を返す（数えようがない）。
+    マーカーかファイルが無ければ、Noneを返す（数えようがない）。
     """
     if not path.is_file():
         return None
@@ -186,19 +186,19 @@ class InjectError(RuntimeError):
 
 
 def inject(path: Path, diagram: str, *, dry_run: bool = False) -> bool:
-    """マーカーで囲まれた範囲に図を書き込む。更新が必要なら True。
+    """マーカーで囲まれた範囲に、図を書き込む。更新が必要ならTrueを返す。
 
-    README に図を貼ると必ず腐るので、`sync` と同じくマーカー方式にして
-    CI で最新かどうかを検証できるようにする。
+    READMEに図を貼ると必ず実態とずれるので、`sync`と同じくマーカーで囲む方式にして、
+    最新かどうかをCIで検証できるようにする。
     """
     if not path.is_file():
-        raise InjectError(f"ファイルがありません: {path}")
+        raise InjectError(f"ファイルが無い: {path}")
 
     original = path.read_text(encoding="utf-8")
     if not DIAGRAM_BLOCK_RE.search(original):
         raise InjectError(
-            f"{path.name} に書き込み先がありません。"
-            f"次の 2 行を並べて置いてください:\n"
+            f"{path.name}に書き込み先が無い。"
+            f"次の2行を並べて置く。\n"
             f"  {schema.DIAGRAM_BLOCK_START}\n  {schema.DIAGRAM_BLOCK_END}"
         )
 

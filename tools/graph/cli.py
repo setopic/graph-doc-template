@@ -1,12 +1,12 @@
-"""グラフ操作の CLI。
+"""グラフを操作するCLI。
 
-    python -m tools.graph check          リンク切れ・孤立・循環・層の逆流を検証
-    python -m tools.graph render         Mermaid / JSON / DOT を書き出す
-    python -m tools.graph sync           各文書末尾の関連リンクを再生成
-    python -m tools.graph new            雛形から新しいノードを起こす（--from で一括）
-    python -m tools.graph rename         id を変更し、全参照を追随させる
-    python -m tools.graph reset-samples  サンプルノードを一括で取り除く
-    python -m tools.graph stats          ノード数・エッジ数の集計
+    python -m tools.graph check          リンク切れ・孤立・循環・層の逆流を検証する
+    python -m tools.graph render         Mermaid・JSON・DOTの形式で書き出す
+    python -m tools.graph sync           各文書の末尾の関連リンクを作り直す
+    python -m tools.graph new            雛形から新しいノードを作る（--fromでまとめて作る）
+    python -m tools.graph rename         idを変え、すべての参照を追随させる
+    python -m tools.graph reset-samples  サンプルノードをまとめて取り除く
+    python -m tools.graph stats          ノード数・エッジ数を集計する
 """
 
 from __future__ import annotations
@@ -33,7 +33,7 @@ from .version import TEMPLATE_VERSION
 def _repo_root(arg: str | None) -> Path:
     if arg:
         return Path(arg).resolve()
-    # tools/graph/cli.py -> リポジトリルート
+    # tools/graph/cli.py -> リポジトリの根
     return Path(__file__).resolve().parents[2]
 
 
@@ -41,10 +41,10 @@ def cmd_check(args: argparse.Namespace) -> int:
     root = _repo_root(args.root)
     graph = load(root)
 
-    # 履歴が取れないときは G011 を飛ばす（誤検知より無検知）
+    # 履歴が取れないときは、G011を飛ばす（誤検知するより、検知しないほうを選ぶ）
     file_dates = {} if args.no_history else history.last_commit_dates(root)
 
-    # 変更が取れないときは G015 / G017 を飛ばす。git が無くても check は動く
+    # 変更が取れないときは、G015・G017を飛ばす。gitが無くてもcheckは動く
     changed_ids: set[str] = set()
     touched: set[str] = set()
     if not args.no_history:
@@ -75,10 +75,10 @@ def cmd_check(args: argparse.Namespace) -> int:
         for issue in issues:
             print(issue.format())
         if not issues:
-            print(f"OK: {len(graph.nodes)} ノード、問題なし")
+            print(f"OK: {len(graph.nodes)}ノード、問題なし")
         else:
             print("")
-            print(f"ノード {len(graph.nodes)} / エラー {len(errors)} / 警告 {len(warns)}")
+            print(f"ノード{len(graph.nodes)} / エラー{len(errors)} / 警告{len(warns)}")
             codes = sorted({i.code for i in issues})
             for code in codes:
                 print(f"  {code}: {rules.RULE_INDEX.get(code, '')}")
@@ -96,12 +96,12 @@ def cmd_render(args: argparse.Namespace) -> int:
     focus: set[str] | None = None
 
     if args.aggregate and args.format != "mermaid":
-        print("エラー: --aggregate は --format mermaid のときだけ使えます", file=sys.stderr)
+        print("エラー: --aggregateは、--format mermaidのときだけ使える", file=sys.stderr)
         return 1
     if args.aggregate and args.focus:
         print(
-            "エラー: --aggregate と --focus は同時に使えません"
-            "（集約すると個別のノードが消えるため、絞る意味が無くなります）",
+            "エラー: --aggregateと--focusは、同時に使えない"
+            "（集約すると個別のノードが消えるので、絞る意味が無くなる）",
             file=sys.stderr,
         )
         return 1
@@ -110,7 +110,7 @@ def cmd_render(args: argparse.Namespace) -> int:
         focus = {i.strip() for i in args.focus.split(",") if i.strip()}
         unknown = sorted(i for i in focus if i not in graph.nodes)
         if unknown:
-            print(f"エラー: 存在しないノードです: {', '.join(unknown)}", file=sys.stderr)
+            print(f"エラー: 存在しないノード: {', '.join(unknown)}", file=sys.stderr)
             return 1
         graph = graph.neighborhood(
             sorted(focus),
@@ -118,8 +118,8 @@ def cmd_render(args: argparse.Namespace) -> int:
             include_mentions=args.include_mentions,
         )
         print(
-            f"{', '.join(sorted(focus))} から {args.depth} ホップ以内: "
-            f"{len(graph.nodes)} ノード",
+            f"{', '.join(sorted(focus))}から{args.depth}ホップ以内: "
+            f"{len(graph.nodes)}ノード",
             file=sys.stderr,
         )
 
@@ -138,7 +138,7 @@ def cmd_render(args: argparse.Namespace) -> int:
 
     if args.into:
         if args.format != "mermaid":
-            print("エラー: --into は --format mermaid のときだけ使えます", file=sys.stderr)
+            print("エラー: --intoは、--format mermaidのときだけ使える", file=sys.stderr)
             return 1
 
         into_path = Path(args.into)
@@ -156,9 +156,9 @@ def cmd_render(args: argparse.Namespace) -> int:
             print(f"更新なし（最新）: {rel}")
             return 0
         if args.check:
-            print(f"図が古くなっています: {rel}")
+            print(f"図が古くなっている: {rel}")
             return 1
-        print(f"図を更新しました: {rel}")
+        print(f"図を更新した: {rel}")
         return 0
 
     if args.out:
@@ -167,7 +167,7 @@ def cmd_render(args: argparse.Namespace) -> int:
             out_path = root / out_path
         out_path.parent.mkdir(parents=True, exist_ok=True)
         out_path.write_text(output, encoding="utf-8", newline="\n")
-        print(f"書き出しました: {out_path.relative_to(root).as_posix()}")
+        print(f"書き出した: {out_path.relative_to(root).as_posix()}")
     else:
         sys.stdout.write(output)
     return 0
@@ -181,7 +181,7 @@ def cmd_sync(args: argparse.Namespace) -> int:
     if blocking:
         for issue in blocking:
             print(issue.format())
-        print("\n読み込みエラーがあるため sync を中止しました")
+        print("\n読み込みのエラーがあるので、syncを中止した")
         return 1
 
     dry_run = args.dry_run or args.check
@@ -193,7 +193,7 @@ def cmd_sync(args: argparse.Namespace) -> int:
     verb = "更新予定" if dry_run else "更新"
     for rel in changed:
         print(f"{verb}: {rel}")
-    print(f"\n{len(changed)} 件")
+    print(f"\n{len(changed)}件")
     return 1 if args.check else 0
 
 
@@ -205,7 +205,7 @@ def cmd_linkify(args: argparse.Namespace) -> int:
     if blocking:
         for issue in blocking:
             print(issue.format())
-        print("読み込みエラーがあるため linkify を中止しました")
+        print("読み込みのエラーがあるので、linkifyを中止した")
         return 1
 
     dry_run = args.dry_run or args.check
@@ -217,7 +217,7 @@ def cmd_linkify(args: argparse.Namespace) -> int:
     verb = "更新予定" if dry_run else "更新"
     for rel in changed:
         print(f"{verb}: {rel}")
-    print(f"{len(changed)} 件")
+    print(f"{len(changed)}件")
     return 1 if args.check else 0
 
 
@@ -230,7 +230,7 @@ def cmd_new(args: argparse.Namespace) -> int:
     missing = [n for n in ("type", "id", "title") if not getattr(args, n)]
     if missing:
         print(
-            f"エラー: --{' --'.join(missing)} が必要です（または --from でまとめて指定）",
+            f"エラー: --{' --'.join(missing)}が必要である（または、--fromでまとめて指定する）",
             file=sys.stderr,
         )
         return 1
@@ -249,8 +249,8 @@ def cmd_new(args: argparse.Namespace) -> int:
         print(f"エラー: {exc}", file=sys.stderr)
         return 1
 
-    print(f"作成しました: {path.relative_to(root).as_posix()}")
-    print("フロントマターの depends_on / related を埋めてから check を回してください")
+    print(f"作成した: {path.relative_to(root).as_posix()}")
+    print("フロントマターのdepends_onとrelatedを埋めてから、checkを回す")
     return 0
 
 
@@ -267,13 +267,13 @@ def _new_from_file(root: Path, path: Path) -> int:
     created, errors = create_many(root, entries)
 
     for created_path in created:
-        print(f"作成しました: {created_path.relative_to(root).as_posix()}")
+        print(f"作成した: {created_path.relative_to(root).as_posix()}")
     for message in errors:
         print(f"エラー: {message}", file=sys.stderr)
 
-    print(f"\n作成 {len(created)} 件 / 失敗 {len(errors)} 件")
+    print(f"\n作成{len(created)}件 / 失敗{len(errors)}件")
     if created:
-        print("フロントマターの depends_on / related を埋めてから check を回してください")
+        print("フロントマターのdepends_onとrelatedを埋めてから、checkを回す")
     return 1 if errors else 0
 
 
@@ -284,26 +284,26 @@ def cmd_reset_samples(args: argparse.Namespace) -> int:
 
     targets = result["targets"]
     if not targets:
-        print(f"tags に {args.tag!r} を持つノードはありません")
+        print(f"tagsに{args.tag!r}を持つノードは無い")
         return 0
 
-    verb = "削除しました" if args.yes else "削除対象"
+    verb = "削除した" if args.yes else "削除の対象"
     for node in targets:
         print(f"{verb}: {node.rel}  ({node.id} {node.title})")
 
     for rel in result["index_updated"]:
-        print(f"一覧から除外: {rel}")
+        print(f"一覧から外した: {rel}")
 
     if result["referenced_by"]:
-        print("\n以下から参照されています。削除後に check で確認してください:")
+        print("\n次のノードから参照されている。削除した後に、checkで確かめる。")
         for target_id, sources in sorted(result["referenced_by"].items()):
             print(f"  {target_id} <- {', '.join(sources)}")
 
     if not args.yes:
-        print(f"\n{len(targets)} 件。実際に削除するには --yes を付けてください")
+        print(f"\n{len(targets)}件。実際に削除するには、--yesを付ける")
         return 0
 
-    print(f"\n{len(targets)} 件を削除しました。check を回して残った参照を直してください")
+    print(f"\n{len(targets)}件を削除した。checkを回して、残った参照を直す")
     return 0
 
 
@@ -312,7 +312,7 @@ def cmd_rename(args: argparse.Namespace) -> int:
     graph = load(root)
 
     if not args.new_id and not args.new_slug:
-        print("エラー: --to か --slug のどちらかが要ります", file=sys.stderr)
+        print("エラー: --toか--slugの、どちらかが要る", file=sys.stderr)
         return 1
 
     try:
@@ -340,11 +340,11 @@ def cmd_rename(args: argparse.Namespace) -> int:
     for rel in result["edited"]:
         print(f"  更新: {rel}")
 
-    print(f"\n{len(result['edited'])} ファイル")
+    print(f"\n{len(result['edited'])}ファイル")
     if args.dry_run:
-        print("--dry-run のため書き込んでいません")
+        print("--dry-runなので、書き込んでいない")
     else:
-        print("sync を回してから check を確認してください")
+        print("syncを回してから、checkで確かめる")
     return 0
 
 
@@ -362,16 +362,16 @@ def cmd_upgrade(args: argparse.Namespace) -> int:
     print("")
 
     if result["ahead"]:
-        print("ローカルの方が新しい版です。テンプレート本体で実行していませんか。")
+        print("ローカルのほうが新しい版である。テンプレート本体で実行していないかを確かめる。")
         return 0
 
     if not result["behind"]:
-        print("最新です。取り込むものはありません。")
+        print("最新である。取り込むものは無い。")
         return 0
 
     if result["breaking"]:
-        print("**破壊的変更を含みます。マージしただけでは壊れます。**")
-        print("下の移行手順を読んでから取り込んでください。")
+        print("破壊的な変更を含む。マージしただけでは動かなくなる。")
+        print("下の移行手順を読んでから取り込む。")
         print("")
 
     for version, body in result["entries"]:
@@ -380,15 +380,15 @@ def cmd_upgrade(args: argparse.Namespace) -> int:
         print("")
 
     if result["files"]:
-        print(f"変更されるファイル（{len(result['files'])} 件）:")
+        print(f"変更されるファイル（{len(result['files'])}件）")
         for rel in result["files"][:20]:
             print(f"  {rel}")
         if len(result["files"]) > 20:
-            print(f"  ... 他 {len(result['files']) - 20} 件")
+            print(f"  ... ほか{len(result['files']) - 20}件")
         print("")
 
-    print("取り込む手順は README の「テンプレートの更新を取り込む」にあります。")
-    print("このコマンドは何も書き込んでいません。")
+    print("取り込む手順は、READMEの「テンプレートの更新を取り込む」にある。")
+    print("このコマンドは、何も書き込んでいない。")
     return 0
 
 
@@ -400,14 +400,14 @@ def cmd_stats(args: argparse.Namespace) -> int:
 
 
 def cmd_review(args: argparse.Namespace) -> int:
-    """本文の質を AI に見てもらう。**終了コードは常に 0。**
+    """本文の質を、AIに見てもらう。**終了コードは常に0である。**
 
-    指摘は再現しないので、失敗として扱わない。CI からも呼ばない。
+    指摘は再現しないので、失敗として扱わない。CIからも呼ばない。
     """
     api_key = review.api_key_from_env()
     if api_key is None:
-        print(f"{review.API_KEY_ENV} が設定されていないため、レビューを行いません。")
-        print("これはグラフの問題ではありません。check は影響を受けません。")
+        print(f"{review.API_KEY_ENV}が設定されていないので、レビューを行わない。")
+        print("これはグラフの問題ではない。checkは影響を受けない。")
         return 0
 
     root = _repo_root(args.root)
@@ -416,20 +416,20 @@ def cmd_review(args: argparse.Namespace) -> int:
     if args.focus:
         node = graph.nodes.get(args.focus)
         if node is None:
-            print(f"ノードが見つかりません: {args.focus}")
+            print(f"ノードが見つからない: {args.focus}")
             return 0
         targets = [node]
     else:
         targets = review.select_nodes(graph, limit=args.limit)
 
     if not targets:
-        print("レビュー対象がありません。")
+        print("レビューの対象が無い。")
         return 0
 
-    # 黙って通信しない。何件送るかを先に出す
+    # 何も言わずに通信しない。何件送るかを先に出す
     print(
-        f"{len(targets)} ノードを {args.model} に送ります"
-        f"（{review.API_URL} へ通信します）"
+        f"{len(targets)}ノードを{args.model}に送る"
+        f"（{review.API_URL}と通信する）"
     )
 
     findings: list[review.Finding] = []
@@ -443,7 +443,7 @@ def cmd_review(args: argparse.Namespace) -> int:
             continue
         findings.extend(found)
         if args.format != "json":
-            mark = f"{len(found)} 件" if found else "指摘なし"
+            mark = f"{len(found)}件" if found else "指摘なし"
             print(f"  {node.id} {node.title}: {mark}")
 
     if args.format == "json":
@@ -465,11 +465,11 @@ def cmd_review(args: argparse.Namespace) -> int:
             print("  " + finding.format())
         print("")
         codes = sorted({f.code for f in findings})
-        print(f"指摘 {len(findings)} 件")
+        print(f"指摘{len(findings)}件")
         for code in codes:
             print(f"  {code}: {review.FINDING_CODES[code]}")
         print("")
-        print("**これは助言であって検査ではありません。** 従う義務はありません。")
+        print("これは助言であって、検査ではない。従う義務は無い。")
     return 0
 
 
@@ -479,9 +479,9 @@ def build_parser() -> argparse.ArgumentParser:
         "--version",
         action="version",
         version=f"graph-doc-template {TEMPLATE_VERSION}",
-        help="テンプレートの版を表示する（変更履歴は TEMPLATE_CHANGELOG.md）",
+        help="テンプレートの版を表示する（変更履歴はTEMPLATE_CHANGELOG.md）",
     )
-    parser.add_argument("--root", help="リポジトリルート（既定: このファイルから推定）")
+    parser.add_argument("--root", help="リポジトリの根（既定はこのファイルの場所から推定する）")
     sub = parser.add_subparsers(dest="command", required=True)
 
     p_check = sub.add_parser("check", help="グラフを検証する")
@@ -490,71 +490,71 @@ def build_parser() -> argparse.ArgumentParser:
     p_check.add_argument(
         "--no-history",
         action="store_true",
-        help="git を見ない（G011 の放置検出と G015 の追従漏れを飛ばす）",
+        help="gitを見ない（G011の放置の検出と、G015の追従漏れを飛ばす）",
     )
     p_check.add_argument(
         "--since",
         metavar="REF",
-        help="G015 で見る変更の窓。この参照との分岐点から HEAD まで"
-        "（省略時は未コミットの変更だけ）",
+        help="G015で見る変更の窓。この参照との分岐点からHEADまで"
+        "（省略したときは、未コミットの変更だけ）",
     )
     p_check.set_defaults(func=cmd_check)
 
     p_render = sub.add_parser("render", help="グラフを書き出す")
     p_render.add_argument("--format", choices=("mermaid", "json", "dot"), default="mermaid")
-    p_render.add_argument("--out", help="出力先（省略時は標準出力）")
+    p_render.add_argument("--out", help="出力先（省略したときは標準出力）")
     p_render.add_argument(
         "--into",
         metavar="PATH",
-        help="Markdown のマーカー内に図を書き込む（mermaid 限定。README 用）",
+        help="Markdownのマーカーの中に図を書き込む（mermaidのみ。README用）",
     )
     p_render.add_argument(
         "--check",
         action="store_true",
-        help="--into と併用し、書き込まずに古ければ終了コード 1（CI 用）",
+        help="--intoと一緒に使う。書き込まず、図が古ければ終了コード1（CI用）",
     )
     p_render.add_argument(
         "--focus",
         metavar="ID[,ID...]",
-        help="指定ノードの近傍だけを描く（向きは無視して両方向に辿る）",
+        help="指定したノードの近傍だけを描く（向きは無視して、両方向に辿る）",
     )
     p_render.add_argument(
         "--depth",
         type=int,
         default=1,
         metavar="N",
-        help="--focus から何ホップまで含めるか（既定: 1）",
+        help="--focusから何ホップまで含めるか（既定は1）",
     )
     p_render.add_argument(
         "--include-mentions",
         action="store_true",
-        help="本文中の [[ID]] 由来のリンクも含める",
+        help="本文の[[ID]]から生まれるリンクも含める",
     )
     p_render.add_argument(
         "--aggregate",
         action="store_true",
-        help="型ごとに 1 つの箱へまとめる（ノードが増えても図が大きくならない。G018 の回避）",
+        help="型ごとに1つの箱へまとめる（ノードが増えても図が大きくならない。G018を避ける）",
     )
     p_render.set_defaults(func=cmd_render)
 
-    p_sync = sub.add_parser("sync", help="関連ドキュメントのブロックを再生成する")
-    p_sync.add_argument("--dry-run", action="store_true", help="書き込まずに差分だけ表示")
+    p_sync = sub.add_parser("sync", help="関連ドキュメントのブロックを作り直す")
+    p_sync.add_argument("--dry-run", action="store_true", help="書き込まずに、差分だけを表示する")
     p_sync.add_argument(
         "--check",
         action="store_true",
-        help="書き込まず、更新が必要なら終了コード 1（CI 用）",
+        help="書き込まず、更新が必要なら終了コード1（CI用）",
     )
     p_sync.set_defaults(func=cmd_sync)
 
     p_linkify = sub.add_parser(
         "linkify",
-        help="本文の [[ID]] を相対リンクに直す（GitHub 上でも辿れるようにする）",
+        help="本文の[[ID]]を相対リンクに直す（GitHub上でも辿れるようにする）",
     )
-    p_linkify.add_argument("--dry-run", action="store_true", help="書き込まずに差分だけ表示")
+    p_linkify.add_argument("--dry-run", action="store_true", help="書き込まずに、差分だけを表示する")
     p_linkify.add_argument(
         "--check",
         action="store_true",
-        help="書き換えが必要なら終了コード 1（CI 用）",
+        help="書き換えが必要なら終了コード1（CI用）",
     )
     p_linkify.set_defaults(func=cmd_linkify)
 
@@ -562,76 +562,76 @@ def build_parser() -> argparse.ArgumentParser:
     p_new.add_argument("--type", choices=tuple(schema.NODE_TYPES))
     p_new.add_argument("--id", help="例: UC-02")
     p_new.add_argument("--title")
-    p_new.add_argument("--slug", help="ファイル名に使う英数字。省略時は title から生成")
+    p_new.add_argument("--slug", help="ファイル名に使う英数字。省略したときはtitleから作る")
     p_new.add_argument("--status", default="draft", choices=schema.STATUSES)
     p_new.add_argument(
         "--template",
-        help="使う雛形の名前（docs/00-meta/templates/<名前>.md）。省略時は type と同名",
+        help="使う雛形の名前（docs/00-meta/templates/<名前>.md）。省略したときはtypeと同じ名前",
     )
     p_new.add_argument(
         "--from",
         dest="from_file",
         metavar="PATH",
-        help="1 行 1 ノードのファイルからまとめて作る（`type | id | title | slug` 形式）",
+        help="1行に1ノードを書いたファイルから、まとめて作る（`type | id | title | slug`の形式）",
     )
     p_new.set_defaults(func=cmd_new)
 
     p_reset = sub.add_parser(
         "reset-samples",
-        help="サンプルノードを一括で取り除く（テンプレート複製直後に使う）",
+        help="サンプルノードをまとめて取り除く（テンプレートを複製した直後に使う）",
     )
     p_reset.add_argument(
         "--tag",
         default=cleanup.DEFAULT_TAG,
-        help=f"削除対象とする tags の値（既定: {cleanup.DEFAULT_TAG}）",
+        help=f"削除の対象とするtagsの値（既定は{cleanup.DEFAULT_TAG}）",
     )
     p_reset.add_argument(
         "--yes",
         action="store_true",
-        help="実際に削除する。付けない場合は対象を表示するだけ",
+        help="実際に削除する。付けない場合は、対象を表示するだけ",
     )
     p_reset.set_defaults(func=cmd_reset_samples)
 
     p_rename = sub.add_parser(
         "rename",
-        help="ノードの id やファイル名を変更し、全参照を追随させる",
+        help="ノードのidやファイル名を変え、すべての参照を追随させる",
     )
     p_rename.add_argument("--from", dest="old_id", required=True, metavar="ID", help="例: API-01")
     p_rename.add_argument(
-        "--to", dest="new_id", metavar="ID", help="新しい id（例: CON-01）。省略すると据え置く"
+        "--to", dest="new_id", metavar="ID", help="新しいid（例: CON-01）。省略すると据え置く"
     )
     p_rename.add_argument(
         "--slug",
         dest="new_slug",
         metavar="SLUG",
-        help="ファイル名の後半だけを変える（例: view）。id は変わらない",
+        help="ファイル名の後半だけを変える（例: view）。idは変わらない",
     )
     p_rename.add_argument(
         "--path",
         metavar="PATH",
-        help="移動先を明示する（種別からディレクトリが決まらない index などで使う）",
+        help="移動先を明示する（種別からディレクトリが決まらないindexなどで使う）",
     )
     p_rename.add_argument(
-        "--dry-run", action="store_true", help="書き込まずに変更内容だけ表示する"
+        "--dry-run", action="store_true", help="書き込まずに、変更の内容だけを表示する"
     )
     p_rename.set_defaults(func=cmd_rename)
 
     p_upgrade = sub.add_parser(
         "upgrade",
-        help="テンプレートとの差を調べる（読み取りのみ。取り込みは手動）",
+        help="テンプレートとの差を調べる（読み取りのみ。取り込みは手で行う）",
     )
     p_upgrade.set_defaults(func=cmd_upgrade)
 
     p_review = sub.add_parser(
         "review",
-        help="本文の質を AI に見てもらう（任意・通信あり・CI では回さない）",
+        help="本文の質をAIに見てもらう（任意・通信あり・CIでは回さない）",
     )
     p_review.add_argument("--focus", help="このノードだけを見る")
     p_review.add_argument(
         "--limit",
         type=int,
         default=review.DEFAULT_LIMIT,
-        help=f"送るノード数の上限（既定 {review.DEFAULT_LIMIT}。0 で全件）",
+        help=f"送るノード数の上限（既定は{review.DEFAULT_LIMIT}。0なら全件）",
     )
     p_review.add_argument(
         "--model", default=review.DEFAULT_MODEL, help="使うモデル"
@@ -646,19 +646,19 @@ def build_parser() -> argparse.ArgumentParser:
 
 
 def _make_stdio_safe() -> None:
-    """印字で落ちないようにする。
+    """出力の途中で落ちないようにする。
 
-    `check` の警告は文書の本文をそのまま引用する（`G013` など）。本文には
-    Windows の既定コードページ（cp932 など）で表現できない文字が混ざりうる。
-    そのまま print すると UnicodeEncodeError で途中まで出したまま止まり、
-    **グラフは正しいのに終了コード 1 になる**。本物の検証失敗と区別が付かない。
+    `check`の警告は、文書の本文をそのまま引用する（`G013`など）。本文には、
+    Windowsの既定のコードページ（cp932など）で表現できない文字が、混ざることがある。
+    そのままprintすると、UnicodeEncodeErrorで途中まで出したまま止まり、
+    **グラフは正しいのに、終了コードが1になる。** 本当の検証の失敗と区別が付かない。
 
-    そこで UTF-8 に切り替える。ファイルの書き出しは元から UTF-8 なので、
-    これで入出力の扱いが揃う。`errors="replace"` は表現できない文字が
-    残った場合（サロゲートを含むパスなど）の保険。
+    そこで、UTF-8に切り替える。ファイルの書き出しは元からUTF-8なので、
+    これで入出力の扱いが揃う。`errors="replace"`は、表現できない文字が
+    残った場合（サロゲートを含むパスなど）に備えたものである。
     """
     for stream in (sys.stdout, sys.stderr):
-        # pythonw では None、テストでは StringIO に差し替わっていることがある
+        # pythonwではNone、テストではStringIOに差し替わっていることがある
         reconfigure = getattr(stream, "reconfigure", None)
         if reconfigure is None:
             continue

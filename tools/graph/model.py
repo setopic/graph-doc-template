@@ -13,18 +13,18 @@ WARN = "warn"
 
 @dataclass(frozen=True)
 class Edge:
-    """ノード間の有向リンク。"""
+    """ノードの間の、向きを持つリンク。"""
 
-    src: str  # 出発ノードの id
-    dst: str  # 到達ノードの id（未解決の場合は生の参照文字列）
-    kind: str  # schema.EDGE_KINDS のキー、または BODY_EDGE_KIND
+    src: str  # 出発するノードのid
+    dst: str  # 到達するノードのid（解決できなかった場合は、生の参照の文字列）
+    kind: str  # schema.EDGE_KINDSのキー、またはBODY_EDGE_KIND
     origin: str  # "frontmatter" | "body"
     resolved: bool = True
 
 
 @dataclass
 class Node:
-    """1 つの Markdown 文書 = 1 ノード。"""
+    """1つのMarkdownの文書が、1つのノードになる。"""
 
     id: str
     type: str
@@ -32,7 +32,7 @@ class Node:
     status: str
     tags: list[str]
     path: Path  # 絶対パス
-    rel: str  # リポジトリルートからの相対パス（POSIX 表記）
+    rel: str  # リポジトリの根からの相対パス（POSIXの表記）
     meta: dict  # フロントマター全体
     body: str  # 自動生成ブロックを取り除いた本文
     edges: list[Edge] = field(default_factory=list)
@@ -47,10 +47,10 @@ class Node:
 class Issue:
     """検証で見つかった問題。"""
 
-    code: str  # G001 など
+    code: str  # G001など
     severity: str  # ERROR | WARN
     message: str
-    location: str  # ファイルパス、または "graph"
+    location: str  # ファイルのパス、または"graph"
 
     def format(self) -> str:
         mark = "ERROR" if self.severity == ERROR else "WARN "
@@ -69,8 +69,8 @@ class Issue:
 class Graph:
     nodes: dict[str, Node] = field(default_factory=dict)
     load_issues: list[Issue] = field(default_factory=list)
-    # リポジトリルート。implemented_by の指し先を確かめるのに要る（G016）。
-    # 部分グラフでも引き継ぐ。読めなかった場合は None。
+    # リポジトリの根。implemented_byの指し先を確かめるのに要る（G016）。
+    # 部分グラフでも引き継ぐ。読めなかった場合はNone。
     root: Path | None = None
 
     def add(self, node: Node) -> None:
@@ -98,10 +98,10 @@ class Graph:
         *,
         include_mentions: bool = False,
     ) -> "Graph":
-        """指定ノードから `depth` ホップ以内だけを含む部分グラフを返す。
+        """指定したノードから、`depth`ホップ以内のノードだけを含む部分グラフを返す。
 
-        エッジの向きは無視する。**前提（依存先）と影響範囲（依存元）の両方**を
-        見たいので、片方向に絞ると近傍の意味をなさない。
+        エッジの向きは無視する。前提（依存先）と影響範囲（依存元）の両方を
+        見たいので、片方向に絞ると、近傍として役に立たない。
         """
         adjacency: dict[str, set[str]] = {}
         for node in self.nodes.values():

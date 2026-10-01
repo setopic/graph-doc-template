@@ -1,4 +1,4 @@
-"""docs/ を走査してグラフを組み立てる。"""
+"""docs/を走査して、グラフを組み立てる。"""
 
 from __future__ import annotations
 
@@ -23,9 +23,9 @@ TERMS_BLOCK_RE = re.compile(
 )
 FENCED_CODE_RE = re.compile(r"```.*?```", re.DOTALL)
 # コードスパン。開きと同じ数のバッククォートで閉じる（CommonMark）。
-# 1つだけを数えると、`` ` `` のようにバッククォートを含むコードスパンの後ろで
+# 1つだけを数えると、`` ` ``のようにバッククォートを含むコードスパンの後ろで
 # 組み合わせがずれ、同じ行のコードの中と外が入れ替わる（#24）。行はまたがない。
-# rename の PROTECTED_RE も、この形を使う。つないで使うので、番号ではなく名前で参照する。
+# renameのPROTECTED_REも、この形を使う。つないで使うので、番号ではなく名前で参照する。
 INLINE_CODE_PATTERN = r"(?<!`)(?P<ticks>`+)(?!`)[^\n]+?(?<!`)(?P=ticks)(?!`)"
 INLINE_CODE_RE = re.compile(INLINE_CODE_PATTERN)
 HTML_COMMENT_RE = re.compile(r"<!--.*?-->", re.DOTALL)
@@ -34,11 +34,11 @@ HTML_COMMENT_RE = re.compile(r"<!--.*?-->", re.DOTALL)
 def strip_non_prose(text: str) -> str:
     """リンクとして数えない部分を取り除く。
 
-    - コードブロック / コードスパン: 規約やテンプレートの説明には
-      `[[ID]]` のような記法の「例」が出てくる。これをリンクとして数えると、
-      書き方を説明しただけでリンク切れになる
-    - HTML コメント: 雛形の記入案内が入っている。案内文に書いた例や、
-      コメントアウトした記述をエッジにしない
+    - コードブロックとコードスパン: 規約や雛形の説明には、
+      `[[ID]]`のような記法の例が出てくる。これをリンクとして数えると、
+      書き方を説明しただけで、リンク切れになる
+    - HTMLコメント: 雛形の記入案内が入っている。案内文に書いた例や、
+      コメントアウトした記述を、エッジにしない
     """
     return INLINE_CODE_RE.sub(
         " ", FENCED_CODE_RE.sub(" ", HTML_COMMENT_RE.sub(" ", text))
@@ -46,26 +46,26 @@ def strip_non_prose(text: str) -> str:
 
 
 def strip_auto_block(text: str) -> str:
-    """sync が生成したブロックを取り除く。
+    """syncが生成したブロックを取り除く。
 
-    自動生成されたバックリンクをエッジとして数えてしまうと、
-    到達可能性も循環検出も自作自演で成立してしまうため必ず除外する。
+    自動で生成した逆向きのリンクをエッジとして数えると、
+    到達可能性も循環の検出も、自分で作ったリンクで成り立ってしまうので、必ず除く。
 
-    **用語の一覧も除く。** 各ドメインノードの表の写しなので、中のリンクを数えると
-    目次が ADR やユースケースを指していることになる。変更の検出（`G015`）でも、
-    一覧が作り直されただけの目次を「動いた」と数えない。
+    用語の一覧も除く。各ドメインノードの表の写しなので、中のリンクを数えると、
+    目次がADRやユースケースを指していることになる。変更の検出（`G015`）でも、
+    一覧が作り直されただけの目次を、動いたとは数えない。
     """
     return TERMS_BLOCK_RE.sub("", AUTO_BLOCK_RE.sub("", text))
 
 
 def load(root: Path) -> Graph:
-    """リポジトリルートを受け取り、グラフを返す。"""
+    """リポジトリの根を受け取り、グラフを返す。"""
     docs_root = root / schema.DOCS_DIR
     graph = Graph(root=root)
 
     if not docs_root.is_dir():
         graph.load_issues.append(
-            Issue("G000", ERROR, f"{schema.DOCS_DIR}/ が見つかりません", str(docs_root))
+            Issue("G000", ERROR, f"{schema.DOCS_DIR}/が見つからない", str(docs_root))
         )
         return graph
 
@@ -89,7 +89,7 @@ def load(root: Path) -> Graph:
         missing = [k for k in schema.REQUIRED_KEYS if not str(meta.get(k, "")).strip()]
         if missing:
             graph.load_issues.append(
-                Issue("G001", ERROR, f"必須キーがありません: {', '.join(missing)}", rel)
+                Issue("G001", ERROR, f"必須キーが無い: {', '.join(missing)}", rel)
             )
             continue
 
@@ -99,7 +99,7 @@ def load(root: Path) -> Graph:
                 Issue(
                     "G002",
                     ERROR,
-                    f"id {node_id!r} が {graph.nodes[node_id].rel} と重複しています",
+                    f"id {node_id!r}が{graph.nodes[node_id].rel}と重複している",
                     rel,
                 )
             )

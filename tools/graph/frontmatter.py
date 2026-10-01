@@ -1,10 +1,10 @@
-"""YAML フロントマターの最小パーサ。
+"""YAMLのフロントマターを読む、最小限のパーサ。
 
-テンプレートを外部依存ゼロで動かすため、YAML のサブセットだけを扱う。
-未対応の記法は黙って無視せず FrontmatterError にする（壊れたグラフを
-「読めているつもり」で通さないため）。
+テンプレートを外部依存なしで動かすために、YAMLのサブセットだけを扱う。
+対応していない記法は、何も言わずに無視せず、FrontmatterErrorにする（誤ったグラフを
+読めたつもりで通さないため）。
 
-対応する記法::
+対応する記法は、次のとおりである。
 
     ---
     id: UC-01
@@ -16,8 +16,8 @@
     related:
     ---
 
-対応しない記法: ネストしたマップ、複数行文字列（| や >）、行末の # コメント、
-アンカー／エイリアス。これらが必要になったら PyYAML に差し替える。
+対応しない記法は、ネストしたマップ、複数行の文字列（|や>）、行末の#コメント、
+アンカーとエイリアスである。これらが必要になったら、PyYAMLに差し替える。
 """
 
 from __future__ import annotations
@@ -34,16 +34,16 @@ _FALSE = {"false", "no"}
 
 
 def split(text: str) -> tuple[dict, str]:
-    """`(フロントマターの dict, 本文)` を返す。"""
+    """`(フロントマターのdict, 本文)`を返す。"""
     lines = text.splitlines()
     if not lines or lines[0].strip() != DELIMITER:
-        raise FrontmatterError("先頭行が '---' ではありません（フロントマターが必要です）")
+        raise FrontmatterError("先頭の行が'---'ではない（フロントマターが必要である）")
 
     for i in range(1, len(lines)):
         if lines[i].strip() == DELIMITER:
             return _parse_block(lines[1:i]), "\n".join(lines[i + 1 :])
 
-    raise FrontmatterError("フロントマターを閉じる '---' が見つかりません")
+    raise FrontmatterError("フロントマターを閉じる'---'が見つからない")
 
 
 def _parse_block(lines: list[str]) -> dict:
@@ -51,7 +51,7 @@ def _parse_block(lines: list[str]) -> dict:
     current_key: str | None = None
 
     for offset, raw in enumerate(lines):
-        lineno = offset + 2  # 1 行目は開始デリミタ
+        lineno = offset + 2  # 1行目は開始のデリミタ
         line = raw.rstrip()
         stripped = line.strip()
 
@@ -61,31 +61,31 @@ def _parse_block(lines: list[str]) -> dict:
         # ブロックリストの項目
         if stripped.startswith("- "):
             if current_key is None:
-                raise FrontmatterError(f"{lineno} 行目: 対応するキーのないリスト項目です")
+                raise FrontmatterError(f"{lineno}行目: 対応するキーの無いリスト項目である")
             if not isinstance(data.get(current_key), list):
                 raise FrontmatterError(
-                    f"{lineno} 行目: キー {current_key!r} は値を持っているためリストにできません"
+                    f"{lineno}行目: キー{current_key!r}は値を持っているので、リストにできない"
                 )
             data[current_key].append(_scalar(stripped[2:], lineno))
             continue
 
         if line[0] in " \t":
-            raise FrontmatterError(f"{lineno} 行目: ネストしたマップは未対応です")
+            raise FrontmatterError(f"{lineno}行目: ネストしたマップには対応していない")
 
         if ":" not in line:
-            raise FrontmatterError(f"{lineno} 行目: 'key: value' の形ではありません -> {line!r}")
+            raise FrontmatterError(f"{lineno}行目: 'key: value'の形ではない -> {line!r}")
 
         key, _, value = line.partition(":")
         key = key.strip()
         value = value.strip()
 
         if not key:
-            raise FrontmatterError(f"{lineno} 行目: キーが空です")
+            raise FrontmatterError(f"{lineno}行目: キーが空である")
         if key in data:
-            raise FrontmatterError(f"{lineno} 行目: キー {key!r} が重複しています")
+            raise FrontmatterError(f"{lineno}行目: キー{key!r}が重複している")
 
         if value == "":
-            # 値なし = 空リスト、または直後にブロックリストが続く
+            # 値が無いのは、空のリストか、直後にブロックリストが続く場合
             data[key] = []
         elif value.startswith("[") and value.endswith("]"):
             inner = value[1:-1].strip()
@@ -101,7 +101,7 @@ def _parse_block(lines: list[str]) -> dict:
 def _scalar(token: str, lineno: int) -> object:
     token = token.strip()
     if not token:
-        raise FrontmatterError(f"{lineno} 行目: 空の値です")
+        raise FrontmatterError(f"{lineno}行目: 値が空である")
 
     if len(token) >= 2 and token[0] == token[-1] and token[0] in "\"'":
         return token[1:-1]
@@ -116,10 +116,10 @@ def _scalar(token: str, lineno: int) -> object:
 
 
 def set_scalar(text: str, key: str, value: str) -> str:
-    """フロントマター内の `key:` を書き換える。本文には触れない。
+    """フロントマターの中の`key:`を書き換える。本文には触れない。
 
-    見つからなければ何もしない。フロントマターが無い文書に
-    キーを生やす用途には使わない。
+    見つからなければ、何もしない。フロントマターが無い文書に
+    キーを足す用途には使わない。
     """
     import re
 
@@ -141,7 +141,7 @@ def set_scalar(text: str, key: str, value: str) -> str:
 
 
 def as_list(value: object) -> list[str]:
-    """フロントマターの値を文字列リストに正規化する。"""
+    """フロントマターの値を、文字列のリストに揃える。"""
     if value is None:
         return []
     if isinstance(value, list):

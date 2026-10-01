@@ -1,6 +1,6 @@
-"""ドキュメント知識グラフの検証・可視化ツール。
+"""設計文書のグラフを検証し、可視化するツール。
 
-外部依存なし。リポジトリルートで `python -m tools.graph check` を実行する。
+外部依存は無い。リポジトリの根で`python -m tools.graph check`を実行する。
 """
 
 from .loader import load

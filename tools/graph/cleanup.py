@@ -1,9 +1,9 @@
-"""テンプレート同梱のサンプルノードを一括で取り除く。
+"""テンプレートに同梱したサンプルノードを、まとめて取り除く。
 
-複製したテンプレートを実プロジェクトに転用するとき、サンプルの撤去は
-「ファイル削除 + 各 index.md の一覧から削除 + 残った参照の修正」に分かれる。
-最初の 2 つを自動化し、3 つ目は `check` に任せる（何を直すべきかは
-リンク切れとして正確に出るため、機械的に消してしまわない方がよい）。
+複製したテンプレートを実際のプロジェクトに使うとき、サンプルの撤去は
+「ファイルの削除」「各index.mdの一覧からの削除」「残った参照の修正」の3つに分かれる。
+最初の2つを自動で行い、3つ目は`check`に任せる（何を直すべきかは
+リンク切れとして正確に出るので、機械的に消さないほうがよい）。
 """
 
 from __future__ import annotations
@@ -21,7 +21,7 @@ DEFAULT_TAG = "sample"
 
 @dataclass
 class TaggedFile:
-    """削除対象のファイル。グラフのノードとは独立に、ファイルから直接読む。"""
+    """削除の対象のファイル。グラフのノードとは別に、ファイルから直接読む。"""
 
     id: str
     title: str
@@ -30,12 +30,12 @@ class TaggedFile:
 
 
 def find_tagged(root: Path, tag: str) -> list[TaggedFile]:
-    """`tags` に `tag` を持つファイルを、グラフを経由せずに探す。
+    """`tags`に`tag`を持つファイルを、グラフを経由せずに探す。
 
-    グラフから探すと、id が重複しているノードは loader に弾かれていて
-    見つからない。テンプレートからマージした直後がまさにその状態
-    （プロジェクト側とサンプルが同じ id を持つ）なので、
-    **撤去したいときに限って見つからない**ことになる。
+    グラフから探すと、idが重複しているノードはloaderが読み込んでいないので、
+    見つからない。テンプレートからマージした直後が、まさにその状態である
+    （プロジェクト側とサンプルが同じidを持つ）。そのため、
+    **撤去したいときに限って、見つからない**ことになる。
     """
     docs = root / schema.DOCS_DIR
     found: list[TaggedFile] = []
@@ -69,10 +69,10 @@ def find_tagged(root: Path, tag: str) -> list[TaggedFile]:
 
 
 def referencing_nodes(graph: Graph, target_ids: set[str]) -> dict[str, list[str]]:
-    """削除対象を指しているノードを `{削除対象 id: [参照元]}` で返す。
+    """削除の対象を指しているノードを、`{削除の対象のid: [参照元]}`で返す。
 
-    グラフから引くので、id が重複している場合は取りこぼすことがある。
-    削除後に `check` が確実に指摘するため、ここは参考情報でよい。
+    グラフから引くので、idが重複している場合は取りこぼすことがある。
+    削除した後に`check`が確実に指摘するので、ここは参考の情報でよい。
     """
     result: dict[str, list[str]] = {}
 
@@ -87,7 +87,7 @@ def referencing_nodes(graph: Graph, target_ids: set[str]) -> dict[str, list[str]
 
 
 def remove(root: Path, graph: Graph, tag: str, *, dry_run: bool) -> dict:
-    """タグの付いたノードを削除し、index.md の一覧からも外す。"""
+    """タグの付いたノードを削除し、index.mdの一覧からも外す。"""
     targets = find_tagged(root, tag)
     if not targets:
         return {"targets": [], "index_updated": [], "referenced_by": {}}
