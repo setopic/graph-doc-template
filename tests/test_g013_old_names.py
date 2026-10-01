@@ -51,7 +51,7 @@ class OldNames(unittest.TestCase):
         )
         issues = rule_g013_term_consistency(graph)
         self.assertEqual([i.code for i in issues], ["G013"])
-        self.assertIn("'得点' を使ってください", issues[0].message)
+        self.assertIn("'得点'を使う", issues[0].message)
         self.assertIn("文字列だった頃の名前", issues[0].message)
 
     def test_the_legacy_column_is_still_read(self):

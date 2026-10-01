@@ -1,7 +1,7 @@
 """グラフの検証ルール。
 
-ルールは 1 つの関数 = 1 つのコード。エラーメッセージに必ずコードを載せるので、
-「G007 が出た」で規約のどの条項かをすぐ引ける。
+1つのルールを1つの関数で書き、1つのコードを割り当てる。エラーメッセージには
+必ずコードを載せるので、「G007が出た」とき、規約のどの条項かをすぐに引ける。
 """
 
 from __future__ import annotations
@@ -16,32 +16,32 @@ from .loader import MDLINK_RE, WIKILINK_RE, strip_non_prose
 from .model import ERROR, WARN, Graph, Issue, Node
 from .rename import _scan_targets
 
-# ルールコードと概要（レポートと docs/00-meta/graph-rules.md の対応表に使う）
+# ルールコードと概要（レポートと、docs/00-meta/graph-rules.mdの対応表に使う）
 RULE_INDEX: dict[str, str] = {
-    "G000": "docs/ の構造が不正",
+    "G000": "docs/の構造が不正",
     "G001": "フロントマターが読めない / 必須キー不足",
-    "G002": "id が重複している",
-    "G003": "id 規約・type 語彙・配置ディレクトリの不一致",
+    "G002": "idが重複している",
+    "G003": "id規約・type語彙・配置ディレクトリの不一致",
     "G004": "リンク先が存在しない（リンク切れ）",
-    "G005": "ルート目次から到達できない孤立ノード",
+    "G005": "ルートの目次から到達できない孤立ノード",
     "G006": "依存関係が循環している",
     "G007": "層の逆流（下位層が上位層に依存している）",
-    "G008": "refines が異なる種別のノードを指している",
-    "G009": "status の語彙違反 / 成熟度の不整合",
-    "G010": "related が片側にしか書かれていない",
+    "G008": "refinesが異なる種別のノードを指している",
+    "G009": "statusの語彙違反 / 成熟度の不整合",
+    "G010": "relatedが片側にしか書かれていない",
     "G011": "確定していないまま長期間放置されている",
     "G012": "参照されすぎている（分割を検討）",
     "G013": "依存先の用語表が使わない語（旧称）を使っている",
     "G014": "テンプレートの必須の節が無い",
     "G015": "依存先が変わったのに追従していない",
-    "G016": "implemented_by の指し先が存在しない",
+    "G016": "implemented_byの指し先が存在しない",
     "G017": "文書と実装のどちらか片方だけが変わった",
-    "G018": "README の図が GitHub の描画上限に近い / 超えている",
-    "G019": "Markdown の表が途中で切れている",
+    "G018": "READMEの図がGitHubの描画上限に近い / 超えている",
+    "G019": "Markdownの表が途中で切れている",
     "G020": "取り下げた決定を現在の根拠として引いている",
     "G021": "自動生成ブロックより後ろに本文がある",
     "G022": "同じ用語が複数のドメインノードで定義されている",
-    "G023": "契約が「対応」に挙げたユースケースを depends_on に書いていない",
+    "G023": "契約が「対応」に挙げたユースケースをdepends_onに書いていない",
 }
 
 
@@ -53,10 +53,10 @@ def check_all(
     changed: set[str] | None = None,
     changed_files: set[str] | None = None,
 ) -> list[Issue]:
-    """`history` は `{相対パス: 最終コミット日}`。無ければ G011 を飛ばす。
+    """`history`は`{相対パス: 最終コミット日}`。無ければG011を飛ばす。
 
-    `changed` は「この変更で動いたノードの id」。無ければ G015 を飛ばす。
-    `changed_files` は同じ窓で動いたファイルすべて。無ければ G017 を飛ばす。
+    `changed`は、この変更で動いたノードのid。無ければG015を飛ばす。
+    `changed_files`は、同じ窓で動いたすべてのファイル。無ければG017を飛ばす。
     """
     issues: list[Issue] = list(graph.load_issues)
     for rule in (
@@ -96,7 +96,7 @@ def check_all(
 
 
 # --------------------------------------------------------------------------
-# G003: 同一性（id / type / 置き場所）
+# G003: 同一性（id・type・置き場所）
 # --------------------------------------------------------------------------
 def rule_g003_identity(graph: Graph) -> list[Issue]:
     issues: list[Issue] = []
@@ -107,7 +107,7 @@ def rule_g003_identity(graph: Graph) -> list[Issue]:
                 Issue(
                     "G003",
                     ERROR,
-                    f"未知の type {node.type!r}（許可: {', '.join(schema.NODE_TYPES)}）",
+                    f"未知のtype {node.type!r}（使える値: {', '.join(schema.NODE_TYPES)}）",
                     node.rel,
                 )
             )
@@ -119,7 +119,7 @@ def rule_g003_identity(graph: Graph) -> list[Issue]:
                 Issue(
                     "G003",
                     ERROR,
-                    f"type={node.type} の id は {prefix}- で始める必要があります（現在: {node.id}）",
+                    f"type={node.type}のidは{prefix}-で始める（現在: {node.id}）",
                     node.rel,
                 )
             )
@@ -132,7 +132,7 @@ def rule_g003_identity(graph: Graph) -> list[Issue]:
                     Issue(
                         "G003",
                         ERROR,
-                        f"type={node.type} は {schema.DOCS_DIR}/{expected_dir}/ に置いてください",
+                        f"type={node.type}は{schema.DOCS_DIR}/{expected_dir}/に置く",
                         node.rel,
                     )
                 )
@@ -153,7 +153,7 @@ def rule_g004_broken_links(graph: Graph) -> list[Issue]:
                 Issue(
                     "G004",
                     ERROR,
-                    f"{where}の {edge.kind}: {edge.dst!r} に対応するノードがありません",
+                    f"{where}の{edge.kind}: {edge.dst!r}に対応するノードが無い",
                     node.rel,
                 )
             )
@@ -169,7 +169,7 @@ def rule_g005_orphans(graph: Graph) -> list[Issue]:
             Issue(
                 "G005",
                 ERROR,
-                f"ルート目次ノード {schema.ROOT_NODE_ID} が見つかりません",
+                f"ルートの目次ノード{schema.ROOT_NODE_ID}が見つからない",
                 "graph",
             )
         ]
@@ -192,7 +192,7 @@ def rule_g005_orphans(graph: Graph) -> list[Issue]:
         Issue(
             "G005",
             ERROR,
-            f"{node.id} はルート目次から辿れません（どこかの index.md に載せてください）",
+            f"{node.id}はルートの目次から辿れない（どこかのindex.mdに載せる）",
             node.rel,
         )
         for node in graph.sorted_nodes()
@@ -233,7 +233,7 @@ def rule_g006_cycles(graph: Graph) -> list[Issue]:
                         Issue(
                             "G006",
                             ERROR,
-                            "依存が循環しています: " + " -> ".join(cycle),
+                            "依存が循環している: " + " -> ".join(cycle),
                             node.rel,
                         )
                     )
@@ -271,8 +271,8 @@ def rule_g007_layers(graph: Graph) -> list[Issue]:
                     Issue(
                         "G007",
                         ERROR,
-                        f"{node.id}({node.type}) が上位層の {target.id}({target.type}) に "
-                        f"{edge.kind} しています。依存は抽象度の高い側へ向けてください",
+                        f"{node.id}({node.type})が、上位層の{target.id}({target.type})に"
+                        f"{edge.kind}している。依存は抽象度の高い側へ向ける",
                         node.rel,
                     )
                 )
@@ -280,7 +280,7 @@ def rule_g007_layers(graph: Graph) -> list[Issue]:
 
 
 # --------------------------------------------------------------------------
-# G008: refines の種別一致
+# G008: refinesの種別の一致
 # --------------------------------------------------------------------------
 def rule_g008_refines_type(graph: Graph) -> list[Issue]:
     issues: list[Issue] = []
@@ -296,7 +296,7 @@ def rule_g008_refines_type(graph: Graph) -> list[Issue]:
                     Issue(
                         "G008",
                         ERROR,
-                        f"{edge.kind} は同じ type 同士のみです"
+                        f"{edge.kind}は同じtype同士でしか結べない"
                         f"（{node.id}:{node.type} -> {target.id}:{target.type}）",
                         node.rel,
                     )
@@ -315,7 +315,7 @@ def rule_g009_status(graph: Graph) -> list[Issue]:
                 Issue(
                     "G009",
                     ERROR,
-                    f"未知の status {node.status!r}（許可: {', '.join(schema.STATUSES)}）",
+                    f"未知のstatus {node.status!r}（使える値: {', '.join(schema.STATUSES)}）",
                     node.rel,
                 )
             )
@@ -333,7 +333,7 @@ def rule_g009_status(graph: Graph) -> list[Issue]:
                     Issue(
                         "G009",
                         WARN,
-                        f"stable な {node.id} が {target.status} の {target.id} に依存しています",
+                        f"stableな{node.id}が、{target.status}の{target.id}に依存している",
                         node.rel,
                     )
                 )
@@ -344,10 +344,10 @@ def rule_g009_status(graph: Graph) -> list[Issue]:
 # G011: 放置された未確定ノード
 # --------------------------------------------------------------------------
 def rule_g011_stale(graph: Graph, history: dict[str, date], today: date) -> list[Issue]:
-    """`draft` / `review` のまま長く動きがないノードを警告する。
+    """`draft`・`review`のまま、長く動きが無いノードを警告する。
 
-    「いつ draft になったか」ではなく「最後に触られたのはいつか」で見る。
-    書きかけでも手が入り続けているなら問題ではなく、**止まっていることが問題**。
+    「いつdraftになったか」ではなく、「最後に触られたのはいつか」で見る。
+    書きかけでも手が入り続けているなら問題はなく、止まっていることが問題だからである。
     """
     issues: list[Issue] = []
 
@@ -357,7 +357,7 @@ def rule_g011_stale(graph: Graph, history: dict[str, date], today: date) -> list
 
         last = history.get(node.rel)
         if last is None:
-            continue  # 未コミットのファイルなど。判断材料がないので飛ばす
+            continue  # 未コミットのファイルなど。判断の材料が無いので飛ばす
 
         days = (today - last).days
         if days > schema.STALE_AFTER_DAYS:
@@ -365,9 +365,9 @@ def rule_g011_stale(graph: Graph, history: dict[str, date], today: date) -> list
                 Issue(
                     "G011",
                     WARN,
-                    f"{node.status} のまま {days} 日間更新されていません"
-                    f"（最終更新 {last.isoformat()}）。"
-                    "確定させるか、不要なら削除してください",
+                    f"{node.status}のまま{days}日間更新されていない"
+                    f"（最終更新は{last.isoformat()}）。"
+                    "確定させるか、不要なら削除する",
                     node.rel,
                 )
             )
@@ -379,10 +379,10 @@ def rule_g011_stale(graph: Graph, history: dict[str, date], today: date) -> list
 # G012: 参照されすぎているノード
 # --------------------------------------------------------------------------
 def rule_g012_hub_nodes(graph: Graph) -> list[Issue]:
-    """多くのノードから `depends_on` されているノードを警告する。
+    """多くのノードから`depends_on`されているノードを警告する。
 
-    参照が集まるノードは、複数の概念が混ざっていることが多い。
-    変更したときの影響範囲が広く、追従の確認コストが跳ね上がる。
+    参照が集まるノードには、複数の概念が混ざっていることが多い。
+    変更したときの影響範囲が広く、追従を確かめる手間が大きく増える。
     """
     counts: dict[str, int] = {}
     for node in graph.sorted_nodes():
@@ -395,8 +395,8 @@ def rule_g012_hub_nodes(graph: Graph) -> list[Issue]:
         Issue(
             "G012",
             WARN,
-            f"{count} ノードから depends_on されています（上限 {limit}）。"
-            "概念が混ざっていないか点検し、必要なら分割してください",
+            f"{count}ノードからdepends_onされている（上限は{limit}）。"
+            "概念が混ざっていないかを点検し、必要なら分割する",
             graph.nodes[node_id].rel,
         )
         for node_id, count in sorted(counts.items())
@@ -405,7 +405,7 @@ def rule_g012_hub_nodes(graph: Graph) -> list[Issue]:
 
 
 # --------------------------------------------------------------------------
-# G010: related の相互性
+# G010: relatedの相互性
 # --------------------------------------------------------------------------
 def rule_g010_related_symmetry(graph: Graph) -> list[Issue]:
     symmetric_kinds = {k for k, spec in schema.EDGE_KINDS.items() if spec["symmetric"]}
@@ -422,7 +422,7 @@ def rule_g010_related_symmetry(graph: Graph) -> list[Issue]:
                     Issue(
                         "G010",
                         WARN,
-                        f"{target.id} 側の {edge.kind} に {node.id} がありません（相互リンク推奨）",
+                        f"{target.id}側の{edge.kind}に{node.id}が無い（相互にリンクする）",
                         node.rel,
                     )
                 )
@@ -430,14 +430,14 @@ def rule_g010_related_symmetry(graph: Graph) -> list[Issue]:
 
 
 # --------------------------------------------------------------------------
-# 用語表（G013 / G022 / 用語の一覧 / review の A003 が読む）
+# 用語表（G013・G022・用語の一覧・reviewのA003が読む）
 # --------------------------------------------------------------------------
-# 「## 用語」の節。次の同レベル見出しか文末まで。
+# 「## 用語」の節。次の同じレベルの見出しか、文末まで。
 _TERM_SECTION_RE = re.compile(
     rf"^##\s+{re.escape(schema.TERM_SECTION_HEADING)}\s*$(.*?)(?=^##\s|\Z)",
     re.MULTILINE | re.DOTALL,
 )
-# セル末尾の丸括弧。旧称になった経緯か、使ってよい条件が入っている
+# セルの末尾の丸括弧。旧称になった経緯か、使ってよい条件が入っている
 _TRAILING_NOTE_RE = re.compile(r"[（(]([^）)]*)[）)]\s*$")
 _INNER_PAREN_RE = re.compile(r"[（(][^）)]*[）)]")
 _SEPARATOR_RE = re.compile(r"[、,]")
@@ -454,9 +454,9 @@ def _is_separator(cells: list[str]) -> bool:
 
 
 def term_table_lines(body: str) -> list[str]:
-    """「用語」の節にある最初の表を、行のまま返す。用語表でなければ空。
+    """「用語」の節にある最初の表を、行のまま返す。用語表でなければ空を返す。
 
-    **用語が空の行（雛形の空行）は落とす。** 見出しと区切りの行は残す。
+    用語が空の行（雛形の空行）は落とす。見出しと区切りの行は残す。
     用語の一覧（`sync`）が、ノードの表をそのまま写すのに使う。
     """
     section = _TERM_SECTION_RE.search(body)
@@ -491,9 +491,9 @@ def term_table_lines(body: str) -> list[str]:
 
 
 def term_rows(body: str) -> list[dict[str, str]]:
-    """「用語」表を、行ごとの `{列の見出し: セル}` にする。
+    """「用語」表を、行ごとの`{列の見出し: セル}`にする。
 
-    列は位置ではなく見出しで探す。列が増えても壊れないようにするため。
+    列は、位置ではなく見出しで探す。列が増えても、正しく読めるようにするためである。
     """
     lines = term_table_lines(body)
     if not lines:
@@ -509,11 +509,11 @@ def term_rows(body: str) -> list[dict[str, str]]:
 
 
 def forbidden_terms(body: str) -> dict[str, tuple[str, str]]:
-    """用語表から `{使わない語: (正しい用語, 注記)}` を作る。
+    """用語表から、`{使わない語: (正しい用語, 注記)}`を作る。
 
-    読むのは「旧称」列と、1.19 までの「使ってはいけない言い換え」列
+    読むのは「旧称」の列と、1.19までの「使ってはいけない言い換え」の列である
     （`schema.TERM_OLD_NAME_COLUMNS`）。**古い列名も読み続ける。** 読まなくなると、
-    取り込んだ派生で `G013` が黙って止まる。
+    それを取り込んだ派生で、気づかないうちに`G013`が止まる。
     """
     found: dict[str, tuple[str, str]] = {}
     for row in term_rows(body):
@@ -523,8 +523,8 @@ def forbidden_terms(body: str) -> dict[str, tuple[str, str]]:
             if not term or not raw:
                 continue
 
-            # 末尾の括弧はセル全体にかかる注記として扱う。
-            # 「スコア、点数（文字列だった頃の名前）」の注記は両方にかかっている
+            # 末尾の括弧は、セル全体にかかる注記として扱う。
+            # 「スコア、点数（文字列だった頃の名前）」の注記は、両方の語にかかっている
             note_match = _TRAILING_NOTE_RE.search(raw)
             note = note_match.group(1).strip() if note_match else ""
             listed = _TRAILING_NOTE_RE.sub("", raw)
@@ -539,10 +539,10 @@ def forbidden_terms(body: str) -> dict[str, tuple[str, str]]:
 
 
 def _prerequisites(graph: Graph, node_id: str) -> list[str]:
-    """`depends_on` / `refines` を辿って到達できるノードを返す（間接も含む）。
+    """`depends_on`・`refines`を辿って到達できるノードを返す（間接のものも含む）。
 
-    **直接の依存だけでは足りない。** 契約はユースケース経由でドメインに繋がるので、
-    直接に絞ると「契約が語彙を破っている」場合を丸ごと見落とす。
+    直接の依存だけでは足りない。契約はユースケースを経由してドメインに繋がるので、
+    直接のものに絞ると、契約が語彙に反している場合をすべて見落とす。
     """
     kinds = {"depends_on", "refines"}
     seen: set[str] = set()
@@ -566,15 +566,15 @@ def _snippet(text: str, index: int, word: str) -> str:
 
 
 def rule_g013_term_consistency(graph: Graph) -> list[Issue]:
-    """依存先の用語表が「旧称」に挙げた語の使用を警告する。
+    """依存先の用語表が「旧称」に挙げた語を使っていたら、警告する。
 
-    用語は**同じ意味なら同じ用語**で揃える。言い換えを並べて塞ぐことはしない
-    （並べ尽くせず、文脈で意味が変わる語で断り書きが増え続けた。1.20.0）。
-    ただし**改名で使わなくなった語は、文字列で確実に言える。** そこだけを機械で見る。
+    用語は、同じ意味なら同じ用語で揃える。言い換えを並べて防ぐことはしない
+    （並べ尽くせず、文脈で意味が変わる語のために断り書きが増え続けた。1.20.0）。
+    ただし、改名して使わなくなった語は、文字列で確実に判定できる。そこだけを機械で見る。
 
     **語の意味までは分からない。** 旧称が別の概念の名前として正しく使われている場合や、
-    否定するために持ち出した場合も引っかかる。だから警告に留め、判断の材料
-    （注記と前後の文）を出すところまでを仕事とする。
+    否定するために持ち出した場合も当たる。だから警告にとどめ、判断の材料
+    （注記と前後の文）を出すところまでを、このルールの仕事とする。
     """
     vocabulary = {
         node.id: terms
@@ -586,7 +586,7 @@ def rule_g013_term_consistency(graph: Graph) -> list[Issue]:
 
     issues: list[Issue] = []
     for node in graph.sorted_nodes():
-        # 用語表そのものは対象外。旧称を「挙げている」ことは「使っている」ことではない
+        # 用語表そのものは対象外。旧称を挙げていることは、使っていることではない
         text = strip_non_prose(_TERM_SECTION_RE.sub(" ", node.body))
 
         for owner_id in _prerequisites(graph, node.id):
@@ -594,14 +594,14 @@ def rule_g013_term_consistency(graph: Graph) -> list[Issue]:
                 count = text.count(word)
                 if not count:
                     continue
-                where = f"（{count} 箇所）" if count > 1 else ""
-                reason = f"。{owner_id} の注記: {note}" if note else ""
+                where = f"（{count}か所）" if count > 1 else ""
+                reason = f"。{owner_id}の注記: {note}" if note else ""
                 issues.append(
                     Issue(
                         "G013",
                         WARN,
-                        f"{word!r} は {owner_id} の用語表が使わない語に挙げています"
-                        f"{where}。{term!r} を使ってください{reason}"
+                        f"{word!r}は、{owner_id}の用語表が使わない語に挙げている"
+                        f"{where}。{term!r}を使う{reason}"
                         f" / {_snippet(text, text.find(word), word)}",
                         node.rel,
                     )
@@ -617,17 +617,17 @@ _HEADING_RE = re.compile(r"^##\s+(.+?)\s*$", re.MULTILINE)
 
 
 def sections(body: str) -> list[str]:
-    """本文の `## ` 見出しを順に返す。
+    """本文の`## `の見出しを、順に返す。
 
-    `node.body` は sync が生成するブロックを取り除いた後の本文なので、
+    `node.body`は、syncが生成するブロックを取り除いた後の本文なので、
     「関連ドキュメント（自動生成）」は数えない。
-    コードブロックの中の `## ` も落とす（雛形の説明に現れる）。
+    コードブロックの中の`## `も落とす（雛形の説明に現れる）。
     """
     return _HEADING_RE.findall(strip_non_prose(body))
 
 
 def required_sections(node: Node) -> tuple[str, ...]:
-    """そのノードに求める節。refines を持つなら親から切り出した側の定義を使う。"""
+    """そのノードに求める節。refinesを持つなら、親から切り出した側の定義を使う。"""
     if node.out_edges("refines"):
         refined = schema.REQUIRED_SECTIONS_REFINED.get(node.type)
         if refined is not None:
@@ -636,15 +636,15 @@ def required_sections(node: Node) -> tuple[str, ...]:
 
 
 def rule_g014_required_sections(graph: Graph) -> list[Issue]:
-    """type ごとに決めた必須の節が本文にあるかを見る。
+    """typeごとに決めた必須の節が、本文にあるかを見る。
 
-    **雛形の全節ではなく「これが無いと文書として成立しない」節だけ**を対象にする
-    （schema.REQUIRED_SECTIONS）。全節を必須にすると、意図的に省いた節まで
-    警告になり、「層を無理に埋めない」という方針と衝突する。
+    **対象は雛形の全節ではなく、それが無いと文書として成立しない節だけである**
+    （schema.REQUIRED_SECTIONS）。全節を必須にすると、意図して省いた節まで
+    警告になり、「層を無理に埋めない」という方針と食い違う。
 
     節が空でないかまでは見ない。見出しがあることしか確かめられないので、
-    **「なし」と書いてあれば通る。** それでよい。書く場所を用意させることが目的で、
-    書かないと決めたことを明示させるのもこのルールの役目である。
+    「なし」と書いてあれば通る。それでよい。目的は書く場所を用意させることで、
+    書かないと決めたことを明示させるのも、このルールの役目である。
     """
     issues: list[Issue] = []
     for node in graph.sorted_nodes():
@@ -659,7 +659,7 @@ def rule_g014_required_sections(graph: Graph) -> list[Issue]:
             Issue(
                 "G014",
                 WARN,
-                f"{node.type} に必要な節がありません: "
+                f"{node.type}に必要な節が無い: "
                 + " / ".join(repr(name) for name in missing)
                 + "。書くことが無いなら「なし」と書く",
                 node.rel,
@@ -672,17 +672,17 @@ def rule_g014_required_sections(graph: Graph) -> list[Issue]:
 # G015: 依存先が変わったのに追従していない
 # --------------------------------------------------------------------------
 def rule_g015_unfollowed_changes(graph: Graph, changed: set[str]) -> list[Issue]:
-    """この変更で動いたノードの、依存元が動いていないことを知らせる。
+    """この変更で動いたノードについて、依存元が動いていないことを知らせる。
 
     **グラフの状態ではなく、変更の状態を見る唯一のルールである。**
-    窓（`check --since`、既定は作業ツリー）の外では何も出ない。
+    窓（`check --since`。既定は作業ツリー）の外では、何も出ない。
 
-    「このノードを参照しているノード」は `sync` が一覧を作っているが、
-    **見たかどうかは記録されない。** 規約の散文に置くと守られないので、
-    変更した瞬間に一覧を突きつけるところまでを機械の仕事にする。
+    「このノードを参照しているノード」の一覧は`sync`が作っているが、
+    見たかどうかは記録されない。規約の文章に書くだけでは守られないので、
+    変更したその場で一覧を見せるところまでを、機械の仕事にする。
 
-    **追従が要るとは限らない。** 依存先の変更が依存元に関係しないことは多い。
-    見て「変えなくてよい」と判断したなら、そのまま進めてよい。
+    追従が要るとは限らない。依存先の変更が依存元に関係しないことは多い。
+    見たうえで変えなくてよいと判断したなら、そのまま進めてよい。
     """
     issues: list[Issue] = []
     for node in graph.sorted_nodes():
@@ -703,9 +703,9 @@ def rule_g015_unfollowed_changes(graph: Graph, changed: set[str]) -> list[Issue]
             Issue(
                 "G015",
                 WARN,
-                "依存先が変わりました: "
+                "依存先が変わった: "
                 + " / ".join(moved)
-                + "。追従が要るか確かめてください（要らなければそのままでよい）",
+                + "。追従が要るかを確かめる（要らなければそのままでよい）",
                 node.rel,
             )
         )
@@ -713,21 +713,21 @@ def rule_g015_unfollowed_changes(graph: Graph, changed: set[str]) -> list[Issue]
 
 
 # --------------------------------------------------------------------------
-# G016 / G017: 実装との対応（implemented_by）
+# G016・G017: 実装との対応（implemented_by）
 # --------------------------------------------------------------------------
 def implemented_by(node: Node) -> list[str]:
-    """そのノードが規定している実装のパス。宣言していなければ空。"""
+    """そのノードが規定している実装のパス。宣言していなければ空を返す。"""
     return as_list(node.meta.get(schema.IMPLEMENTED_BY_KEY))
 
 
 def rule_g016_implementation_exists(graph: Graph) -> list[Issue]:
-    """`implemented_by` の指し先がリポジトリに存在するかを見る。
+    """`implemented_by`の指し先が、リポジトリに存在するかを見る。
 
-    **本文の `[[ID]]` に対する G004 と同じ役割。** 指し先が消えても文書は
-    そのまま読めてしまうので、機械が確かめないと静かに腐る。
+    本文の`[[ID]]`に対する、G004と同じ役割である。指し先が消えても文書は
+    そのまま読めてしまうので、機械が確かめないと、気づかないうちに実態とずれていく。
 
-    リポジトリルートが分からない場合（部分グラフを手で組んだときなど）は
-    **何も言わない。** 確かめられないものを落とさない。
+    リポジトリの根が分からない場合（部分グラフを手で組んだときなど）は、
+    何も言わない。確かめられないもので失敗させない。
     """
     if graph.root is None:
         return []
@@ -741,8 +741,8 @@ def rule_g016_implementation_exists(graph: Graph) -> list[Issue]:
                 Issue(
                     "G016",
                     ERROR,
-                    f"implemented_by の指し先がありません: {target!r}。"
-                    "同じリポジトリの中のパスだけを指せます",
+                    f"implemented_byの指し先が無い: {target!r}。"
+                    "指せるのは、同じリポジトリの中のパスだけである",
                     node.rel,
                 )
             )
@@ -752,16 +752,16 @@ def rule_g016_implementation_exists(graph: Graph) -> list[Issue]:
 def rule_g017_implementation_drift(
     graph: Graph, changed: set[str], changed_files: set[str]
 ) -> list[Issue]:
-    """文書と実装のどちらか片方だけが変わったことを知らせる。
+    """文書と実装の、片方だけが変わったことを知らせる。
 
-    **G015 を文書と実装の境界にまたがらせたもの。** 見ているのは同じく
-    変更の窓の中だけで、両方が同じ窓に入っていれば何も言わない。
+    G015を、文書と実装の境界にまたがらせたものである。見ているのはG015と同じく
+    変更の窓の中だけで、両方が同じ窓に入っていれば、何も言わない。
 
-    **どちらの向きも出す。** 実装だけ動いたなら文書が遅れており、
-    文書だけ動いたなら実装が遅れている。どちらが正しいかは機械には分からない。
+    どちらの向きも出す。実装だけが動いたなら文書が遅れていて、
+    文書だけが動いたなら実装が遅れている。どちらが正しいかは、機械には分からない。
 
-    **追従が要るとは限らない。** 実装の内部を整理しただけなら文書は動かない。
-    「見たか」を確かめるところまでが仕事である。
+    追従が要るとは限らない。実装の内部を整理しただけなら、文書は動かない。
+    「見たか」を確かめるところまでが、このルールの仕事である。
     """
     issues: list[Issue] = []
     for node in graph.sorted_nodes():
@@ -782,9 +782,9 @@ def rule_g017_implementation_drift(
                 Issue(
                     "G017",
                     WARN,
-                    "実装が変わりました: "
+                    "実装が変わった: "
                     + " / ".join(moved)
-                    + "。文書の追従が要るか確かめてください",
+                    + "。文書の追従が要るかを確かめる",
                     node.rel,
                 )
             )
@@ -793,9 +793,9 @@ def rule_g017_implementation_drift(
                 Issue(
                     "G017",
                     WARN,
-                    "この文書が変わりましたが、実装は動いていません: "
+                    "この文書が変わったが、実装は動いていない: "
                     + " / ".join(targets)
-                    + "。実装の追従が要るか確かめてください",
+                    + "。実装の追従が要るかを確かめる",
                     node.rel,
                 )
             )
@@ -803,17 +803,17 @@ def rule_g017_implementation_drift(
 
 
 # --------------------------------------------------------------------------
-# G018: README の図が GitHub の描画上限に近い
+# G018: READMEの図がGitHubの描画上限に近い
 # --------------------------------------------------------------------------
 def rule_g018_diagram_size(graph: Graph) -> list[Issue]:
-    """README に書き込まれた図が、GitHub の描画上限に収まっているか。
+    """READMEに書き込まれた図が、GitHubの描画上限に収まっているか。
 
-    **グラフからではなく、README に実際に入っている図を数える。**
-    `--aggregate` や `--focus` で間引いているリポジトリでも正しく測れるし、
-    GitHub が描こうとするのもその図そのものだから。
+    **数えるのは、グラフではなく、READMEに実際に入っている図である。**
+    `--aggregate`や`--focus`で減らしているリポジトリでも正しく測れるし、
+    GitHubが描こうとするのも、その図そのものだからである。
 
-    上限を超えている場合はエラーにする。図が丸ごと描画されず、README が
-    壊れた状態になっているため。近づいているだけなら警告に留める。
+    上限を超えている場合は、エラーにする。図が丸ごと描画されず、READMEに
+    図が表示されていない状態だからである。近づいているだけなら、警告にとどめる。
     """
     if graph.root is None:
         return []
@@ -823,18 +823,18 @@ def rule_g018_diagram_size(graph: Graph) -> list[Issue]:
     if count is None or count < schema.MERMAID_WARN_EDGES:
         return []
 
-    # ちょうど上限でも落ちる。GitHub の文言が
-    # 「500 edges found, but the limit is 500」で、その時点で描画されていない。
+    # ちょうど上限でも描画されない。GitHubの文言が
+    # 「500 edges found, but the limit is 500」で、その時点で図は消えている。
     if count >= schema.MERMAID_MAX_EDGES:
         return [
             Issue(
                 "G018",
                 ERROR,
-                f"README の図のエッジが {count} 本で、GitHub の上限 "
-                f"{schema.MERMAID_MAX_EDGES} 本に達しています。"
-                "GitHub 上では図が描画されません。"
-                "Makefile の README_GRAPH_ARGS に --aggregate を足して"
-                "型ごとにまとめてください",
+                f"READMEの図のエッジが{count}本で、GitHubの上限の"
+                f"{schema.MERMAID_MAX_EDGES}本に達している。"
+                "GitHub上では図が描画されない。"
+                "MakefileのREADME_GRAPH_ARGSに--aggregateを足して、"
+                "型ごとにまとめる",
                 "README.md",
             )
         ]
@@ -843,25 +843,25 @@ def rule_g018_diagram_size(graph: Graph) -> list[Issue]:
         Issue(
             "G018",
             WARN,
-            f"README の図のエッジが {count} 本で、GitHub の上限 "
-            f"{schema.MERMAID_MAX_EDGES} 本に近づいています。"
-            "超えると図が丸ごと描画されなくなります",
+            f"READMEの図のエッジが{count}本で、GitHubの上限の"
+            f"{schema.MERMAID_MAX_EDGES}本に近づいている。"
+            "超えると、図が丸ごと描画されなくなる",
             "README.md",
         )
     ]
 
 
 # --------------------------------------------------------------------------
-# G019: Markdown の表が途中で切れている
+# G019: Markdownの表が途中で切れている
 # --------------------------------------------------------------------------
 FENCE_RE = re.compile(r"^\s*(?:```|~~~)")
 TABLE_SEP_RE = re.compile(r"^\s*\|[\s:|-]+\|\s*$")
 
 
 def _fenced_lines(lines: list[str]) -> list[bool]:
-    """各行がコードブロックの中かどうか。**囲みの行そのものも中とみなす。**
+    """各行がコードブロックの中かどうか。囲みの行そのものも、中とみなす。
 
-    規約文書や雛形は「表の書き方」をコードブロックで例示する。
+    規約の文書や雛形は、表の書き方をコードブロックで例示する。
     そこを数えると、正しい文書が落ちる。
     """
     inside = False
@@ -876,18 +876,15 @@ def _fenced_lines(lines: list[str]) -> list[bool]:
 
 
 def find_broken_tables(text: str) -> list[tuple[int, str]]:
-    """表から切り離された行を `(行番号, 行の中身)` で返す。
+    """表から切り離された行を、`(行番号, 行の中身)`で返す。
 
-    Markdown の表は**ヘッダ行と区切り行（`| --- |`）で始まり、
-    空行か本文で終わる。** 途中に段落や空行が入ると、そこから先の行は
-    表ではなくただの文字列として描画される。
+    Markdownの表は、ヘッダ行と区切り行（`| --- |`）で始まり、
+    空行か本文で終わる。途中に段落や空行が入ると、そこから先の行は、
+    表ではなく、ただの文字列として描画される。
 
-    判定は 2 つだけ。`|` で始まる行のうち、
-
-    - 直前の行も `|` で始まる（＝表の続き）
-    - 次の行が区切り行（＝正しい表の先頭）
-
-    のどちらでもないものを切り離された行とみなす。
+    判定は2つだけである。`|`で始まる行は、直前の行も`|`で始まっていれば
+    表の続きで、次の行が区切り行なら正しい表の先頭である。
+    どちらにも当てはまらない行を、切り離された行とみなす。
     """
     lines = text.split("\n")
     fenced = _fenced_lines(lines)
@@ -906,14 +903,14 @@ def find_broken_tables(text: str) -> list[tuple[int, str]]:
 
 
 def rule_g019_broken_tables(graph: Graph) -> list[Issue]:
-    """表の途中に段落や空行が入って、描画が壊れていないか。
+    """表の途中に段落や空行が入って、表の描画が崩れていないか。
 
-    **グラフの検査は通るのに、GitHub 上の表示だけが壊れる。**
-    用語表を段落で分断した実例があり、`G013` のパーサは行ベースなので
-    取り残された行も拾えていた。**機械は困らず、読む人だけが困る。**
+    **グラフの検査は通るのに、GitHub上の表示だけが崩れる。**
+    用語表を段落で分断した実例がある。`G013`の読み取りは行単位なので、
+    取り残された行も拾えていた。機械は困らず、読む人だけが困る。
 
-    `docs/` の下だけでなく README や CONTRIBUTING も見る。実際に壊れていたのは
-    README で、しかも `merge=ours` のせいで上流の修正が伝播していなかった。
+    `docs/`の下だけでなく、READMEやCONTRIBUTINGも見る。実際に崩れていたのは
+    READMEで、しかも`merge=ours`のために、上流の修正が派生に届いていなかった。
     """
     if graph.root is None:
         return []
@@ -923,7 +920,7 @@ def rule_g019_broken_tables(graph: Graph) -> list[Issue]:
         try:
             text = path.read_text(encoding="utf-8")
         except OSError:
-            continue  # 読めないものは他のルールが指す
+            continue  # 読めないものは、ほかのルールが指摘する
 
         rel = path.relative_to(graph.root).as_posix()
         for lineno, line in find_broken_tables(text):
@@ -931,9 +928,9 @@ def rule_g019_broken_tables(graph: Graph) -> list[Issue]:
                 Issue(
                     "G019",
                     ERROR,
-                    f"{lineno} 行目の表の行が、表から切り離されています。"
-                    "直前に段落か空行が入っているため、GitHub 上では"
-                    f"ただの文字列として描画されます: {line[:60]}",
+                    f"{lineno}行目の表の行が、表から切り離されている。"
+                    "直前に段落か空行が入っているので、GitHub上では"
+                    f"ただの文字列として描画される: {line[:60]}",
                     rel,
                 )
             )
@@ -948,20 +945,20 @@ PARAGRAPH_RE = re.compile(r"\n\s*\n")
 
 
 def paragraphs(body: str) -> list[str]:
-    """空行で区切った段落。**表は 1 つの段落にまとまる。**
+    """空行で区切った段落を返す。表は1つの段落にまとまる。
 
-    リンクとして数えない場所（コードブロック・コメント）は先に落とす。
-    雛形の記入案内は HTML コメントの中にあり、そこに書いた例を数えると
+    リンクとして数えない場所（コードブロック・コメント）は、先に落とす。
+    雛形の記入案内はHTMLコメントの中にあり、そこに書いた例を数えると、
     雛形そのものが落ちる。
     """
     return PARAGRAPH_RE.split(strip_non_prose(body))
 
 
 def _referenced_ids(text: str, base: Path, by_path: dict[Path, Node]) -> set[str]:
-    """その断片が指しているノードの id。解決できないリンクは無視する（G004 の仕事）。
+    """その断片が指しているノードのid。解決できないリンクは無視する（G004の仕事）。
 
-    `base` は相対リンクを解決する起点。**ノードは自分のディレクトリ、
-    README はリポジトリの根**を渡す。書き方の基準が違うだけで、判定は同じ。
+    `base`は、相対リンクを解決する起点である。ノードなら自分のディレクトリを、
+    READMEならリポジトリの根を渡す。リンクの書き方の基準が違うだけで、判定は同じ。
     """
     found = {raw.strip() for raw in WIKILINK_RE.findall(text)}
     for href in MDLINK_RE.findall(text):
@@ -974,14 +971,14 @@ def _referenced_ids(text: str, base: Path, by_path: dict[Path, Node]) -> set[str
 
 
 def superseded_index(graph: Graph) -> dict[str, set[str]]:
-    """`取り下げられた id -> それを置き換えたノードの id` の索引。
+    """`取り下げられたid -> それを置き換えたノードのid`の索引。
 
-    **連鎖を辿る。** `A → B → C` と置き換わったとき、`A` の置き換え先は
-    `B` と `C` の両方とする。**現在の決定（連鎖の先端）を指すのは、直接の
-    置き換え先を指すより正しい。** 片方しか認めないと、正しく書いた文書が鳴る。
+    連鎖を辿る。`A → B → C`と置き換わったとき、`A`の置き換え先は、
+    `B`と`C`の両方とする。現在の決定（連鎖の先端）を指すほうが、直接の
+    置き換え先を指すより正しい。片方しか認めないと、正しく書いた文書で警告が出る。
 
-    `supersedes` は `G006` が循環を見ているが、**ここでは自前で番をする。**
-    循環していても検査が止まらないほうがよい。
+    `supersedes`の循環は`G006`が見ているが、ここでも自分で循環を避ける。
+    循環していても、検査が止まらないほうがよい。
     """
     direct: dict[str, set[str]] = {}
     for node in graph.nodes.values():
@@ -1005,18 +1002,18 @@ def superseded_index(graph: Graph) -> dict[str, set[str]]:
 def unacknowledged_citations(
     node: Node, graph: Graph, replaced_by: dict[str, set[str]]
 ) -> list[str]:
-    """そのノードが**断りなく**引いている deprecated なノードの id。
+    """そのノードが断りなく引いている、deprecatedなノードのid。
 
     判定は段落ごとに行う。**同じ段落の中で置き換え先も指していれば、
-    承知のうえで引いていると見なして黙る。**「以前は X と決めていた
-    （[[ADR-0008]]。いまは [[ADR-0014]]）」は正しい書き方だからである。
+    承知のうえで引いているとみなして、警告しない。**「以前はXと決めていた
+    （[[ADR-0008]]。いまは[[ADR-0014]]）」は正しい書き方だからである。
 
-    文書のどこかで指していれば足りる、にはしない。長い文書では別の話題で
-    置き換え先に触れているだけで黙ってしまい、実データで本物を取りこぼした。
+    文書のどこかで指していれば足りる、とはしない。長い文書では、別の話題で
+    置き換え先に触れているだけで警告が消え、実際のデータで本当に直すべき箇所を取りこぼした。
 
-    **自分が連鎖上の置き換え先なら、何度でも引いてよい。** 置き換えた側が
-    「あちらはこう決めていた」と書くのは仕事のうちで、直接の置き換え先でも、
-    2 つ前の決定でも変わらない。
+    自分が連鎖上の置き換え先なら、何度引いてもよい。置き換えた側が
+    「あちらはこう決めていた」と書くのは当然で、直接の置き換え先でも、
+    2つ前の決定でも変わらない。
     """
     return _unacknowledged(node.body, node.path.parent, node.id, graph, replaced_by)
 
@@ -1028,10 +1025,10 @@ def _unacknowledged(
     graph: Graph,
     replaced_by: dict[str, set[str]],
 ) -> list[str]:
-    """`unacknowledged_citations` の本体。**ノードでない文章にも当てる。**
+    """`unacknowledged_citations`の本体。ノードでない文章にも当てる。
 
-    `self_id` はその文章自身のノード id。README のようにノードでないものは
-    `None` を渡す。**置き換えた側の免除が効かなくなるだけ**で、他は同じ。
+    `self_id`は、その文章自身のノードid。READMEのようにノードでないものには、
+    `None`を渡す。置き換えた側の免除が効かなくなるだけで、ほかは同じである。
     """
     by_path = {n.path.resolve(): n for n in graph.nodes.values()}
     unacknowledged: set[str] = set()
@@ -1044,7 +1041,7 @@ def _unacknowledged(
                 continue
             successors = replaced_by.get(target_id, set())
             if self_id is not None and self_id in successors:
-                continue  # 置き換えた側。指さないほうがおかしい
+                continue  # 置き換えた側なので、置き換えた相手を指すのは自然である
             if successors & here:
                 continue  # その場で置き換え先も指している
             unacknowledged.add(target_id)
@@ -1053,38 +1050,37 @@ def _unacknowledged(
 
 
 def rule_g020_deprecated_references(graph: Graph) -> list[Issue]:
-    """本文が `deprecated` なノードを、現在の根拠として引いていないか。
+    """本文が、`deprecated`のノードを現在の根拠として引いていないか。
 
-    **問題は「参照していること」ではなく「現在の根拠として引いていること」。**
-    実データでは、置き換え先の ADR がすでに決まっているのに古いほうを指した
-    まま、という形がユースケース層と契約層に集中して残っていた。
+    **問題は、参照していることではなく、現在の根拠として引いていることである。**
+    実際のデータでは、置き換え先のADRがすでに決まっているのに古いほうを指した
+    ままの文書が、ユースケース層と契約層に集中して残っていた。
 
-    **歴史として引くのは正当なので、エラーにはできない。**
-    「以前は X と書いていた（[[ADR-0008]]）」は正しい使い方である。
-    `G009`〜`G015` と同じ警告にして、承知のうえで放置できる形にする。
+    歴史として引くのは正当なので、エラーにはできない。
+    「以前はXと書いていた（[[ADR-0008]]）」は正しい使い方である。
+    `G009`〜`G015`と同じ警告にして、承知のうえで放置できる形にする。
 
-    警告に添える直し方も**「置き換え先を指す」だけ**にする。「引き継がれた範囲を
-    書く」は、書く場所が**置き換えた側の ADR の「決定」**であって、
-    引いている側ではない。
+    警告に添える直し方も、「置き換え先を指す」だけにする。引き継がれた範囲を
+    書く場所は、置き換えた側のADRの「決定」であって、引いている側ではない。
 
-    黙るのは 4 つ。
+    次の4つの場合は、警告しない。1つめは確定した記録である
+    （`schema.IMMUTABLE_RECORD_TYPES`。既定では`stable`なADR）。確定したADRは
+    書き換えないので、本文を直させる指摘は成り立たない。確定前（`draft`・`review`）は
+    まだ決めている途中なので、対象に残す。2つめは、自分が連鎖上で指し先の
+    置き換え先にあたる場合で、置き換えた側は相手を指すのが自然である。
+    3つめは`index`ノードで、一覧は取り下げたものも並べるのが役目である。
+    4つめは、自分も`deprecated`の場合である。
 
-    - **確定した記録**（`schema.IMMUTABLE_RECORD_TYPES`。既定では `stable` な ADR）。
-      **確定した ADR は書き換えない**ので、本文を直させる指摘は成立しない。
-      確定前（`draft` / `review`）はまだ決めている途中なので対象に残す
-    - 自分が連鎖上の置き換え先である指し先（**置き換えた側は指さないとおかしい**）
-    - `index` ノード（一覧は取り下げたものも並べる。それが仕事である）
-    - 自分も `deprecated`
+    加えて、同じ段落の中で置き換え先も指していれば、警告しない。
 
-    加えて、**同じ段落の中で置き換え先も指していれば黙る。**
+    **実際に検査の対象として残るのは、現在の設計を述べる層である。** そこは
+    「いまどうなっているか」だけを書く場所なので、古い決定を指していたら、
+    生きている決定に差し替える。経緯を書き足すのではなく、取り下げたADRへの
+    参照ごと消すのが正しい。
 
-    **残るのは実質、現在の設計を述べる層である。** そこは「いまどうなっているか」
-    だけを書く場所なので、古い決定を指していたら**生きている決定に差し替える。**
-    経緯を書き足すのではなく、取り下げた ADR への参照ごと消えるのが正しい。
-
-    `G009` と重ならない。あちらは `stable` なノードの `depends_on` だけを見る。
-    こちらは status を問わず**本文のリンク**を見るので、実データの残りは
-    ほとんどこちらでしか出ない。
+    `G009`とは重ならない。`G009`は、`stable`なノードの`depends_on`だけを見る。
+    `G020`はstatusを問わず本文のリンクを見るので、実際のデータで残っていたものは、
+    ほとんど`G020`でしか出ない。
     """
     replaced_by = superseded_index(graph)
     issues: list[Issue] = []
@@ -1116,10 +1112,10 @@ def _g020_issue(
     return Issue(
         "G020",
         WARN,
-        "取り下げた決定を、断りなく引いています: "
+        "取り下げた決定を、断りなく引いている: "
         + " / ".join(named)
-        + "。生きている決定に差し替えてください"
-        "（歴史として引いているならそのままでよい）",
+        + "。生きている決定に差し替える"
+        "（歴史として引いているなら、そのままでよい）",
         location,
     )
 
@@ -1127,18 +1123,18 @@ def _g020_issue(
 def _readme_citations(
     graph: Graph, replaced_by: dict[str, set[str]]
 ) -> list[Issue]:
-    """README も決定を引く。**ノードではないので、ここで見ないと誰も見ない。**
+    """READMEも決定を引く。**ノードではないので、ここで見ないと誰も見ない。**
 
-    実測で、7 リポジトリのうち 3 つの README が取り下げ済みの ADR を現在の
-    根拠として引いていた。1 つは**移った先の事実を古いまま述べていた**
-    （「3 つの Bot を同居」。置き換えた決定の題は「台数を問わない」）。
-    **README はノードより読まれるのに、検査はノードより薄かった。**
+    実測で、7リポジトリのうち3つのREADMEが、取り下げ済みのADRを現在の
+    根拠として引いていた。1つは、置き換え後の事実を古いまま述べていた
+    （「3つのBotを同居」。置き換えた決定の題は「台数を問わない」）。
+    READMEはノードより読まれるのに、検査はノードより薄かった。
 
-    **見るのは README.md だけ。** `CONTRIBUTING.md` と `CLAUDE.md` は実測で
-    0 件で、`CLAUDE.md` は派生が共有しているため、テンプレート側の 1 件が
-    全派生で鳴る。
+    見るのは`README.md`だけである。`CONTRIBUTING.md`と`CLAUDE.md`は実測で
+    0件だった。しかも`CLAUDE.md`は派生が共有しているので、テンプレート側の1件が、
+    すべての派生で警告になる。
 
-    リンクの基準はリポジトリの根。README はそう書くためである。
+    リンクの基準は、リポジトリの根である。READMEは、そう書くからである。
     """
     if graph.root is None:
         return []
@@ -1148,7 +1144,7 @@ def _readme_citations(
     try:
         body = readme.read_text(encoding="utf-8")
     except OSError:
-        return []          # 読めないことを G020 の仕事にしない
+        return []          # 読めないことを、G020の仕事にしない
 
     stale = _unacknowledged(body, graph.root, None, graph, replaced_by)
     return [_g020_issue(stale, replaced_by, "README.md")] if stale else []
@@ -1158,15 +1154,15 @@ def _readme_citations(
 # G021: 自動生成ブロックより後ろに本文がある
 # --------------------------------------------------------------------------
 def content_after_auto_block(text: str) -> tuple[int, str] | None:
-    """自動生成ブロックより後ろに残った本文を `(行番号, 最初の行)` で返す。
+    """自動生成ブロックより後ろに残った本文を、`(行番号, 最初の行)`で返す。
 
-    **ファイルの生テキストを渡す。** `node.body` は `strip_auto_block` を
-    通した後なので、ブロックの前後が繋がってしまい判定にならない。
+    **ファイルの生のテキストを渡す。** `node.body`は`strip_auto_block`を
+    通した後なので、ブロックの前後が繋がってしまい、判定できない。
 
-    目印は `graph:auto:end` **だけ**を見る。目次の `graph:children:end` は
+    目印は`graph:auto:end`だけを見る。目次の`graph:children:end`は、
     文書の途中に置かれるのが正しい（一覧の後ろに使い方を書く）。
 
-    ブロックが 2 つある文書は既に壊れているが、**最後の 1 つ**を基準にする。
+    ブロックが2つある文書はすでに誤った状態だが、最後のブロックを基準にする。
     間に挟まった本文まで数えると、直す場所が分からない指摘になる。
     """
     index = text.rfind(schema.AUTO_BLOCK_END)
@@ -1185,29 +1181,29 @@ def content_after_auto_block(text: str) -> tuple[int, str] | None:
 
 
 def rule_g021_content_after_auto_block(graph: Graph) -> list[Issue]:
-    """`sync` が書くブロックより後ろに本文が残っていないか。
+    """`sync`が書くブロックより後ろに、本文が残っていないか。
 
-    自動ブロックは「関連ドキュメント（自動生成 / 手で編集しない）」という
-    **文書の締め**である。**その下に本文が続くとは読む人は思わない。**
+    自動ブロックは「関連ドキュメント（自動生成 / 手で編集しない）」という、
+    文書の締めである。読む人は、その下に本文が続くとは思わない。
 
-    しかも CLAUDE.md が「この塊を手で編集するな」と書いているので、
-    **下の本文を直したい人は「触るな」と書かれた塊を越えて行くことになる。**
+    しかもCLAUDE.mdが「この塊を手で編集するな」と書いている。そのため、
+    下の本文を直したい人は、「触るな」と書かれた塊を越えて行くことになる。
 
-    `sync` は自分では直せない。ブロックが既にあれば**その場で入れ替える**だけで、
-    後ろに回った本文は動かさない。だから一度こうなると、黙って残り続ける。
+    `sync`は、この状態を自分では直せない。ブロックがすでにあれば、その場で入れ替える
+    だけで、後ろに回った本文は動かさない。だから一度こうなると、誰も気づかないまま残り続ける。
 
-    **実際に `META-01` で 85 行（文書の 12%）が落ちていた。**
-    共有ファイルなので 7 リポジトリすべてが同じ状態だった。1.14.2 で直した。
+    **実際に、`META-01`で85行（文書の12%）が自動ブロックの後ろに落ちていた。**
+    共有ファイルなので、7リポジトリすべてが同じ状態だった。1.14.2で直した。
 
-    **警告ではなくエラーにした。** `G019` と同じで、承知のうえで放置してよい
-    場合が無い。読む人に届いていない本文がそこにある、というだけである。
+    警告ではなく、エラーにした。`G019`と同じで、承知のうえで放置してよい
+    場合が無い。読む人に届いていない本文が、そこにあるだけである。
     """
     issues: list[Issue] = []
     for node in graph.sorted_nodes():
         try:
             text = node.path.read_text(encoding="utf-8")
         except OSError:
-            continue  # 読めないものは他のルールが指す
+            continue  # 読めないものは、ほかのルールが指摘する
 
         found = content_after_auto_block(text)
         if found is None:
@@ -1218,9 +1214,9 @@ def rule_g021_content_after_auto_block(graph: Graph) -> list[Issue]:
             Issue(
                 "G021",
                 ERROR,
-                f"{lineno} 行目から、自動生成ブロックより後ろに本文が残っています。"
-                "ブロックは文書の締めなので、読む人はここまで来ません。"
-                f"本文をブロックの前へ移してください: {line[:60]}",
+                f"{lineno}行目から、自動生成ブロックより後ろに本文が残っている。"
+                "ブロックは文書の締めなので、読む人はここまで読まない。"
+                f"本文をブロックの前へ移す: {line[:60]}",
                 node.rel,
             )
         )
@@ -1232,7 +1228,7 @@ def rule_g021_content_after_auto_block(graph: Graph) -> list[Issue]:
 # G022: 同じ用語が複数のドメインノードで定義されている
 # --------------------------------------------------------------------------
 def _linked_ids(by_path: dict[Path, str], graph: Graph, node: Node, text: str) -> set[str]:
-    """セルの中のリンクが指しているノードの id。loader と同じく、ノードの場所から解決する。"""
+    """セルの中のリンクが指しているノードのid。loaderと同じく、ノードの場所から解決する。"""
     ids = {raw.strip() for raw in WIKILINK_RE.findall(text) if raw.strip() in graph.nodes}
     for href in MDLINK_RE.findall(text):
         target = by_path.get((node.path.parent / href.split("#", 1)[0]).resolve())
@@ -1244,18 +1240,18 @@ def _linked_ids(by_path: dict[Path, str], graph: Graph, node: Node, text: str) -
 def rule_g022_duplicate_terms(graph: Graph) -> list[Issue]:
     """同じ用語が複数のドメインノードの用語表にあり、定義元が決まっていないものを警告する。
 
-    **同じ意味なら同じ用語で、定義は 1 か所に置く。** 別の意味なら語を分ける。
-    `G013` は依存の向きにしか届かないので、**兄弟ノードが同じ語を別の意味で
-    定義していても、これまで誰も気づけなかった**（META-01 の G013 の節）。
+    **同じ意味なら同じ用語で書き、定義は1か所に置く。** 別の意味なら語を分ける。
+    `G013`は依存の向きにしか届かない。そのため、兄弟ノードが同じ語を別の意味で
+    定義していても、これまで誰も気づけなかった（META-01のG013の節）。
 
-    **意図した再掲は黙る。** 他のノードの語を自分の表にも載せるときは、
+    意図して同じ語を載せた場合は、警告しない。ほかのノードの語を自分の表にも載せるときは、
     「意味」の欄から定義元へリンクする。同じ語を載せている行のうち、
-    **他の定義元へリンクしていない行が 1 つだけなら、それが定義元である。**
+    ほかの定義元へリンクしていない行が1つだけなら、その行が定義元である。
 
-    実測（1.20.0）: tournament-bot の重複 5 件のうち 3 件がリンクつきの再掲で、
-    鳴るのは 2 件（別の意味で 2 回定義されていた）。ほかの派生 4 つは 0 件。
+    1.20.0で実測した。tournament-botの重複5件のうち3件がリンクつきの再掲で、
+    警告が出るのは2件だった（別の意味で2回定義されていた）。ほかの派生4つは0件だった。
 
-    **リンクは「承知している」印にすぎない。** 同じ意味かどうかまでは見ない。
+    リンクは「承知している」という印にすぎない。同じ意味かどうかまでは見ない。
     """
     by_path = {n.path.resolve(): n.id for n in graph.nodes.values()}
     defined: dict[str, list[tuple[Node, str]]] = {}
@@ -1287,10 +1283,10 @@ def rule_g022_duplicate_terms(graph: Graph) -> list[Issue]:
             Issue(
                 "G022",
                 WARN,
-                f"{term!r} が {' / '.join(sorted(ids))} の用語表で定義されていて、"
-                f"{' / '.join(unlinked)} のどれも他の定義元へリンクしていません。"
-                "同じ意味なら定義を 1 か所に置き、ほかの行は「意味」から定義元へリンクしてください。"
-                "別の意味なら語を分けてください",
+                f"{term!r}が{' / '.join(sorted(ids))}の用語表で定義されていて、"
+                f"{' / '.join(unlinked)}のどれも、ほかの定義元へリンクしていない。"
+                "同じ意味なら定義を1か所に置き、ほかの行は「意味」から定義元へリンクする。"
+                "別の意味なら語を分ける",
                 graph.nodes[unlinked[0]].rel,
             )
         )
@@ -1298,9 +1294,9 @@ def rule_g022_duplicate_terms(graph: Graph) -> list[Issue]:
 
 
 # --------------------------------------------------------------------------
-# G023: 契約が「対応」に挙げたユースケースを depends_on に書いていない
+# G023: 契約が「対応」に挙げたユースケースをdepends_onに書いていない
 # --------------------------------------------------------------------------
-# HTTP の契約の雛形は、表ではなく 1 行で書かせる（`対応するユースケース: [[UC-01]]`）
+# HTTPの契約の雛形は、表ではなく1行で書かせる（`対応するユースケース: [[UC-01]]`）
 _CORRESPONDENCE_LINE_RE = re.compile(r"^\s*対応するユースケース\s*[:：](.*)$", re.MULTILINE)
 _BARE_ID_RE = re.compile(r"\b[A-Z]{2,5}-\d{2,4}\b")
 
@@ -1312,13 +1308,13 @@ def _use_cases_in(by_path: dict[Path, str], graph: Graph, node: Node, text: str)
 
 
 def contract_use_cases(by_path: dict[Path, str], graph: Graph, node: Node) -> set[str]:
-    """契約の本文が「対応」として挙げたユースケース。
+    """契約の本文が、「対応」として挙げたユースケース。
 
-    読むのは、**見出しが「対応」で始まる表の列**（対応・対応するユースケース・
-    対応する例外フロー）と、**「対応するユースケース:」の行**だけである。
-    本文の道案内のリンクまで読むと、tournament-bot だけで 29 件当たった（1.21.0）。
+    読むのは、見出しが「対応」で始まる表の列（対応・対応するユースケース・
+    対応する例外フロー）と、「対応するユースケース:」の行だけである。
+    本文の道案内のリンクまで読むと、tournament-botだけで29件当たった（1.21.0）。
     """
-    body = strip_non_prose(node.body)  # 雛形の記入案内（HTML コメント）に [[UC-xx]] がある
+    body = strip_non_prose(node.body)  # 雛形の記入案内（HTMLコメント）に[[UC-xx]]がある
     found: set[str] = set()
     for match in _CORRESPONDENCE_LINE_RE.finditer(body):
         found |= _use_cases_in(by_path, graph, node, match.group(1))
@@ -1342,21 +1338,21 @@ def contract_use_cases(by_path: dict[Path, str], graph: Graph, node: Node) -> se
 
 
 def rule_g023_contract_use_cases(graph: Graph) -> list[Issue]:
-    """契約が「対応」に挙げたユースケースが、`depends_on` に無いことを警告する。
+    """契約が「対応」に挙げたユースケースが、`depends_on`に無いことを警告する。
 
-    規約は「契約ノードは必ず対応するユースケースを `depends_on` に持つ」。
-    **同じことを本文にも書かせているので、片方だけ書き忘れる。** 本文のリンクは
-    リンク切れしか見られず、書き忘れると、そのユースケースを書き換えても `G015` が
-    契約を挙げず、`G013` もユースケースの先の用語表を契約に当てない。
+    規約では、契約ノードは、対応するユースケースを必ず`depends_on`に持つ。
+    **同じことを本文にも書かせているので、片方だけを書き忘れる。** 本文のリンクは
+    リンク切れしか検査されない。書き忘れると、そのユースケースを書き換えても`G015`が
+    契約を挙げず、`G013`もユースケースの先にある用語表を契約に当てない。
 
-    実例（1.21.0）: tournament-bot で 4 つの契約から 10 本、gacha-monitor で 2 本が
-    抜けていた。棄権のボタンを定義していた契約が UC-38 に依存しておらず、
-    DOM-14 の用語表が届いていなかった。
+    1.21.0で見つかった実例では、tournament-botで4つの契約から10本、gacha-monitorで
+    2本が抜けていた。棄権のボタンを定義していた契約がUC-38に依存しておらず、
+    DOM-14の用語表が届いていなかった。
 
-    **「UC-25 と同じ」のように振る舞いを借りている行も数える。** 借りている UC が
-    その振る舞いの仕様そのもので、変われば契約も見直すことになる。
+    「UC-25と同じ」のように振る舞いを借りている行も数える。借りているUCが、
+    その振る舞いの仕様そのもので、それが変われば契約も見直すことになる。
 
-    警告にしてある。**ブランチへの push では止めず**、PR と main の `--strict` で落とす。
+    警告にしてある。ブランチへのpushでは止めず、PRとmainの`--strict`で落とす。
     """
     by_path = {n.path.resolve(): n.id for n in graph.nodes.values()}
     issues: list[Issue] = []
@@ -1375,8 +1371,8 @@ def rule_g023_contract_use_cases(graph: Graph) -> list[Issue]:
             Issue(
                 "G023",
                 WARN,
-                f"「対応」に {' / '.join(missing)} を挙げていますが、depends_on にありません。"
-                "受け持っているなら depends_on に足してください",
+                f"「対応」に{' / '.join(missing)}を挙げているが、depends_onに無い。"
+                "受け持っているなら、depends_onに足す",
                 node.rel,
             )
         )

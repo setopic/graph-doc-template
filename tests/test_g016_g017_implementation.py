@@ -112,14 +112,14 @@ class Drift(unittest.TestCase):
         code, output = run_check(self.tmp)
         self.assertEqual(code, 0, "G017 は警告")
         self.assertIn("G017", output)
-        self.assertIn("実装が変わりました", output)
+        self.assertIn("実装が変わった", output)
         self.assertIn("dom-01-booking.md", output)
 
     def test_document_moved_alone(self):
         self.touch(DOMAIN_PATH, "\n席は 1 つずつ押さえる。\n")
         _, output = run_check(self.tmp)
         self.assertIn("G017", output)
-        self.assertIn("実装は動いていません", output)
+        self.assertIn("実装は動いていない", output)
 
     def test_both_moved_is_silent(self):
         self.touch(SOURCE_PATH, "def confirm():\n    pass\n")
