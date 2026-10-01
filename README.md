@@ -186,7 +186,7 @@ python -m tools.graph render --format mermaid --focus DOM-01
 `make check` `make sync` `make linkify` `make readme` も同じことをする（Makefile 参照）。
 **まとめて回すなら `make all`**（`check` + `sync` + `linkify` + `readme`）。
 
-エージェント向けのスキルが `.claude/skills/` にある（`/grill` — 要件を書き始める前に詰める）。
+エージェント向けのスキルが`.claude/skills/`にある。`/grill`は要件を書き始める前に詰める。`/yomiyasu`は日本語の文章を読みやすく直す。日本語の書き方の決まりはCLAUDE.mdの「日本語の書き方」にある。
 
 ## 新しいノードを作る
 
