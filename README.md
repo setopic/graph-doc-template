@@ -191,7 +191,7 @@ python -m tools.graph new --type usecase --id UC-02 --title "予約をキャン�
 
 あとは本文と`depends_on`を書いて、`check`を通す。
 
-同じtypeに複数の書式が要るときは、`--template`で雛形を選ぶ。`contract`には、汎用（既定）とHTTP用の2つがある。
+同じtypeに複数の書式が要るときは、`--template`で雛形を選ぶ。`contract`には、汎用（既定）、HTTP用、チャットの操作用の3つがある。
 
 ```bash
 python -m tools.graph new --type contract --template contract-http --id CON-02 --title "..."
@@ -298,7 +298,7 @@ python -m tools.graph linkify
 
 "Use this template"で作ったリポジトリは、テンプレートと履歴を共有していない。そのままマージすると、共通の祖先が無いので、共有ファイルまで軒並み競合する。先に共有ファイルをテンプレートと一致させ、競合するところを無くしてから繋ぐ。
 
-1. 共有ファイルをテンプレートの内容で上書きして、コミットする。対象は`tools/`、`docs/00-meta/graph-rules.md`、`docs/00-meta/node-types.md`、`docs/00-meta/templates/`、`CLAUDE.md`、`Makefile`、`.github/`、`.gitattributes`、`.gitignore`、`LICENSE`である。`README.md`・`docs/index.md`・各`index.md`・ノード本体は、プロジェクト固有なので対象外である
+1. 共有ファイルをテンプレートの内容で上書きして、コミットする。対象は`tools/`、`docs/00-meta/`、`.claude/skills/`、`CLAUDE.md`、`TEMPLATE_CHANGELOG.md`、`Makefile`、`.github/`、`.gitattributes`、`.gitignore`、`LICENSE`である。`README.md`・`docs/index.md`・各`index.md`・ノード本体は、プロジェクト固有なので対象外である
 
 2. upstreamを追加する。
 
@@ -359,21 +359,17 @@ python -m tools.graph check && python -m tools.graph sync
 
 ## CI
 
-`.github/workflows/graph-check.yml`が、pushとPRで次の3つを回す。GitHub以外を使うなら、この3つのコマンドを同等のジョブに移すだけでよい。
+`.github/workflows/graph-check.yml`が、pushとPRで次の5つを確かめる。最後に`stats`で集計も出す。GitHub以外を使うなら、これらのコマンドを同等のジョブに移すだけでよい。
 
-```bash
-python -m tools.graph check
-```
+| 順 | コマンド | 確かめること |
+| --- | --- | --- |
+| 1 | `python -m unittest discover -s tests -t .` | ツール自体のテスト |
+| 2 | `python -m tools.graph check` | グラフの検証。mainへのpushとPRでは`--strict`を付ける。PRでは`--since`付きで追従漏れの一覧も出す |
+| 3 | `python -m tools.graph sync --check` | 関連ドキュメント・目次の一覧・用語の一覧が最新か |
+| 4 | `python -m tools.graph linkify --check` | 本文の`[[ID]]`が相対リンクに直っているか |
+| 5 | `make readme-check` | READMEの図が最新か |
 
-```bash
-python -m tools.graph sync --check
-```
-
-```bash
-python -m tools.graph render --format mermaid --into README.md --check
-```
-
-3つ目があるので、グラフを変えたままREADMEの図を更新し忘れると、CIが落ちる。
+5つ目は、`render --into README.md --check`を`make`経由で呼ぶ。`graph.mk`の`README_GRAPH_ARGS`（`--aggregate`など）を効かせるためである。5つ目があるので、グラフを変えたままREADMEの図を更新し忘れると、CIが落ちる。
 
 ## ライセンス
 
