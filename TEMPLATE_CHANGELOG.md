@@ -26,6 +26,26 @@ python -m tools.graph --version
 
 ---
 
+## 1.23.6 — 2026-10-01
+
+### 直したもの
+
+`README.md`を、CLAUDE.mdの「日本語の書き方」に揃えた（setopic/graph-doc-template#16）。太字を減らし、日本語と英数字の間の半角空白を取った。理由を書いていた箇条書きは、地の文か表にした。図のブロックは触っていない。「Python 3.12+」は`test_python_floor`が照合するので、空白を残した。
+
+書き直しとは別のコミットで、中身の誤りを3つ直した。
+
+| 箇所 | 直したこと |
+| --- | --- |
+| 「新しいノードを作る」 | `contract`の雛形を「2つ」と書いていた。`contract-interaction`を含めて3つある |
+| 「最初に一度だけ」の共有ファイルの一覧 | `docs/00-meta/ai-review.md`・`.claude/skills/`・`TEMPLATE_CHANGELOG.md`が抜けていた。`docs/00-meta/`はまとめて挙げた |
+| 「CI」 | 回すものを「3つ」と書いていた。実際はテスト・`check`・`sync --check`・`linkify --check`・`make readme-check`の5つを確かめ、`stats`で集計も出す |
+
+### 取り込む側の作業
+
+無い。`README.md`は`merge=ours`なので、取り込む側には届かない。テンプレート側の改善を取り込みたいときは、`git diff HEAD template/main -- README.md`で差分を見て、手で反映する。
+
+---
+
 ## 1.23.5 — 2026-10-01
 
 ### 直したもの
