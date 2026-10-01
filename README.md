@@ -301,7 +301,7 @@ python -m tools.graph linkify
 
 "Use this template"で作ったリポジトリは、テンプレートと履歴を共有していない。そのままマージすると、共通の祖先が無いので、共有ファイルまで軒並み競合する。先に共有ファイルをテンプレートと一致させ、競合するところを無くしてから繋ぐ。
 
-1. 共有ファイルをテンプレートの内容で上書きして、コミットする。対象は`tools/`、`docs/00-meta/`、`.claude/skills/`、`CLAUDE.md`、`TEMPLATE_CHANGELOG.md`、`Makefile`、`.github/`、`.gitattributes`、`.gitignore`、`LICENSE`である。`README.md`・`docs/index.md`・各`index.md`・ノード本体は、プロジェクト固有なので対象外である
+1. 共有ファイルをテンプレートの内容で上書きして、コミットする。対象は`tools/`、`tests/`、`docs/00-meta/`、`.claude/skills/`、`CLAUDE.md`、`TEMPLATE_CHANGELOG.md`、`Makefile`、`.github/`、`.gitattributes`、`.gitignore`、`LICENSE`である。`README.md`・`docs/index.md`・各`index.md`・ノード本体は、プロジェクト固有なので対象外である
 
 2. upstreamを追加する。
 
