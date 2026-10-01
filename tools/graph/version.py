@@ -21,5 +21,5 @@ TEMPLATE_VERSION = "1.24.2"
 # 上げるときは、次の3つを揃える。ずれたら、test_python_floorが落ちる。
 #   1. この定数
 #   2. .github/workflows/graph-check.ymlのpython-version
-#   3. READMEの「必要なもの」
+#   3. READMEの冒頭にある「Python 3.12+」の記載
 MIN_PYTHON = "3.12"
