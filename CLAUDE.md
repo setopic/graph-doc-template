@@ -173,9 +173,9 @@ python -m tools.graph render --format mermaid --focus DOM-01 --depth 1
 
 ## テンプレート由来のファイルを直すとき
 
-このリポジトリを`graph-doc-template`から起こしたなら、`tools/`・`docs/00-meta/`・`.claude/skills/`はテンプレート側と共通である。更新は`git merge template/main`で取り込む。
+このリポジトリを`graph-doc-template`から起こしたなら、`tools/`・`docs/00-meta/`・`.claude/skills/`はテンプレート側と共通である。更新は`make update`で取り込む。`git merge template/main`を直接使うと`merge=ours`が効かず、`README.md`や`docs/index.md`が競合する。
 
-**共通ファイルを手でコピーして同期しない。** 削除が伝わらず、テンプレートとの差が広がっていく。共通ファイルに手を入れるなら、テンプレート側に入れてからマージで戻す。こちらだけで直すと、次のマージで競合する。取り込みの手順はREADMEの「テンプレートの更新を取り込む」にあり、`reset-samples --yes`まで含めて1セットである。
+**共通ファイルを手でコピーして同期しない。** 削除が伝わらず、テンプレートとの差が広がっていく。共通ファイルに手を入れるなら、テンプレート側に入れてからマージで戻す。こちらだけで直すと、次のマージで競合する。取り込みの手順はテンプレートのREADMEの「テンプレートの更新を取り込む」にあり、`reset-samples --yes`まで含めて1セットである。
 
 ## テンプレート本体を変えるとき
 

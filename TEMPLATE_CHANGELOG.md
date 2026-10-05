@@ -26,6 +26,20 @@ python -m tools.graph --version
 
 ---
 
+## 1.28.1 — 2026-10-05
+
+### 修正
+
+CLAUDE.mdの「テンプレート由来のファイルを直すとき」が、取り込みを`git merge template/main`で行うと書いていたのを、`make update`に直した（#48）。1.26.0から、取り込みは`make update`で行う。`git merge`を直接使うと`merge=ours`が効かず、`README.md`や`docs/index.md`が競合する。
+
+同じ節が手順の参照先にしていた「READMEの「テンプレートの更新を取り込む」」は、派生のREADMEには無い。READMEは`merge=ours`で、派生の内容が残るためである。参照先を「テンプレートのREADME」に改めた。
+
+### 取り込む側の作業
+
+なし。CLAUDE.mdは共有ファイルなので、通常のマージで入る。
+
+---
+
 ## 1.28.0 — 2026-10-04
 
 ### 変更
