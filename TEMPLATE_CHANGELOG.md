@@ -26,6 +26,18 @@ python -m tools.graph --version
 
 ---
 
+## 1.28.2 — 2026-10-05
+
+### 修正
+
+CLAUDE.mdとgrillが、READMEの図を`python -m tools.graph render --format mermaid --into README.md`で作るよう書いていたのを、`make readme`に直した（#49）。CIは`make readme-check`で図を比べ、`graph.mk`の`README_GRAPH_ARGS`を付ける。Pythonを直接呼ぶと、`graph.mk`で図を間引いているリポジトリ（`--aggregate`など）では、CIと違う図ができて落ちる。
+
+### 取り込む側の作業
+
+なし。CLAUDE.mdと`.claude/skills/`は共有ファイルなので、通常のマージで入る。
+
+---
+
 ## 1.28.1 — 2026-10-05
 
 ### 修正

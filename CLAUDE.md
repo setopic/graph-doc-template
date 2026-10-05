@@ -27,8 +27,10 @@
    ```
 
    ```bash
-   python -m tools.graph render --format mermaid --into README.md
+   make readme
    ```
+
+   図は`make readme`で作る。`graph.mk`に置いた`README_GRAPH_ARGS`を付けて描くので、CIの`make readme-check`と同じ図になる。`python -m tools.graph render`を直接呼ぶと、図を間引いているリポジトリでCIが落ちる。
 
    本文に`[[ID]]`を書いたら`linkify`も回す。`[[ID]]`は書くときの略記で、そのままではGitHub上でただの文字として表示される。`linkify`が相対リンクに整形する。参照としての扱いはどちらも同じなので、グラフの検証結果は変わらない。
 

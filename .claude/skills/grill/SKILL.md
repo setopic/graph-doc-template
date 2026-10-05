@@ -103,7 +103,7 @@ frontierが空になるまで繰り返す。空とは、決定木のすべての
 
 ```bash
 python -m tools.graph sync
-python -m tools.graph render --format mermaid --into README.md
+make readme
 python -m tools.graph check
 ```
 
@@ -138,7 +138,7 @@ python -m tools.graph check
 - [ ] 断りなく仮定したものが1つも無い
 - [ ] 利用者が「これで合っている」と言った
 - [ ] 決まったことが、ADR・ユースケース・ドメインノードに移っている
-- [ ] `sync`と`render --into README.md`を回した（ノードを増やしたなら必須）
+- [ ] `sync`と`make readme`を回した（ノードを増やしたなら必須）
 - [ ] `check`が通る
 
 **ほかの人の作業中の変更を巻き込まないこと。** 同じリポジトリを、別のセッションが触っていることがある。`git add -A`ではなく、自分が作ったファイルを名指しで足す。
