@@ -46,6 +46,29 @@ FINDING_CODES: dict[str, str] = {
 
 _CODE_LIST = "\n".join(f"- {code}: {desc}" for code, desc in FINDING_CODES.items())
 
+# 応答の形。structured outputs（output_config.format）で、この形のJSONだけを返させる。
+FINDINGS_SCHEMA: dict = {
+    "type": "object",
+    "properties": {
+        "findings": {
+            "type": "array",
+            "items": {
+                "type": "object",
+                "properties": {
+                    "code": {"type": "string", "enum": list(FINDING_CODES)},
+                    "quote": {"type": "string", "description": "本文からの短い引用"},
+                    "message": {"type": "string", "description": "何が問題か"},
+                    "suggestion": {"type": "string", "description": "どう直すか"},
+                },
+                "required": ["code", "quote", "message", "suggestion"],
+                "additionalProperties": False,
+            },
+        },
+    },
+    "required": ["findings"],
+    "additionalProperties": False,
+}
+
 SYSTEM_PROMPT = f"""あなたは、設計文書のレビュアーである。日本語のMarkdownの文書を読み、
 文章の質と、文書に現れた過剰な設計だけを指摘すること。
 
@@ -81,10 +104,6 @@ SYSTEM_PROMPT = f"""あなたは、設計文書のレビュアーである。日
 - A008・A009は断定しない。依存先の本文は渡していないので、根拠が依存先にだけ
   あることがある。「根拠が本文から辿れない」と書き、根拠のノードを本文から指すか、
   先送りとして書き直すことを提案する
-
-次のJSONだけを返すこと。前後に説明を書かない。
-
-{{"findings": [{{"code": "A001", "quote": "本文からの短い引用", "message": "何が問題か", "suggestion": "どう直すか"}}]}}
 """
 
 
@@ -213,9 +232,6 @@ def parse_findings(node: Node, data: dict) -> list[Finding]:
     blocks = data.get("content") or []
     text = "".join(b.get("text", "") for b in blocks if b.get("type") == "text")
     text = text.strip()
-    # モデルが```jsonで包むことがある
-    if text.startswith("```"):
-        text = text.split("\n", 1)[-1].rsplit("```", 1)[0]
     try:
         parsed = json.loads(text)
     except json.JSONDecodeError:
@@ -253,6 +269,7 @@ def review_node(
         "max_tokens": MAX_TOKENS,
         "system": SYSTEM_PROMPT,
         "messages": [{"role": "user", "content": build_prompt(graph, node)}],
+        "output_config": {"format": {"type": "json_schema", "schema": FINDINGS_SCHEMA}},
     }
     return parse_findings(node, transport(payload, api_key))
 

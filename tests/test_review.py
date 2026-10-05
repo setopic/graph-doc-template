@@ -47,12 +47,6 @@ class ParseFindings(unittest.TestCase):
         self.assertEqual(found[0].code, "A001")
         self.assertEqual(found[0].message, "曖昧")
 
-    def test_unwraps_a_fenced_code_block(self):
-        """モデルが ```json で包むことがある。"""
-        inner = json.dumps({"findings": [{"code": "A002", "message": "冗長"}]})
-        data = {"content": [{"type": "text", "text": f"```json\n{inner}\n```"}]}
-        self.assertEqual(len(review.parse_findings(node(), data)), 1)
-
     def test_drops_unknown_codes(self):
         """G 系の番号を返してきても受け取らない。名前空間を分けた意味が消える。"""
         data = api_response([{"code": "G014", "message": "節が無い"}])
@@ -166,6 +160,10 @@ class ReviewNode(unittest.TestCase):
         self.assertEqual(seen["key"], "dummy")
         self.assertEqual(seen["payload"]["model"], "test-model")
         self.assertIn("A001", seen["payload"]["system"])
+        self.assertEqual(
+            seen["payload"]["output_config"]["format"]["schema"],
+            review.FINDINGS_SCHEMA,
+        )
 
 
 class SelectNodes(unittest.TestCase):
