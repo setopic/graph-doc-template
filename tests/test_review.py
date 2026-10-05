@@ -201,6 +201,21 @@ class SelectNodes(unittest.TestCase):
         self.assertEqual([n.id for n in picked], ["DOM-01"])
 
 
+class Usage(unittest.TestCase):
+    def test_adds_up_the_usage_of_each_response(self):
+        totals: dict[str, int] = {}
+        review.add_usage(totals, {"usage": {"input_tokens": 10, "output_tokens": 3}})
+        review.add_usage(totals, {"usage": {"input_tokens": 5, "cache_read_input_tokens": 7}})
+        self.assertEqual(totals["input_tokens"], 15)
+        self.assertEqual(totals["output_tokens"], 3)
+        self.assertEqual(totals["cache_read_input_tokens"], 7)
+
+    def test_a_response_without_usage_counts_as_zero(self):
+        totals: dict[str, int] = {}
+        review.add_usage(totals, {})
+        self.assertEqual(totals["input_tokens"], 0)
+
+
 class WithoutAnApiKey(unittest.TestCase):
     def test_exits_zero_and_says_so(self):
         """キーが無いのはグラフの問題ではない。失敗にしない。"""

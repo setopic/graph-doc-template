@@ -433,10 +433,17 @@ def cmd_review(args: argparse.Namespace) -> int:
     )
 
     findings: list[review.Finding] = []
+    usage: dict[str, int] = {}
+
+    def counted(payload: dict, key: str) -> dict:
+        data = review.call_api(payload, key)
+        review.add_usage(usage, data)
+        return data
+
     for node in targets:
         try:
             found = review.review_node(
-                graph, node, api_key=api_key, model=args.model
+                graph, node, api_key=api_key, model=args.model, transport=counted
             )
         except review.ReviewError as error:
             print(f"  {node.id}: {error}")
@@ -451,6 +458,7 @@ def cmd_review(args: argparse.Namespace) -> int:
             json.dumps(
                 {
                     "reviewed": len(targets),
+                    "usage": usage,
                     "findings": [f.to_dict() for f in findings],
                 },
                 ensure_ascii=False,
@@ -458,6 +466,8 @@ def cmd_review(args: argparse.Namespace) -> int:
             )
         )
         return 0
+
+    print(f"使ったトークン: {review.format_usage(usage)}")
 
     if findings:
         print("")

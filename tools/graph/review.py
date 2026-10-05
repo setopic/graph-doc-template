@@ -297,3 +297,22 @@ def select_nodes(graph: Graph, *, limit: int) -> list[Node]:
 def api_key_from_env() -> str | None:
     key = (os.environ.get(API_KEY_ENV) or "").strip()
     return key or None
+
+
+USAGE_FIELDS = (
+    "input_tokens",
+    "cache_creation_input_tokens",
+    "cache_read_input_tokens",
+    "output_tokens",
+)
+
+
+def add_usage(totals: dict[str, int], data: dict) -> None:
+    """応答の`usage`を`totals`に足す。費用とキャッシュの効き方を見るために使う。"""
+    usage = data.get("usage") or {}
+    for field in USAGE_FIELDS:
+        totals[field] = totals.get(field, 0) + int(usage.get(field) or 0)
+
+
+def format_usage(totals: dict[str, int]) -> str:
+    return "、".join(f"{field} {totals.get(field, 0)}" for field in USAGE_FIELDS)
