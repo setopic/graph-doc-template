@@ -140,6 +140,9 @@ def call_api(payload: dict, api_key: str) -> dict:
         raise ReviewError(f"APIが{error.code}を返した: {detail}") from error
     except urllib.error.URLError as error:
         raise ReviewError(f"APIに接続できない: {error.reason}") from error
+    except TimeoutError as error:
+        # 応答の読み込み中のタイムアウトは、URLErrorに包まれずにここへ来る
+        raise ReviewError(f"APIの応答が{TIMEOUT_SECONDS}秒で返らない") from error
     ensure_complete(data)
     return data
 

@@ -81,6 +81,22 @@ class EnsureComplete(unittest.TestCase):
         review.ensure_complete({"stop_reason": "end_turn", "content": []})
 
 
+class CallApi(unittest.TestCase):
+    """通信の失敗は、どれもReviewErrorにする。reviewの終了コードは常に0である。"""
+
+    def test_read_timeout_becomes_review_error(self):
+        def slow_urlopen(request, timeout):
+            raise TimeoutError("The read operation timed out")
+
+        original = review.urllib.request.urlopen
+        review.urllib.request.urlopen = slow_urlopen
+        try:
+            with self.assertRaises(review.ReviewError):
+                review.call_api({}, "dummy")
+        finally:
+            review.urllib.request.urlopen = original
+
+
 class OverDesign(unittest.TestCase):
     """A008・A009（文書に現れた過剰な設計）。"""
 
