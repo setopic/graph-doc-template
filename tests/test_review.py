@@ -108,9 +108,13 @@ class OverDesign(unittest.TestCase):
         self.assertIn("先送りを明記した", review.SYSTEM_PROMPT)
 
 
+def prompt_text(blocks: list[dict]) -> str:
+    return "\n\n".join(block["text"] for block in blocks)
+
+
 class Prompt(unittest.TestCase):
     def test_includes_the_body_and_the_type(self):
-        prompt = review.build_prompt(make_graph([node()]), node())
+        prompt = prompt_text(review.build_prompt(make_graph([node()]), node()))
         self.assertIn("仮の本文", prompt)
         self.assertIn("type: domain", prompt)
 
@@ -126,7 +130,7 @@ class Prompt(unittest.TestCase):
         child.edges.append(
             Edge(src="UC-01", dst="DOM-02", kind="depends_on", origin="frontmatter")
         )
-        prompt = review.build_prompt(make_graph([owner, child]), child)
+        prompt = prompt_text(review.build_prompt(make_graph([owner, child]), child))
         self.assertIn("参加", prompt)
         self.assertIn("エントリー", prompt)
 
@@ -139,8 +143,24 @@ class Prompt(unittest.TestCase):
             "| 棄権 | 対戦を行えなくなったこと | — |\n"
         ))
         upstream = node("DOM-01", body="## 定義\n両チームが辞退した場合など。\n")
-        prompt = review.build_prompt(make_graph([sibling, upstream]), upstream)
+        prompt = prompt_text(review.build_prompt(make_graph([sibling, upstream]), upstream))
         self.assertIn("棄権（DOM-14）: 対戦を行えなくなったこと", prompt)
+
+    def test_the_vocabulary_comes_first_and_is_cached(self):
+        """用語の一覧はどのノードでも同じなので、先頭に置いてキャッシュする。"""
+        owner = node("DOM-02", body=(
+            "## 用語\n\n"
+            "| 用語 | 意味 | 旧称 |\n"
+            "| --- | --- | --- |\n"
+            "| 棄権 | 対戦を行えなくなったこと | — |\n"
+        ))
+        other = node("UC-01", "usecase", "## 概要\nx\n")
+        graph = make_graph([owner, other])
+        first = review.build_prompt(graph, owner)
+        second = review.build_prompt(graph, other)
+        self.assertEqual(first[0], second[0])
+        self.assertIn("cache_control", first[0])
+        self.assertNotIn("cache_control", first[-1])
 
 
 class ReviewNode(unittest.TestCase):

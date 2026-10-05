@@ -201,8 +201,30 @@ def vocabulary_for(graph: Graph, node: Node) -> list[tuple[str, str, str, list[s
     return vocabulary
 
 
-def build_prompt(graph: Graph, node: Node) -> str:
-    """1ノード分の入力を組み立てる。"""
+def build_prompt(graph: Graph, node: Node) -> list[dict]:
+    """1ノード分の入力を、テキストのブロックの並びで組み立てる。
+
+    用語の一覧は、同じ実行のどのノードでも同じなので、先頭のブロックに置いて
+    キャッシュの区切りを付ける。2つ目以降のノードでは、システムプロンプトと
+    用語の一覧をキャッシュから読む。ノードごとに変わる部分は、その後ろに置く。
+    """
+    blocks: list[dict] = []
+
+    vocabulary = vocabulary_for(graph, node)
+    if vocabulary:
+        rows = "\n".join(
+            f"- {term}（{owner_id}）: {meaning}"
+            + (f"。使わない語: {'、'.join(avoided)}" if avoided else "")
+            for owner_id, term, meaning, avoided in vocabulary
+        )
+        blocks.append(
+            {
+                "type": "text",
+                "text": f"# ドメインの用語（全ドメインノード）\n\n{rows}",
+                "cache_control": {"type": "ephemeral"},
+            }
+        )
+
     parts = [
         f"# 対象ノード\n\nid: {node.id}\ntype: {node.type}\ntitle: {node.title}",
     ]
@@ -214,17 +236,9 @@ def build_prompt(graph: Graph, node: Node) -> str:
             "節の有無は別の検査が見ているので、指摘しないこと。"
         )
 
-    vocabulary = vocabulary_for(graph, node)
-    if vocabulary:
-        rows = "\n".join(
-            f"- {term}（{owner_id}）: {meaning}"
-            + (f"。使わない語: {'、'.join(avoided)}" if avoided else "")
-            for owner_id, term, meaning, avoided in vocabulary
-        )
-        parts.append(f"# ドメインの用語（全ドメインノード）\n\n{rows}")
-
     parts.append(f"# 本文\n\n{node.body.strip()}")
-    return "\n\n".join(parts)
+    blocks.append({"type": "text", "text": "\n\n".join(parts)})
+    return blocks
 
 
 def parse_findings(node: Node, data: dict) -> list[Finding]:
