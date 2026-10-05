@@ -6,7 +6,7 @@ PYTHON ?= python
 #
 #     README_GRAPH_ARGS = --aggregate
 #
-# テンプレートは graph.mk を配らない。だから取り込み（git merge template/main）
+# テンプレートは graph.mk を配らない。だから取り込み（make update）
 # のたびに競合しないし、リポジトリごとに図の形を選べる。
 -include graph.mk
 

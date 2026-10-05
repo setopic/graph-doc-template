@@ -26,6 +26,18 @@ python -m tools.graph --version
 
 ---
 
+## 1.29.4 — 2026-10-05
+
+### 修正
+
+`.gitattributes`の冒頭の注記が、`git config merge.ours.driver true`を一度設定する、という手順を書いていたのを直した（#60）。1.26.0から、`merge=ours`のドライバは`make update`がその場だけ設定し、以前に常設した設定は`make setup`で外す。`Makefile`の`graph.mk`の注記も、取り込みを`git merge template/main`と書いていたので、`make update`に直した。
+
+### 取り込む側の作業
+
+なし。`.gitattributes`と`Makefile`は共有ファイルなので、通常のマージで入る。
+
+---
+
 ## 1.29.3 — 2026-10-05
 
 ### 修正

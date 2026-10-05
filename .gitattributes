@@ -6,10 +6,11 @@
 *.jpg binary
 *.pdf binary
 
-# テンプレートから更新を取り込む（git merge template/main）とき、
+# テンプレートから更新を取り込む（make update）とき、
 # ここに挙げたものは常にプロジェクト側を残す。中身がプロジェクト固有だから。
-# 取り込む側で一度だけ設定が要る:
-#   git config merge.ours.driver true
+# merge=ours のドライバは、make update がその場だけ設定する。常設はしない
+# （以前に常設した設定は make setup で外せる）。git merge template/main を
+# 直接使うと、ドライバが無いので merge=ours が効かず、競合する。
 #
 # index.md はスラッシュを含まないので、どの階層の index.md にも当たる。
 # 目次の一覧はプロジェクトのノードで埋まっているため、常に自分側が正しい。
