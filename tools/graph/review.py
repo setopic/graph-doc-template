@@ -25,7 +25,8 @@ API_URL = "https://api.anthropic.com/v1/messages"
 API_VERSION = "2023-06-01"
 DEFAULT_MODEL = "claude-sonnet-5"
 DEFAULT_LIMIT = 10
-MAX_TOKENS = 2000
+# 思考に使った分も、この上限に数える。thinkingを省くと、claude-sonnet-5は適応型の思考を使う。
+MAX_TOKENS = 16000
 TIMEOUT_SECONDS = 120
 
 API_KEY_ENV = "ANTHROPIC_API_KEY"
@@ -133,12 +134,27 @@ def call_api(payload: dict, api_key: str) -> dict:
     )
     try:
         with urllib.request.urlopen(request, timeout=TIMEOUT_SECONDS) as response:
-            return json.loads(response.read().decode("utf-8"))
+            data = json.loads(response.read().decode("utf-8"))
     except urllib.error.HTTPError as error:
         detail = error.read().decode("utf-8", "replace")[:300]
         raise ReviewError(f"APIが{error.code}を返した: {detail}") from error
     except urllib.error.URLError as error:
         raise ReviewError(f"APIに接続できない: {error.reason}") from error
+    ensure_complete(data)
+    return data
+
+
+def ensure_complete(data: dict) -> None:
+    """応答が最後まで返っていなければ、ReviewErrorにする。
+
+    途中で切れた応答や断った応答からは、指摘を読めない。そのまま渡すと、
+    `parse_findings`が空の一覧を返し、「指摘なし」と区別が付かなくなる。
+    """
+    reason = data.get("stop_reason")
+    if reason == "max_tokens":
+        raise ReviewError(f"応答がmax_tokens（{MAX_TOKENS}）で切れた")
+    if reason == "refusal":
+        raise ReviewError("モデルが応答を断った（stop_reason: refusal）")
 
 
 def vocabulary_for(graph: Graph, node: Node) -> list[tuple[str, str, str, list[str]]]:

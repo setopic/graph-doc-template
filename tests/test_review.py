@@ -66,6 +66,21 @@ class ParseFindings(unittest.TestCase):
         self.assertEqual(review.parse_findings(node(), api_response([])), [])
 
 
+class EnsureComplete(unittest.TestCase):
+    """切れた応答を「指摘なし」として扱わない。"""
+
+    def test_truncated_response_raises(self):
+        with self.assertRaises(review.ReviewError):
+            review.ensure_complete({"stop_reason": "max_tokens", "content": []})
+
+    def test_refusal_raises(self):
+        with self.assertRaises(review.ReviewError):
+            review.ensure_complete({"stop_reason": "refusal", "content": []})
+
+    def test_finished_response_passes(self):
+        review.ensure_complete({"stop_reason": "end_turn", "content": []})
+
+
 class OverDesign(unittest.TestCase):
     """A008・A009（文書に現れた過剰な設計）。"""
 
