@@ -26,6 +26,18 @@ python -m tools.graph --version
 
 ---
 
+## 1.29.2 — 2026-10-05
+
+### 修正
+
+grillの最後の検証を、`make all`にまとめた（#59）。これまでは`sync`・`make readme`・`check`を並べていて、CIが最新かを確かめている`linkify`が抜けていた。`make all`は`check`・`sync`・`linkify`・`readme`を回す。書き換えのあとにもう一度`check`を回す。
+
+### 取り込む側の作業
+
+なし。`.claude/skills/`は共有ファイルなので、通常のマージで入る。
+
+---
+
 ## 1.29.1 — 2026-10-05
 
 ### 修正

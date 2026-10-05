@@ -94,10 +94,11 @@ frontierが空になるまで繰り返す。空とは、決定木のすべての
 最後に検証する。`check`だけでは足りない。ノードを増やすと目次とREADMEの図が古くなり、CIはそこも確かめている。
 
 ```bash
-python -m tools.graph sync
-make readme
+make all
 python -m tools.graph check
 ```
+
+`make all`は、`check`・`sync`・`linkify`・`make readme`を、CIと同じ引数で回す。`sync`と`linkify`は文書を書き換えるので、そのあとにもう一度`check`を回す。
 
 ## CONTEXT.mdを手で作らない
 
@@ -128,7 +129,7 @@ python -m tools.graph check
 - [ ] 断りなく仮定したものが1つも無い
 - [ ] 利用者が「これで合っている」と言った
 - [ ] 決まったことが、ADR・ユースケース・ドメインノードに移っている
-- [ ] `sync`と`make readme`を回した（ノードを増やしたなら必須）
+- [ ] `make all`を回した（ノードを増やしたなら必須）
 - [ ] `check`が通る
 
 **ほかの人の作業中の変更を巻き込まないこと。** 同じリポジトリを、別のセッションが触っていることがある。`git add -A`ではなく、自分が作ったファイルを名指しで足す。
