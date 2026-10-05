@@ -115,7 +115,7 @@ python .claude/skills/yomiyasu/scripts/yomiyasu_lint.py <file>
 python .claude/skills/yomiyasu/scripts/yomiyasu_diff.py <元の文> <書き直した文> --stance=決まり
 ```
 
-この書き方に揃っていない文書を見つけたら、直してよい。ただし`tools/`・`docs/00-meta/`・`.claude/skills/`はテンプレートと共通のファイルなので、テンプレート側で直す（下の「テンプレート由来のファイルを直すとき」）。
+この書き方に揃っていない文書を見つけたら、直してよい。ただし`tools/`・`docs/00-meta/`・`.claude/skills/`はテンプレートと共通のファイルなので、テンプレート側で直す（下の「テンプレート由来のファイルを直すとき」）。`.gitattributes`で`merge=ours`にしたファイルは除く。それはプロジェクトごとに書き換えてよい。
 
 ## 文脈の取り方
 

@@ -26,6 +26,18 @@ python -m tools.graph --version
 
 ---
 
+## 1.29.5 — 2026-10-05
+
+### 修正
+
+CLAUDE.mdの「日本語の書き方」の終わりで、`tools/`・`docs/00-meta/`・`.claude/skills/`はテンプレート側で直す、としていたのに、「`.gitattributes`で`merge=ours`にしたファイルを除く」と足した（setopic/graph-project-template#35）。統合型の層の`docs/00-meta/dev-flow.md`（META-05）は`merge=ours`で、プロジェクトごとに書き換えてよい既定値である。これまでの書き方に従うと、プロジェクトで直してよいファイルまで、テンプレート側で直すことになった。
+
+### 取り込む側の作業
+
+なし。CLAUDE.mdは共有ファイルなので、通常のマージで入る。
+
+---
+
 ## 1.29.4 — 2026-10-05
 
 ### 修正
