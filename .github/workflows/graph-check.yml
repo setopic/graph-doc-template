@@ -2,7 +2,10 @@ name: graph-check
 
 on:
   push:
+  # editedを足すのは、PRの説明を直したときにrefsを回し直すためである。既定の3つだけだと、
+  # 説明を直しても走らず、失敗したジョブを再実行しても直す前の説明を読む（#82）
   pull_request:
+    types: [opened, synchronize, reopened, edited]
 
 jobs:
   # PRの本文が、実在するノードのidを指しているかを確かめる（META-07の「PRにはノードのidを書く」）。
