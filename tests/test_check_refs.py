@@ -78,5 +78,39 @@ class Check(unittest.TestCase):
         self.assertEqual(self.run_check("依存を上げる\nノード: なし"), 0)
 
 
+@unittest.skipUnless(SCRIPT.exists(), "check_refs.pyを消したリポジトリでは飛ばす")
+class DeclaredPart(unittest.TestCase):
+    """「対応するノード」の節があれば、題とその節だけを照合する。"""
+
+    def setUp(self):
+        self.refs = load_script()
+
+    def run_check(self, title, body, known=frozenset({"UC-01", "ADR-0001"})):
+        with redirect_stdout(io.StringIO()):
+            return self.refs.check(self.refs.declared_part(title, body), set(known))
+
+    def test_an_example_id_outside_the_section_is_not_read(self):
+        body = (
+            "idは`EP-001`のように3桁で振る\n\n## 対応するノード\n\nUC-01\n\n"
+            "## 確かめたこと\n\n- EP-002も作れる\n"
+        )
+        self.assertEqual(self.run_check("予約を直す", body), 0)
+
+    def test_ids_in_code_spans_inside_the_section_are_read(self):
+        body = "## 対応するノード\n\n`UC-01`、`UC-99`\n"
+        self.assertEqual(self.run_check("予約を直す", body), 1)
+
+    def test_none_inside_the_section(self):
+        body = "例: UC-99\n\n## 対応するノード\n\nなし（依存の更新）\n"
+        self.assertEqual(self.run_check("依存を上げる", body), 0)
+
+    def test_the_template_guidance_is_not_read(self):
+        body = "## 対応するノード\n\n<!-- idを書く（DOM-07 / CON-08） -->\nUC-01\n"
+        self.assertEqual(self.run_check("予約を直す", body), 0)
+
+    def test_without_the_section_the_whole_body_is_read(self):
+        self.assertEqual(self.run_check("予約を直す", "本文でUC-99を直した"), 1)
+
+
 if __name__ == "__main__":
     unittest.main()

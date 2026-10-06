@@ -8,6 +8,12 @@ medieval-idleで100%）。慣習として成立しているものを、機械が
 以前は、題と本文のどこかに「なし」を含めば照合を飛ばしていたので、「問題なし」「更新なし」
 「みなし」でも飛んでいた。派生のPR 30件のうち10件が飛び、意図したものは1件だった
 （setopic/graph-project-template#5）。
+
+**本文に「対応するノード」の節があれば、題とその節だけを読む。** 節の外には、idの振り方の
+例のように、ノードを指していないidが書かれることがある。全体を読んでいた頃は、例に書いた
+まだ無いidで落ちた（setopic/novel-template#4、#82）。コードスパンの中を読まない、という直し方は
+採らなかった。派生のPR 99件のうち2件は、idをすべてコードスパンの中に書いていた。
+節が無い本文（雛形を使っていないPR）は、これまでどおり全体を読む。
 """
 
 from __future__ import annotations
@@ -19,6 +25,7 @@ from pathlib import Path
 
 sys.path.insert(0, str(Path(__file__).resolve().parents[2]))
 
+from tools.graph import schema  # noqa: E402
 from tools.graph.loader import load  # noqa: E402
 
 ID = re.compile(r"\b(?:[A-Z]{2,5}-\d{2,4})\b")
@@ -29,6 +36,14 @@ NONE_LINE = re.compile(
 )
 # PRの雛形の記入案内（「`なし`と書く」）を、宣言として読まない
 COMMENT = re.compile(r"<!--.*?-->", re.DOTALL)
+# PRの雛形（.github/pull_request_template.md）の節。次の`## `の見出しまでを読む
+SECTION = re.compile(r"^##\s*対応するノード\s*$(.*?)(?=^##\s|\Z)", re.MULTILINE | re.DOTALL)
+
+
+def declared_part(title: str, body: str) -> str:
+    """照合する範囲。「対応するノード」の節があれば、題とその節だけにする。"""
+    match = SECTION.search(COMMENT.sub("", body))
+    return title + "\n" + (match.group(1) if match else body)
 
 
 def declares_none(text: str) -> bool:
@@ -60,8 +75,10 @@ def check(text: str, known: set[str]) -> int:
 
 def main() -> int:
     # 題も見る。コミットの1行目と同じ形（「何をしたか。ADR-0089 / UC-48」）で、idを書く慣習がある
-    text = os.environ.get("PR_TITLE", "") + "\n" + os.environ.get("PR_BODY", "")
-    graph = load(Path(__file__).resolve().parents[2])
+    text = declared_part(os.environ.get("PR_TITLE", ""), os.environ.get("PR_BODY", ""))
+    root = Path(__file__).resolve().parents[2]
+    schema.configure(root)  # ほかのコマンドと同じく、graph.tomlの種別で読む
+    graph = load(root)
     return check(text, set(graph.nodes))
 
 
