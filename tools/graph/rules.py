@@ -383,9 +383,14 @@ def rule_g012_hub_nodes(graph: Graph) -> list[Issue]:
 
     参照が集まるノードには、複数の概念が混ざっていることが多い。
     変更したときの影響範囲が広く、追従を確かめる手間が大きく増える。
+
+    `schema.HUB_EXEMPT_TYPES`の種別からの依存は数えない。連載小説の各話のように、
+    毎回同じノードに依存するのが当然な末端の種別では、依存が増えても概念は混ざらない。
     """
     counts: dict[str, int] = {}
     for node in graph.sorted_nodes():
+        if node.type in schema.HUB_EXEMPT_TYPES:
+            continue
         for edge in node.out_edges("depends_on"):
             if edge.resolved:
                 counts[edge.dst] = counts.get(edge.dst, 0) + 1

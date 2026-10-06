@@ -61,6 +61,7 @@ required_sections = ["人物像", "用語"]
 | `exempt_layer` | 任意 | `true`なら層のルールの対象外。既定は`false` |
 | `terms` | 任意 | `true`なら、その種別の用語表を語彙として集める。`G022`・用語の一覧・`review`の`A003`が読む。既定は`false` |
 | `immutable` | 任意 | `true`なら、確定したら書き換えない記録として扱い、`G020`を当てない。既定は`false` |
+| `hub_exempt` | 任意 | `true`なら、その種別からの`depends_on`を`G012`の数に入れない。毎回同じノードに依存するのが当然な末端の種別（連載小説の各話など）に付ける。既定は`false` |
 | `required_sections` | 任意 | 必須の節（`G014`）。既定は無し |
 | `required_sections_refined` | 任意 | `refines`を持つノードに求める節。書かなければ`required_sections`を使う |
 
