@@ -11,7 +11,7 @@
 
 from __future__ import annotations
 
-TEMPLATE_VERSION = "1.32.0"
+TEMPLATE_VERSION = "1.33.0"
 
 # 動作を保証するPythonの下限。**動かしている場所は、すべて3.12に揃っている。**
 # 開発機・CI・本番のホスト（deadsnakesのpython3.12で作ったvenv）のいずれも3.12で、

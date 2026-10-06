@@ -18,8 +18,11 @@ from pathlib import Path
 
 from tools.graph import cli, schema
 from tools.graph.loader import load
-from tools.graph.rules import rule_g022_duplicate_terms
+from tools.graph.model import Edge, Node
+from tools.graph.rules import rule_g012_hub_nodes, rule_g022_duplicate_terms
 from tools.graph.sync import sync
+
+from .helpers import make_graph
 
 CONFIG = """
 [node_types.world]
@@ -255,6 +258,47 @@ class WithConfig(Base):
         )
         self.assertEqual(code, 0, output)
         self.assertTrue((self.tmp / "docs/40-episodes/ep-02-second.md").is_file())
+
+
+class HubExempt(Base):
+    """`hub_exempt = true`の種別からの依存を、G012が数えないこと。"""
+
+    CONFIG = """
+[node_types.character]
+prefix = "CHR"
+dir = "20-characters"
+layer = 20
+label = "人物"
+
+[node_types.episode]
+prefix = "EP"
+dir = "40-episodes"
+layer = 40
+label = "各話"
+{flag}
+"""
+
+    def g012(self, flag: str) -> list[str]:
+        self.write(schema.CONFIG_FILE, self.CONFIG.format(flag=flag))
+        schema.configure(self.tmp)
+        nodes = [Node("CHR-01", "character", "主人公", "stable", [], self.tmp / "c.md", "c.md", {}, "")]
+        for n in range(1, 10):
+            node_id = f"EP-{n:03d}"
+            nodes.append(
+                Node(node_id, "episode", node_id, "stable", [], self.tmp / f"{n}.md", f"{n}.md", {}, "",
+                     [Edge(node_id, "CHR-01", "depends_on", "frontmatter")])
+            )
+        return [issue.code for issue in rule_g012_hub_nodes(make_graph(nodes))]
+
+    def test_dependencies_from_exempt_types_are_not_counted(self):
+        self.assertEqual(self.g012("hub_exempt = true"), [])
+
+    def test_other_types_are_still_counted(self):
+        self.assertEqual(self.g012(""), ["G012"])
+
+    def test_default_types_have_no_exempt_types(self):
+        schema.configure(self.tmp)
+        self.assertEqual(schema.HUB_EXEMPT_TYPES, ())
 
 
 class BrokenConfig(Base):

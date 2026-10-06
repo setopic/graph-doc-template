@@ -160,6 +160,11 @@ def is_immutable_record(node_type: str, status: str) -> bool:
 #       変更したときの影響範囲が広くなりすぎる前に、分割を検討する。
 MAX_INCOMING_DEPENDENCIES = 8
 
+# G012で数えない、依存元の種別。毎回同じノードに依存するのが当然な末端の種別
+# （連載小説の各話が、主人公や都市に依存するなど）からの依存は、概念が混ざった印ではない。
+# 既定の種別には無い。graph.tomlの`hub_exempt = true`で指定する。
+HUB_EXEMPT_TYPES: tuple[str, ...] = ()
+
 # ドメインノードの「用語」表。G013・G022・用語の一覧・reviewのA003が読む。
 # 見出しと列名は文書の言語に依存するので、ここで差し替えられるようにしてある。
 TERM_SECTION_HEADING = "用語"
@@ -319,6 +324,7 @@ _TYPE_KEYS = {
     "immutable",
     "required_sections",
     "required_sections_refined",
+    "hub_exempt",
 }
 
 # configureが何度呼ばれても同じ結果になるよう、テンプレートの定義を取っておく
@@ -331,6 +337,7 @@ _DEFAULTS = {
     "REQUIRED_SECTIONS_REFINED": dict(REQUIRED_SECTIONS_REFINED),
     "IMMUTABLE_RECORD_TYPES": IMMUTABLE_RECORD_TYPES,
     "TERM_TYPES": TERM_TYPES,
+    "HUB_EXEMPT_TYPES": HUB_EXEMPT_TYPES,
 }
 
 
@@ -340,7 +347,7 @@ class ConfigError(ValueError):
 
 def reset() -> None:
     """語彙をテンプレートの定義に戻す。"""
-    global IMMUTABLE_RECORD_TYPES, TERM_TYPES
+    global IMMUTABLE_RECORD_TYPES, TERM_TYPES, HUB_EXEMPT_TYPES
     # 辞書は中身を入れ替える。ほかのモジュールが同じ辞書を参照しているためである
     NODE_TYPES.clear()
     NODE_TYPES.update(copy.deepcopy(_DEFAULTS["NODE_TYPES"]))
@@ -350,6 +357,7 @@ def reset() -> None:
     REQUIRED_SECTIONS_REFINED.update(_DEFAULTS["REQUIRED_SECTIONS_REFINED"])
     IMMUTABLE_RECORD_TYPES = _DEFAULTS["IMMUTABLE_RECORD_TYPES"]
     TERM_TYPES = _DEFAULTS["TERM_TYPES"]
+    HUB_EXEMPT_TYPES = _DEFAULTS["HUB_EXEMPT_TYPES"]
 
 
 def configure(root: Path) -> None:
@@ -380,12 +388,13 @@ def configure(root: Path) -> None:
 
 
 def _apply_node_types(types: dict) -> None:
-    global IMMUTABLE_RECORD_TYPES, TERM_TYPES
+    global IMMUTABLE_RECORD_TYPES, TERM_TYPES, HUB_EXEMPT_TYPES
     node_types = {name: copy.deepcopy(_DEFAULTS["NODE_TYPES"][name]) for name in BUILTIN_TYPES}
     required: dict[str, tuple[str, ...]] = {name: () for name in BUILTIN_TYPES}
     refined: dict[str, tuple[str, ...]] = {}
     immutable: list[str] = []
     terms: list[str] = []
+    hub_exempt: list[str] = []
     prefixes = {spec["prefix"]: name for name, spec in node_types.items()}
     dirs = {spec["dir"]: name for name, spec in node_types.items() if spec["dir"]}
 
@@ -423,7 +432,7 @@ def _apply_node_types(types: dict) -> None:
             raise ConfigError(f"{where}: labelを書く")
 
         flags = {}
-        for key in ("exempt_layer", "terms", "immutable"):
+        for key in ("exempt_layer", "terms", "immutable", "hub_exempt"):
             value = spec.get(key, False)
             if not isinstance(value, bool):
                 raise ConfigError(f"{where}: {key}はtrueかfalseにする")
@@ -444,6 +453,8 @@ def _apply_node_types(types: dict) -> None:
             immutable.append(name)
         if flags["terms"]:
             terms.append(name)
+        if flags["hub_exempt"]:
+            hub_exempt.append(name)
 
     NODE_TYPES.clear()
     NODE_TYPES.update(node_types)
@@ -453,6 +464,7 @@ def _apply_node_types(types: dict) -> None:
     REQUIRED_SECTIONS_REFINED.update(refined)
     IMMUTABLE_RECORD_TYPES = tuple(immutable)
     TERM_TYPES = tuple(terms)
+    HUB_EXEMPT_TYPES = tuple(hub_exempt)
 
 
 def _sections(where: str, spec: dict, key: str) -> tuple[str, ...] | None:
