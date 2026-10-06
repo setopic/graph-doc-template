@@ -60,21 +60,32 @@ def build_children_block(graph: Graph, index_node: Node) -> str:
     return "\n".join(lines)
 
 
-def _is_domain_index(node: Node) -> bool:
-    return node.type == "index" and node.path.parent.name == schema.NODE_TYPES["domain"]["dir"]
+def _term_type_of_index(node: Node) -> str | None:
+    """用語表を集める種別（`schema.TERM_TYPES`）の目次なら、その種別を返す。"""
+    if node.type != "index":
+        return None
+    for name in schema.TERM_TYPES:
+        if node.path.parent.name == schema.NODE_TYPES[name]["dir"]:
+            return name
+    return None
 
 
 def build_terms_block(graph: Graph, index_node: Node) -> str | None:
-    """用語の一覧を作る。同じディレクトリのドメインノードをid順に、ノードごとの節で並べる。
+    """用語の一覧を作る。同じディレクトリにある、用語表を集める種別のノードを
+    id順に、ノードごとの節で並べる（既定ではドメインノード）。
 
-    表は、ノードのものをそのまま写す。目次はドメインノードと同じディレクトリに
+    表は、ノードのものをそのまま写す。目次はそのノードと同じディレクトリに
     あるので、「意味」の欄のリンクも、書き換えずにそのまま使える。用語表を持つ
     ノードが無ければ、`None`を返す。
     """
+    term_type = _term_type_of_index(index_node)
+    if term_type is None:
+        return None
+    label = schema.NODE_TYPES[term_type]["label"]
     directory = index_node.path.parent
     sections: list[str] = []
     for node in sorted(graph.nodes.values(), key=lambda n: _id_key(n.id)):
-        if node.type != "domain" or node.path.parent != directory:
+        if node.type != term_type or node.path.parent != directory:
             continue
         lines = term_table_lines(node.body)
         if not lines:
@@ -89,7 +100,7 @@ def build_terms_block(graph: Graph, index_node: Node) -> str | None:
             "",
             "## 用語の一覧（自動生成 / 手で編集しない）",
             "",
-            "各ドメインノードの「用語」表を集めたものである。直すときは、元のノードの表を直す。",
+            f"各{label}ノードの「用語」表を集めたものである。直すときは、元のノードの表を直す。",
             "同じ意味のことを書くときは、ここにある語を使う。",
             "",
             "\n\n".join(sections),
@@ -176,7 +187,7 @@ def sync(graph: Graph, *, dry_run: bool = False) -> list[str]:
             if CHILDREN_RE.search(updated):
                 block = build_children_block(graph, node)
                 updated = CHILDREN_RE.sub(lambda _: block, updated, count=1)
-            if _is_domain_index(node):
+            if _term_type_of_index(node):
                 updated = _apply_terms_block(graph, node, updated)
             if updated != original:
                 changed.append(node.rel)

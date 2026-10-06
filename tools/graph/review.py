@@ -189,7 +189,7 @@ def vocabulary_for(graph: Graph, node: Node) -> list[tuple[str, str, str, list[s
     """
     vocabulary: list[tuple[str, str, str, list[str]]] = []
     for owner in graph.sorted_nodes():
-        if owner.type != "domain":
+        if owner.type not in schema.TERM_TYPES:
             continue
         avoided: dict[str, list[str]] = {}
         for word, (term, _note) in forbidden_terms(owner.body).items():

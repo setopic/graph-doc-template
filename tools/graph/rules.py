@@ -1256,7 +1256,7 @@ def rule_g022_duplicate_terms(graph: Graph) -> list[Issue]:
     by_path = {n.path.resolve(): n.id for n in graph.nodes.values()}
     defined: dict[str, list[tuple[Node, str]]] = {}
     for node in graph.sorted_nodes():
-        if node.type != "domain":
+        if node.type not in schema.TERM_TYPES:
             continue
         for row in term_rows(node.body):
             term = _EMPHASIS_RE.sub("", row.get(schema.TERM_COLUMN, "")).strip()

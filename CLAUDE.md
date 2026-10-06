@@ -193,7 +193,7 @@ python -m tools.graph render --format mermaid --focus DOM-01 --depth 1
 
 ## ツールを直すとき
 
-語彙（ノード種別・エッジ種別・層）は`tools/graph/schema.py`に集めてある。ここを変えたら、`docs/00-meta/node-types.md`の表も必ず合わせる。
+語彙（ノード種別・エッジ種別・層）は`tools/graph/schema.py`に集めてある。ここを変えたら、`docs/00-meta/node-types.md`の表も必ず合わせる。派生のプロジェクトがノード種別を差し替えるときは、`schema.py`ではなく、リポジトリの根の`graph.toml`に書く。`schema.configure`が、コマンドの実行の前に読み込む。
 
 検証ルールは`tools/graph/rules.py`に、1ルール1関数で並んでいる。ルールを足したら、`RULE_INDEX`と`graph-rules.md`の一覧の両方に追記する。テストも足し、`tests/`に`unittest`で置く。`python -m unittest discover -s tests -t .`が、CIで最初に回るテストである。
 

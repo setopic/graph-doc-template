@@ -569,7 +569,8 @@ def build_parser() -> argparse.ArgumentParser:
     p_linkify.set_defaults(func=cmd_linkify)
 
     p_new = sub.add_parser("new", help="新しいノードを作る")
-    p_new.add_argument("--type", choices=tuple(schema.NODE_TYPES))
+    # 使える値はgraph.tomlで変わるので、choicesでは絞らない。知らない値はcreateが断る
+    p_new.add_argument("--type", help="ノード種別（例: usecase）")
     p_new.add_argument("--id", help="例: UC-02")
     p_new.add_argument("--title")
     p_new.add_argument("--slug", help="ファイル名に使う英数字。省略したときはtitleから作る")
@@ -682,4 +683,9 @@ def main(argv: list[str] | None = None) -> int:
     _make_stdio_safe()
     parser = build_parser()
     args = parser.parse_args(argv)
+    try:
+        schema.configure(_repo_root(args.root))
+    except schema.ConfigError as exc:
+        print(f"エラー: {exc}", file=sys.stderr)
+        return 1
     return args.func(args)
