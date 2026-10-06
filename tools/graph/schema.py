@@ -7,6 +7,11 @@
 
 from __future__ import annotations
 
+import copy
+import re
+import tomllib
+from pathlib import Path
+
 # --------------------------------------------------------------------------
 # ノード種別
 # --------------------------------------------------------------------------
@@ -142,6 +147,10 @@ STALE_STATUSES = ("draft", "review")
 # 直すこと自体がこの原則に反するので、**直しようのない指摘になる。**
 IMMUTABLE_RECORD_TYPES = ("adr",)
 
+# 用語表を語彙として集める種別。G022・用語の一覧・reviewのA003が、この種別のノードの
+# 用語表を読む。G013は種別を問わず、用語表を持つノードすべてを読む。
+TERM_TYPES = ("domain",)
+
 
 def is_immutable_record(node_type: str, status: str) -> bool:
     """確定した記録かどうか。確定前（`draft`・`review`）は書き換えてよいので、Falseを返す。"""
@@ -275,3 +284,181 @@ def type_of_prefix(prefix: str) -> str | None:
 
 def frontmatter_edge_kinds() -> tuple[str, ...]:
     return tuple(EDGE_KINDS.keys())
+
+
+# --------------------------------------------------------------------------
+# プロジェクトごとの語彙（graph.toml）
+# --------------------------------------------------------------------------
+# リポジトリの根に`graph.toml`を置くと、ノード種別をその内容に差し替える。
+# テンプレートはこのファイルを配らない（graph.mkと同じ）。だから取り込みで競合しない。
+# 無ければ、上の定義をそのまま使う。書き方はMETA-02（node-types.md）にある。
+#
+#     [node_types.character]
+#     prefix = "CHR"
+#     dir = "20-characters"
+#     layer = 20
+#     label = "人物"
+#     terms = true
+#     required_sections = ["人物像", "用語"]
+#
+# **種別を1つでも書いたら、書いたものが種別の全体になる。** テンプレートの種別と
+# 混ぜると、使わない種別の雛形と規約が残り、どれが生きているのか分からなくなる。
+# `index`と`meta`は、書かなくても常に残し、書き換えさせない。`index`は目次の仕組み
+# そのもので、`meta`はテンプレートが配る規約文書（00-meta/）の種別だからである。
+CONFIG_FILE = "graph.toml"
+
+_PREFIX_RE = re.compile(r"^[A-Z]{2,5}$")
+_TYPE_NAME_RE = re.compile(r"^[a-z][a-z0-9_-]*$")
+_TYPE_KEYS = {
+    "prefix",
+    "dir",
+    "layer",
+    "label",
+    "exempt_layer",
+    "terms",
+    "immutable",
+    "required_sections",
+    "required_sections_refined",
+}
+
+# configureが何度呼ばれても同じ結果になるよう、テンプレートの定義を取っておく
+# 差し替えても常に残す種別
+BUILTIN_TYPES = ("index", "meta")
+
+_DEFAULTS = {
+    "NODE_TYPES": copy.deepcopy(NODE_TYPES),
+    "REQUIRED_SECTIONS": dict(REQUIRED_SECTIONS),
+    "REQUIRED_SECTIONS_REFINED": dict(REQUIRED_SECTIONS_REFINED),
+    "IMMUTABLE_RECORD_TYPES": IMMUTABLE_RECORD_TYPES,
+    "TERM_TYPES": TERM_TYPES,
+}
+
+
+class ConfigError(ValueError):
+    pass
+
+
+def reset() -> None:
+    """語彙をテンプレートの定義に戻す。"""
+    global IMMUTABLE_RECORD_TYPES, TERM_TYPES
+    # 辞書は中身を入れ替える。ほかのモジュールが同じ辞書を参照しているためである
+    NODE_TYPES.clear()
+    NODE_TYPES.update(copy.deepcopy(_DEFAULTS["NODE_TYPES"]))
+    REQUIRED_SECTIONS.clear()
+    REQUIRED_SECTIONS.update(_DEFAULTS["REQUIRED_SECTIONS"])
+    REQUIRED_SECTIONS_REFINED.clear()
+    REQUIRED_SECTIONS_REFINED.update(_DEFAULTS["REQUIRED_SECTIONS_REFINED"])
+    IMMUTABLE_RECORD_TYPES = _DEFAULTS["IMMUTABLE_RECORD_TYPES"]
+    TERM_TYPES = _DEFAULTS["TERM_TYPES"]
+
+
+def configure(root: Path) -> None:
+    """`root`に`graph.toml`があれば、ノード種別をその内容に差し替える。
+
+    無ければ、テンプレートの定義に戻すだけである。読めない・書き方が違うときは
+    ConfigErrorを出す。黙って既定に戻すと、差し替えたつもりの種別が効かないまま
+    検証が通ってしまう。
+    """
+    reset()
+    path = root / CONFIG_FILE
+    if not path.is_file():
+        return
+    try:
+        data = tomllib.loads(path.read_text(encoding="utf-8"))
+    except tomllib.TOMLDecodeError as exc:
+        raise ConfigError(f"{CONFIG_FILE}が読めない: {exc}") from exc
+
+    unknown = set(data) - {"node_types"}
+    if unknown:
+        raise ConfigError(f"{CONFIG_FILE}に知らないキーがある: {', '.join(sorted(unknown))}")
+    types = data.get("node_types")
+    if types is None:
+        return
+    if not isinstance(types, dict) or not types:
+        raise ConfigError(f"{CONFIG_FILE}の[node_types]に、種別が1つも無い")
+    _apply_node_types(types)
+
+
+def _apply_node_types(types: dict) -> None:
+    global IMMUTABLE_RECORD_TYPES, TERM_TYPES
+    node_types = {name: copy.deepcopy(_DEFAULTS["NODE_TYPES"][name]) for name in BUILTIN_TYPES}
+    required: dict[str, tuple[str, ...]] = {name: () for name in BUILTIN_TYPES}
+    refined: dict[str, tuple[str, ...]] = {}
+    immutable: list[str] = []
+    terms: list[str] = []
+    prefixes = {spec["prefix"]: name for name, spec in node_types.items()}
+    dirs = {spec["dir"]: name for name, spec in node_types.items() if spec["dir"]}
+
+    for name, spec in types.items():
+        where = f"{CONFIG_FILE}の[node_types.{name}]"
+        if name in BUILTIN_TYPES:
+            raise ConfigError(f"{where}: {name}はテンプレートの仕組みが使う種別なので、書き換えられない")
+        if not _TYPE_NAME_RE.match(name):
+            raise ConfigError(f"{where}: 種別の名前は英小文字で始まる英数字にする")
+        if not isinstance(spec, dict):
+            raise ConfigError(f"{where}: 表で書く")
+        unknown = set(spec) - _TYPE_KEYS
+        if unknown:
+            raise ConfigError(f"{where}: 知らないキーがある: {', '.join(sorted(unknown))}")
+
+        prefix = spec.get("prefix")
+        if not isinstance(prefix, str) or not _PREFIX_RE.match(prefix):
+            raise ConfigError(f"{where}: prefixは英大文字2〜5字にする（例: CHR）")
+        if prefix in prefixes:
+            raise ConfigError(f"{where}: prefix {prefix}は{prefixes[prefix]}と重なっている")
+        prefixes[prefix] = name
+
+        directory = spec.get("dir")
+        if not isinstance(directory, str) or not directory or "/" in directory:
+            raise ConfigError(f"{where}: dirはdocsの直下のディレクトリ名にする（例: 20-characters）")
+        if directory in dirs:
+            raise ConfigError(f"{where}: dir {directory}は{dirs[directory]}と重なっている")
+        dirs[directory] = name
+
+        layer = spec.get("layer")
+        if not isinstance(layer, int) or isinstance(layer, bool):
+            raise ConfigError(f"{where}: layerは整数にする")
+        label = spec.get("label")
+        if not isinstance(label, str) or not label:
+            raise ConfigError(f"{where}: labelを書く")
+
+        flags = {}
+        for key in ("exempt_layer", "terms", "immutable"):
+            value = spec.get(key, False)
+            if not isinstance(value, bool):
+                raise ConfigError(f"{where}: {key}はtrueかfalseにする")
+            flags[key] = value
+
+        node_types[name] = {
+            "prefix": prefix,
+            "dir": directory,
+            "layer": layer,
+            "exempt_layer": flags["exempt_layer"],
+            "label": label,
+        }
+        required[name] = _sections(where, spec, "required_sections") or ()
+        refined_sections = _sections(where, spec, "required_sections_refined")
+        if refined_sections is not None:
+            refined[name] = refined_sections
+        if flags["immutable"]:
+            immutable.append(name)
+        if flags["terms"]:
+            terms.append(name)
+
+    NODE_TYPES.clear()
+    NODE_TYPES.update(node_types)
+    REQUIRED_SECTIONS.clear()
+    REQUIRED_SECTIONS.update(required)
+    REQUIRED_SECTIONS_REFINED.clear()
+    REQUIRED_SECTIONS_REFINED.update(refined)
+    IMMUTABLE_RECORD_TYPES = tuple(immutable)
+    TERM_TYPES = tuple(terms)
+
+
+def _sections(where: str, spec: dict, key: str) -> tuple[str, ...] | None:
+    if key not in spec:
+        return None
+    value = spec[key]
+    if not isinstance(value, list) or not all(isinstance(v, str) and v for v in value):
+        raise ConfigError(f"{where}: {key}は見出しの文字列の配列にする")
+    return tuple(value)
