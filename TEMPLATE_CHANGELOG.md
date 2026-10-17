@@ -22,6 +22,18 @@ python -m tools.graph --version
 
 ---
 
+## 1.34.2 — 2026-10-17
+
+### 修正
+
+`hub_exempt`のテスト（`test_graph_toml`の`test_other_types_are_still_counted`）が、`G012`の上限を既定の8と決めつけて、依存を9件だけ作っていたのを直した。`MAX_INCOMING_DEPENDENCIES`を上げた派生では、9件では上限を超えないので、テストが落ちていた。tournament-botは上限を21にしていて、1.34.1を取り込んだときに落ちた。件数を`MAX_INCOMING_DEPENDENCIES`から決めるようにした。
+
+### 取り込む側の作業
+
+なし。`tests/`は共有ファイルなので、通常のマージで入る。
+
+---
+
 ## 1.34.1 — 2026-10-17
 
 ### 修正

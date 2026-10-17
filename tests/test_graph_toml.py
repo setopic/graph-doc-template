@@ -282,7 +282,8 @@ label = "各話"
         self.write(schema.CONFIG_FILE, self.CONFIG.format(flag=flag))
         schema.configure(self.tmp)
         nodes = [Node("CHR-01", "character", "主人公", "stable", [], self.tmp / "c.md", "c.md", {}, "")]
-        for n in range(1, 10):
+        # 派生はMAX_INCOMING_DEPENDENCIESを上げてよいので、件数は上限から決める。
+        for n in range(1, schema.MAX_INCOMING_DEPENDENCIES + 2):
             node_id = f"EP-{n:03d}"
             nodes.append(
                 Node(node_id, "episode", node_id, "stable", [], self.tmp / f"{n}.md", f"{n}.md", {}, "",
