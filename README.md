@@ -368,6 +368,14 @@ python -m tools.graph reset-samples --yes
 python -m tools.graph check && python -m tools.graph sync
 ```
 
+取り込みをPRにするときは、本文の「対応するノード」の節に、行の頭から`なし`と書く。取り込みには対応するノードが無いからである。`gh pr create --body`で本文を渡すと、PRの雛形を通らず、この節が入らない。節が無いと、CIの`refs`が落ちる。
+
+```markdown
+## 対応するノード
+
+なし（テンプレートの取り込みのみ）
+```
+
 取り込むときに知っておくことは、次のとおりである。
 
 | 知っておくこと | 説明 |
