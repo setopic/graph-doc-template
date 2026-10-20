@@ -13,7 +13,7 @@ PYTHON ?= python
 # README の図に足す引数。既定は無し（全ノードをそのまま描く）。
 README_GRAPH_ARGS ?=
 
-.PHONY: help setup update check strict sync sync-check linkify linkify-check graph json readme readme-check stats all
+.PHONY: help setup update update-fetch check strict sync sync-check linkify linkify-check graph json readme readme-check stats all
 
 help:
 	@echo "setup         以前のsetupが常設したmerge=oursドライバの設定を外す（何度実行してもよい）"
@@ -40,10 +40,22 @@ help:
 #
 # 初回だけは、履歴を共有していないので、引数を足す。
 #   make update UPDATE_ARGS=--allow-unrelated-histories
+#
+# マージコミットのメッセージは「テンプレートの<版>を取り込む」にする（setopic/graph-doc-template#116）。
+# 渡さないと、gitの既定の英語の文が付く。メッセージはファイルに書いて-Fで渡す。
+# Windowsのmakeはcmd経由で引数を渡すので、-mで日本語を渡すと文字が化ける。
+# 版は、取り込んだ後のテンプレートの版を読むので、fetchが済んでから展開する
+# （makeはレシピの全行を、最初の行を実行する前に展開する。だからfetchを別のターゲットにする）。
+# UPDATE_ARGSに-mを足すと、そのメッセージは次の段落に付く。
 UPDATE_ARGS ?=
-update:
+UPDATE_NEXT = $(shell git show template/main:tools/graph/version.py | $(PYTHON) -c "import sys; exec(sys.stdin.buffer.read()); print(TEMPLATE_VERSION)")
+UPDATE_MSG_FILE = $(shell git rev-parse --path-format=absolute --git-path TEMPLATE_UPDATE_MSG)
+update: update-fetch
+	$(file >$(UPDATE_MSG_FILE),テンプレート$(if $(UPDATE_NEXT),の$(UPDATE_NEXT))を取り込む)
+	git -c merge.ours.driver=true merge -F $(UPDATE_MSG_FILE) template/main $(UPDATE_ARGS)
+
+update-fetch:
 	git fetch template
-	git -c merge.ours.driver=true merge template/main $(UPDATE_ARGS)
 
 # 以前のsetupが常設したドライバの設定を外す。設定が無ければ何もしない。何度実行してもよい。
 # 外したあとのマージは、merge=oursのファイルも通常のマージになる。両側が変えていれば、

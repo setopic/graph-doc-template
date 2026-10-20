@@ -360,6 +360,8 @@ python -m tools.graph upgrade
 make update
 ```
 
+`make update`は、マージコミットのメッセージを「テンプレートの<版>を取り込む」にする。版は、取り込むテンプレートの`tools/graph/version.py`から読む。競合したときも、解いたあとの`git commit`で同じメッセージが使われる。
+
 ```bash
 python -m tools.graph reset-samples --yes
 ```
