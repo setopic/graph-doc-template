@@ -310,7 +310,16 @@ def frontmatter_edge_kinds() -> tuple[str, ...]:
 # 混ぜると、使わない種別の雛形と規約が残り、どれが生きているのか分からなくなる。
 # `index`と`meta`は、書かなくても常に残し、書き換えさせない。`index`は目次の仕組み
 # そのもので、`meta`はテンプレートが配る規約文書（00-meta/）の種別だからである。
+#
+# `[commit]`の表には、ブランチ名とコミットの1行目に使う種類を足せる（META-07）。
+#
+#     [commit]
+#     extra_types = ["episode"]
 CONFIG_FILE = "graph.toml"
+
+# ブランチ名とコミットの1行目に使う種類（META-07）。Conventional Commitsの語である
+COMMIT_TYPES: tuple[str, ...] = ("feat", "fix", "docs", "refactor", "test", "ci", "chore")
+_COMMIT_TYPE_RE = re.compile(r"^[a-z][a-z0-9-]*$")
 
 _PREFIX_RE = re.compile(r"^[A-Z]{2,5}$")
 _TYPE_NAME_RE = re.compile(r"^[a-z][a-z0-9_-]*$")
@@ -338,6 +347,7 @@ _DEFAULTS = {
     "IMMUTABLE_RECORD_TYPES": IMMUTABLE_RECORD_TYPES,
     "TERM_TYPES": TERM_TYPES,
     "HUB_EXEMPT_TYPES": HUB_EXEMPT_TYPES,
+    "COMMIT_TYPES": COMMIT_TYPES,
 }
 
 
@@ -347,7 +357,7 @@ class ConfigError(ValueError):
 
 def reset() -> None:
     """語彙をテンプレートの定義に戻す。"""
-    global IMMUTABLE_RECORD_TYPES, TERM_TYPES, HUB_EXEMPT_TYPES
+    global IMMUTABLE_RECORD_TYPES, TERM_TYPES, HUB_EXEMPT_TYPES, COMMIT_TYPES
     # 辞書は中身を入れ替える。ほかのモジュールが同じ辞書を参照しているためである
     NODE_TYPES.clear()
     NODE_TYPES.update(copy.deepcopy(_DEFAULTS["NODE_TYPES"]))
@@ -358,6 +368,7 @@ def reset() -> None:
     IMMUTABLE_RECORD_TYPES = _DEFAULTS["IMMUTABLE_RECORD_TYPES"]
     TERM_TYPES = _DEFAULTS["TERM_TYPES"]
     HUB_EXEMPT_TYPES = _DEFAULTS["HUB_EXEMPT_TYPES"]
+    COMMIT_TYPES = _DEFAULTS["COMMIT_TYPES"]
 
 
 def configure(root: Path) -> None:
@@ -376,9 +387,11 @@ def configure(root: Path) -> None:
     except tomllib.TOMLDecodeError as exc:
         raise ConfigError(f"{CONFIG_FILE}が読めない: {exc}") from exc
 
-    unknown = set(data) - {"node_types"}
+    unknown = set(data) - {"node_types", "commit"}
     if unknown:
         raise ConfigError(f"{CONFIG_FILE}に知らないキーがある: {', '.join(sorted(unknown))}")
+    if "commit" in data:
+        _apply_commit(data["commit"])
     types = data.get("node_types")
     if types is None:
         return
@@ -465,6 +478,25 @@ def _apply_node_types(types: dict) -> None:
     IMMUTABLE_RECORD_TYPES = tuple(immutable)
     TERM_TYPES = tuple(terms)
     HUB_EXEMPT_TYPES = tuple(hub_exempt)
+
+
+def _apply_commit(table: object) -> None:
+    global COMMIT_TYPES
+    where = f"{CONFIG_FILE}の[commit]"
+    if not isinstance(table, dict):
+        raise ConfigError(f"{where}: 表で書く")
+    unknown = set(table) - {"extra_types"}
+    if unknown:
+        raise ConfigError(f"{where}: 知らないキーがある: {', '.join(sorted(unknown))}")
+    extra = table.get("extra_types", [])
+    if not isinstance(extra, list) or not all(isinstance(v, str) and _COMMIT_TYPE_RE.match(v) for v in extra):
+        raise ConfigError(f"{where}: extra_typesは英小文字で始まる語の配列にする（例: [\"episode\"]）")
+    taken = [v for v in extra if v in _DEFAULTS["COMMIT_TYPES"]]
+    if taken:
+        raise ConfigError(f"{where}: {', '.join(taken)}は標準の種類にすでにある")
+    if len(set(extra)) != len(extra):
+        raise ConfigError(f"{where}: extra_typesに同じ語が2つある")
+    COMMIT_TYPES = _DEFAULTS["COMMIT_TYPES"] + tuple(extra)
 
 
 def _sections(where: str, spec: dict, key: str) -> tuple[str, ...] | None:

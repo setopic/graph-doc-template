@@ -374,6 +374,8 @@ python -m tools.graph check && python -m tools.graph sync
 
 取り込みをPRにするときは、本文の「対応するノード」の節に、行の頭から`なし`と書く。取り込みには対応するノードが無いからである。`gh pr create --body`で本文を渡すと、PRの雛形を通らず、この節が入らない。節が無いと、CIの`refs`が落ちる。
 
+取り込みのブランチ名は`chore/template-<版>`にし、PRの題は`chore: テンプレートの<版>を取り込む`のように書く。CIの`names`が、ブランチ名とPRの題を確かめる（[META-07](docs/00-meta/issue-pr-flow.md)）。取り込みに入る上流のコミットは確かめない。
+
 ```markdown
 ## 対応するノード
 
@@ -405,7 +407,7 @@ python -m tools.graph check && python -m tools.graph sync
 | 4 | `python -m tools.graph linkify --check` | 本文の`[[ID]]`が相対リンクに直っているか |
 | 5 | `make readme-check` | READMEの図が最新か |
 
-PRのときは、別のジョブ（`refs`）が、PRの本文に書いたノードのidが実在するかも確かめる（[META-07](docs/00-meta/issue-pr-flow.md)）。
+PRのときは、別のジョブ（`refs`）が、PRの本文に書いたノードのidが実在するかも確かめる。もう1つのジョブ（`names`）は、ブランチ名・PRの題・コミットの1行目が決まりに合うかを確かめる（[META-07](docs/00-meta/issue-pr-flow.md)）。
 
 5つ目は、`render --into README.md --check`を`make`経由で呼ぶ。`graph.mk`の`README_GRAPH_ARGS`（`--aggregate`など）を効かせるためである。5つ目があるので、グラフを変えたままREADMEの図を更新し忘れると、CIが落ちる。
 

@@ -24,6 +24,27 @@ jobs:
           PR_BODY: ${{ github.event.pull_request.body }}
         run: python .github/scripts/check_refs.py
 
+  # PRのブランチ名・題・コミットの1行目が、決まりに合うかを確かめる
+  # （META-07の「ブランチ名とコミットの1行目」）。PRのときだけ走る。
+  names:
+    if: github.event_name == 'pull_request'
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v7
+        with:
+          # PRに含まれるコミットを、baseとheadの間で数えるため
+          fetch-depth: 0
+      - uses: actions/setup-python@v7
+        with:
+          python-version: "3.12"
+      - name: ブランチ名とコミットの1行目が決まりに合うか
+        env:
+          HEAD_REF: ${{ github.head_ref }}
+          PR_TITLE: ${{ github.event.pull_request.title }}
+          BASE_SHA: ${{ github.event.pull_request.base.sha }}
+          HEAD_SHA: ${{ github.event.pull_request.head.sha }}
+        run: python .github/scripts/check_names.py
+
   check:
     runs-on: ubuntu-latest
     steps:
