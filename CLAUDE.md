@@ -12,6 +12,8 @@
 | ドメインノードの用語表、ドメインの目次の「用語の一覧」 | `terms = true`の種別のノードの用語表と、その種別の目次の「用語の一覧」 |
 | 契約・ユースケースの決まり、`G023`、それらの雛形 | その種別が`graph.toml`に無ければ当てない |
 
+ノード種別を差し替えるときは、`tools/graph/schema.py`ではなく、`graph.toml`に書く。`schema.configure`が、コマンドの実行の前に読み込む。
+
 そのリポジトリに固有の決まり（種別ごとに何を書くか）は、`.claude/CLAUDE.md`に書く。テンプレートはこのファイルを配らないので、取り込みで競合しない。このファイルと食い違うときは、`.claude/CLAUDE.md`に従う。
 
 ## 絶対に守ること
@@ -198,29 +200,9 @@ python -m tools.graph path CON-01 ARCH-01
 
 **共通ファイルを手でコピーして同期しない。** 削除が伝わらず、テンプレートとの差が広がっていく。共通ファイルに手を入れるなら、テンプレート側に入れてからマージで戻す。こちらだけで直すと、次のマージで競合する。取り込みの手順はテンプレートのREADMEの「テンプレートの更新を取り込む」にあり、`reset-samples --yes`まで含めて1セットである。
 
-## テンプレート本体を変えるとき
+## テンプレート本体やツールを直すとき
 
-このリポジトリがテンプレート本体（`graph-doc-template`）なら、変更を`TEMPLATE_CHANGELOG.md`に記録し、`tools/graph/version.py`の版を上げる。
-
-| 変更 | 上げる箇所 |
-| --- | --- |
-| 取り込む側に作業が要る（語彙の変更、idの規約の変更） | major |
-| 追加だけ（雛形、コマンド、ルール） | minor |
-| 文言・不具合の修正 | patch |
-
-**破壊的な変更には、必ず移行手順を書く。** 書けないなら入れない。手順の無い破壊的変更は、長く放置されたリポジトリを、気づかないうちに動かなくする。
-
-## ツールを直すとき
-
-語彙（ノード種別・エッジ種別・層）は`tools/graph/schema.py`に集めてある。ここを変えたら、`docs/00-meta/node-types.md`の表も必ず合わせる。派生のプロジェクトがノード種別を差し替えるときは、`schema.py`ではなく、リポジトリの根の`graph.toml`に書く。`schema.configure`が、コマンドの実行の前に読み込む。
-
-検証ルールは`tools/graph/rules.py`に、1ルール1関数で並んでいる。ルールを足したら、`RULE_INDEX`と`graph-rules.md`の一覧の両方に追記する。テストも足し、`tests/`に`unittest`で置く。`python -m unittest discover -s tests -t .`が、CIで最初に回るテストである。
-
-外部依存を足さない。標準ライブラリだけで動くことが、このツールの前提である。`check`はオフラインで完結させる。通信するのは`review`だけで、`review`はCIから呼ばず、終了コードも常に0である（`docs/00-meta/ai-review.md`）。
-
-テキストを書き出すときは、必ず`encoding="utf-8"`と`newline="\n"`を渡す。**既定に任せると、Windowsでだけ改行がCRLFに、文字コードがcp932になる。** gitが改行を正規化するので、`git status`にも出ない。`test_newline_discipline`が構文木を調べて、渡し忘れを見つける。
-
-動作を保証するPythonの下限は、`version.py`の`MIN_PYTHON`である。開発機・CI・本番で実際に回している版で、願望ではない。下限を動かすなら、CIの`python-version`とREADMEも同時に直す。ずれると`test_python_floor`が落ちる。
+このリポジトリがテンプレート本体（`graph-doc-template`）なら、変更を`TEMPLATE_CHANGELOG.md`に記録し、`tools/graph/version.py`の版を上げる。どの箇所を上げるかと、移行手順の決まりは、`TEMPLATE_CHANGELOG.md`の「版の付け方」にある。`tools/graph/`を直す前には、`tools/graph/MAINTAINING.md`を読む。
 
 ## issueとPR
 
