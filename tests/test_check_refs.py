@@ -35,6 +35,11 @@ class DeclaresNone(unittest.TestCase):
             "## 対応するノード\n\nなし\n",
             "なし。依存の更新だけ",
             "N/A",
+            "- なし",
+            "* なし（テンプレートの取り込みのみ）",
+            "  + ノード: なし",
+            "1. なし",
+            "## 対応するノード\n\n- なし\n",
         ):
             with self.subTest(text=text):
                 self.assertTrue(self.refs.declares_none(text))
@@ -46,6 +51,8 @@ class DeclaresNone(unittest.TestCase):
             "更新なし（すべて最新）",
             "報告が来なければ表明とみなし、確定する",
             "| py あり / なし | 2 通り |",
+            "- 問題なし",
+            "-なし",
         ):
             with self.subTest(text=text):
                 self.assertFalse(self.refs.declares_none(text))
@@ -103,6 +110,11 @@ class DeclaredPart(unittest.TestCase):
     def test_none_inside_the_section(self):
         body = "例: UC-99\n\n## 対応するノード\n\nなし（依存の更新）\n"
         self.assertEqual(self.run_check("依存を上げる", body), 0)
+
+    def test_a_bulleted_none_inside_the_section(self):
+        """派生の取り込みのPR（neon-chronicle#195など）で、落ちていた書き方。"""
+        body = "## 対応するノード\n\n- なし\n\n## 確認したこと\n\n- [x] make allが通る\n"
+        self.assertEqual(self.run_check("chore: テンプレートの1.37.0を取り込む", body), 0)
 
     def test_the_template_guidance_is_not_read(self):
         body = "## 対応するノード\n\n<!-- idを書く（DOM-07 / CON-08） -->\nUC-01\n"

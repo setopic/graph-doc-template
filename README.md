@@ -372,7 +372,7 @@ python -m tools.graph reset-samples --yes
 python -m tools.graph check && python -m tools.graph sync
 ```
 
-取り込みをPRにするときは、本文の「対応するノード」の節に、行の頭から`なし`と書く。取り込みには対応するノードが無いからである。`gh pr create --body`で本文を渡すと、PRの雛形を通らず、この節が入らない。節が無いと、CIの`refs`が落ちる。
+取り込みをPRにするときは、本文の「対応するノード」の節に、行の頭から`なし`と書く（`- なし`のように箇条書きにしてもよい）。取り込みには対応するノードが無いからである。`gh pr create --body`で本文を渡すと、PRの雛形を通らず、この節が入らない。節が無いと、CIの`refs`が落ちる。
 
 取り込みのブランチ名は`chore/template-<版>`にし、PRの題は`chore: テンプレートの<版>を取り込む`のように書く。CIの`names`が、ブランチ名とPRの題を確かめる（[META-07](docs/00-meta/issue-pr-flow.md)）。取り込みに入る上流のコミットは確かめない。
 
