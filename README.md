@@ -366,6 +366,8 @@ make update
 python -m tools.graph reset-samples --yes
 ```
 
+**取り込む側が、自分でもサンプルノードを配るテンプレート（graph-project-templateなど）なら、`reset-samples`は回さない。** 配るはずのサンプルノードが消え、目次からも外れる。
+
 ```bash
 python -m tools.graph check && python -m tools.graph sync
 ```
@@ -382,7 +384,7 @@ python -m tools.graph check && python -m tools.graph sync
 
 | 知っておくこと | 説明 |
 | --- | --- |
-| サンプルノードは毎回追加される | マージは、テンプレート側にしかないファイルをそのまま足す。そのため、`reset-samples`で消すところまでが1セットである。省くと、プロジェクト側の同じidと衝突して`G002`が残る |
+| サンプルノードは毎回追加される | マージは、テンプレート側にしかないファイルをそのまま足す。そのため、`reset-samples`で消すところまでが1セットである。省くと、プロジェクト側の同じidと衝突して`G002`が残る。サンプルノードを配るテンプレートは例外で、`reset-samples`を回さない |
 | `README.md`と`docs/index.md`は競合しない | `make update`で取り込めば、`.gitattributes`の`merge=ours`で、プロジェクト側が優先される。`git merge`を直接使うと`merge=ours`が効かず、競合する。テンプレート側の改善を取り込みたいときは、`git diff HEAD template/main -- README.md`で差分を見て、手で反映する |
 | テンプレートがサンプルノードを変更したときだけ、modify/deleteの競合が出る | `git rm <path>`で解決してよい |
 | 初回のマージだけ`--allow-unrelated-histories`が要る | GitHubの"Use this template"は、履歴を引き継がないため |
