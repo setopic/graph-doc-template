@@ -130,7 +130,7 @@ python .claude/skills/yomiyasu/scripts/yomiyasu_lint.py <file>
 python .claude/skills/yomiyasu/scripts/yomiyasu_diff.py <元の文> <書き直した文> --stance=決まり
 ```
 
-この書き方に揃っていない文書を見つけたら、直してよい。ただし`tools/`・`docs/00-meta/`・`.claude/skills/`はテンプレートと共通のファイルなので、テンプレート側で直す（下の「テンプレート由来のファイルを直すとき」）。`.gitattributes`で`merge=ours`にしたファイルは除く。それはプロジェクトごとに書き換えてよい。
+この書き方に揃っていない文書を見つけたら、直してよい。ただし共通ファイルは、テンプレート側で直す（下の「共通ファイルを直すとき」）。`.gitattributes`で`merge=ours`にしたファイルは除く。それはプロジェクトごとに書き換えてよい。
 
 ## 文脈の取り方
 
@@ -180,9 +180,9 @@ python -m tools.graph path CON-01 ARCH-01
 
 `check`が`G0xx`を出したら、[META-01](docs/00-meta/graph-rules.md)の「5. ルール一覧」の表で、そのルールの対処を読む。判断に迷うときは、同じ文書のルールごとの節を読む。
 
-## テンプレート由来のファイルを直すとき
+## 共通ファイルを直すとき
 
-このリポジトリを`graph-doc-template`から起こしたなら、`tools/`・`docs/00-meta/`・`.claude/skills/`はテンプレート側と共通である。更新は`make update`で取り込む。`git merge template/main`を直接使うと`merge=ours`が効かず、`README.md`や`docs/index.md`が競合する。
+このリポジトリを`graph-doc-template`から起こしたなら、`tools/`・`docs/00-meta/`・`.claude/skills/`・ルートの`CLAUDE.md`は、テンプレート側と共通である。この文書では、これらを共通ファイルと呼ぶ。そのリポジトリに固有の決まりは、`.claude/CLAUDE.md`に書く。更新は`make update`で取り込む。`git merge template/main`を直接使うと`merge=ours`が効かず、`README.md`や`docs/index.md`が競合する。
 
 **共通ファイルを手でコピーして同期しない。** 削除が伝わらず、テンプレートとの差が広がっていく。共通ファイルに手を入れるなら、テンプレート側に入れてからマージで戻す。こちらだけで直すと、次のマージで競合する。取り込みの手順はテンプレートのREADMEの「テンプレートの更新を取り込む」にあり、`reset-samples --yes`まで含めて1セットである。
 
