@@ -6,12 +6,17 @@
 
 from __future__ import annotations
 
+import re
 from collections import deque
 
 from . import schema
 from .loader import strip_non_prose
 from .model import Graph, Node
 from .rules import _EMPHASIS_RE, _TERM_SECTION_RE, _prerequisites, term_rows
+
+# 「付与 / 剥奪」のように、対になる語を1行に並べた用語表がある。まとめたままでは
+# 本文に出てこないので、語ごとに探す。「A/B」のように空白の無い斜線は語の一部として残す
+_TERM_PAIR_RE = re.compile(r"\s+/\s+|\s*／\s*")
 
 # depends_onの多い順に、上から何件を出すか
 TOP_DEPENDED = 5
@@ -82,9 +87,10 @@ def unused_terms(graph: Graph) -> list[tuple[str, str]]:
             continue
         texts = [_prose(n) for n in dependents[owner.id]]
         for row in term_rows(owner.body):
-            term = _EMPHASIS_RE.sub("", row.get(schema.TERM_COLUMN, "")).strip()
-            if term and not any(term in text for text in texts):
-                found.append((owner.id, term))
+            cell = _EMPHASIS_RE.sub("", row.get(schema.TERM_COLUMN, "")).strip()
+            for term in _TERM_PAIR_RE.split(cell):
+                if term and not any(term in text for text in texts):
+                    found.append((owner.id, term))
     return found
 
 

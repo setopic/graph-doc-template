@@ -4,6 +4,8 @@ from __future__ import annotations
 
 import io
 import json
+import shutil
+import tempfile
 import unittest
 from contextlib import redirect_stderr, redirect_stdout
 from pathlib import Path
@@ -12,6 +14,7 @@ from tools.graph import cli, structure
 from tools.graph.model import Edge, Node
 
 from .helpers import make_graph
+from .test_strict_mode import build_docs
 
 DOCS = Path("/tmp/structure/docs")
 DIRS = {
@@ -105,6 +108,16 @@ class UnusedTerms(unittest.TestCase):
         )
         self.assertEqual(structure.unused_terms(graph), [("DOM-01", "保持期限")])
 
+    def test_paired_terms_on_one_row_are_looked_up_one_by_one(self):
+        pair = TERMS + "| 付与 / 剥奪 | ロールを足す / 外す |\n| A/B | 2つの案を比べること |\n"
+        graph = make_graph(
+            [
+                make("DOM-01", "domain", pair),
+                make("UC-01", "usecase", "予約の保持期限に、ロールを付与する。", deps=("DOM-01",)),
+            ]
+        )
+        self.assertEqual(structure.unused_terms(graph), [("DOM-01", "剥奪"), ("DOM-01", "A/B")])
+
     def test_indirect_dependents_count(self):
         graph = make_graph(
             [
@@ -178,19 +191,22 @@ class ShortestPath(unittest.TestCase):
         self.assertIsNone(structure.shortest_path(graph, "UC-01", "DOM-01"))
 
 
-ROOT = Path(__file__).resolve().parents[1]
-
-
-def run_cli(*argv: str) -> tuple[int, str]:
-    out = io.StringIO()
-    with redirect_stdout(out), redirect_stderr(io.StringIO()):
-        code = cli.main(["--root", str(ROOT), *argv])
-    return code, out.getvalue()
-
-
 class Budget(unittest.TestCase):
+    # リポジトリのdocs/を読まない。派生ではサンプルのUC-01が無く、graph.tomlで種別を
+    # 差し替えたリポジトリでは、configureの結果が後に実行するテストにまで残る
+    def setUp(self):
+        self.tmp = Path(tempfile.mkdtemp())
+        build_docs(self.tmp)
+        self.addCleanup(shutil.rmtree, self.tmp, True)
+
+    def run_cli(self, *argv: str) -> tuple[int, str]:
+        out = io.StringIO()
+        with redirect_stdout(out), redirect_stderr(io.StringIO()):
+            code = cli.main(["--root", str(self.tmp), *argv])
+        return code, out.getvalue()
+
     def test_chars_are_reported_and_nodes_over_the_budget_are_omitted(self):
-        code, out = run_cli("render", "--format", "json", "--focus", "UC-01", "--budget", "1")
+        code, out = self.run_cli("render", "--format", "json", "--focus", "UC-01", "--budget", "1")
         self.assertEqual(code, 0)
         data = json.loads(out)
         self.assertEqual([n["id"] for n in data["nodes"]], ["UC-01"])
@@ -199,11 +215,11 @@ class Budget(unittest.TestCase):
         self.assertTrue(all(e["src"] == "UC-01" and e["dst"] == "UC-01" for e in data["edges"]))
 
     def test_without_a_budget_there_is_no_omitted_key(self):
-        _, out = run_cli("render", "--format", "json", "--focus", "UC-01")
+        _, out = self.run_cli("render", "--format", "json", "--focus", "UC-01")
         self.assertNotIn("omitted", json.loads(out))
 
     def test_budget_needs_focus_and_json(self):
-        code, _ = run_cli("render", "--format", "json", "--budget", "100")
+        code, _ = self.run_cli("render", "--format", "json", "--budget", "100")
         self.assertEqual(code, 1)
 
     def test_a_farther_hop_is_dropped_once_a_nearer_one_was(self):
