@@ -91,14 +91,14 @@ class Graph:
     def sorted_nodes(self) -> list[Node]:
         return sorted(self.nodes.values(), key=lambda n: (n.type, n.id))
 
-    def neighborhood(
+    def hops(
         self,
         focus_ids: list[str],
         depth: int = 1,
         *,
         include_mentions: bool = False,
-    ) -> "Graph":
-        """指定したノードから、`depth`ホップ以内のノードだけを含む部分グラフを返す。
+    ) -> dict[str, int]:
+        """指定したノードから`depth`ホップ以内のノードと、そこまでのホップ数を返す。
 
         エッジの向きは無視する。前提（依存先）と影響範囲（依存元）の両方を
         見たいので、片方向に絞ると、近傍として役に立たない。
@@ -113,19 +113,23 @@ class Graph:
                 adjacency.setdefault(edge.src, set()).add(edge.dst)
                 adjacency.setdefault(edge.dst, set()).add(edge.src)
 
-        selected = {node_id for node_id in focus_ids if node_id in self.nodes}
-        frontier = set(selected)
+        distance = {node_id: 0 for node_id in focus_ids if node_id in self.nodes}
+        frontier = set(distance)
 
-        for _ in range(max(depth, 0)):
+        for hop in range(1, max(depth, 0) + 1):
             nxt: set[str] = set()
             for node_id in frontier:
                 nxt |= adjacency.get(node_id, set())
-            nxt -= selected
+            nxt -= distance.keys()
             if not nxt:
                 break
-            selected |= nxt
+            for node_id in nxt:
+                distance[node_id] = hop
             frontier = nxt
+        return distance
 
+    def subgraph(self, selected: set[str], *, include_mentions: bool = False) -> "Graph":
+        """`selected`のノードと、その間のエッジだけを含む部分グラフを返す。"""
         sub = Graph(root=self.root)
         for node_id in selected:
             node = self.nodes[node_id]

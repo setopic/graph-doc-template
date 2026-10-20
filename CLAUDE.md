@@ -140,7 +140,7 @@ python -m tools.graph render --format json --focus UC-01 --depth 1
 
 この結果が、前提（`depends_on`先）と影響範囲（そのノードを指している側）の両方を含む最小の集合になる。返ってきた`nodes`のファイルだけを読む。
 
-範囲が足りなければ`--depth 2`に広げる。全体を見たいときだけ`--focus`を外す。
+範囲が足りなければ`--depth 2`に広げる。JSONの各ノードの`chars`が本文の文字数なので、読む前に量を見積もれる。広げると多すぎるときは`--budget <文字数>`を足す。合計がその値に収まるまで近いノードから残し、外したノードは`omitted`に名前だけを出す。全体を見たいときだけ`--focus`を外す。
 
 ```bash
 python -m tools.graph render --format json --out docs/graph.json
@@ -166,6 +166,12 @@ python -m tools.graph check --since origin/main
 
 ```bash
 python -m tools.graph render --format mermaid --focus DOM-01 --depth 1
+```
+
+2つのノードがどう繋がっているか（なぜ`G015`や`G020`に挙がったか）を確かめるときは、`path`で前提の経路を出す。
+
+```bash
+python -m tools.graph path CON-01 ARCH-01
 ```
 
 ## よくある落とし方

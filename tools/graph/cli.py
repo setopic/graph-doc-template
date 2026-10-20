@@ -6,7 +6,8 @@
     python -m tools.graph new            雛形から新しいノードを作る（--fromでまとめて作る）
     python -m tools.graph rename         idを変え、すべての参照を追随させる
     python -m tools.graph reset-samples  サンプルノードをまとめて取り除く
-    python -m tools.graph stats          ノード数・エッジ数を集計する
+    python -m tools.graph stats          ノード数・エッジ数と、構造の見直しの候補を出す
+    python -m tools.graph path           2つのノードを結ぶ前提の経路を出す
 """
 
 from __future__ import annotations
@@ -16,7 +17,7 @@ import json
 import sys
 from pathlib import Path
 
-from . import changes, cleanup, history, review
+from . import changes, cleanup, history, review, structure
 from . import render as render_mod
 from .linkify import linkify as linkify_docs
 from . import rules, schema
@@ -94,7 +95,11 @@ def cmd_render(args: argparse.Namespace) -> int:
     root = _repo_root(args.root)
     graph = load(root)
     focus: set[str] | None = None
+    omitted = None
 
+    if args.budget is not None and (args.format != "json" or not args.focus):
+        print("エラー: --budgetは、--format jsonと--focusを付けたときだけ使える", file=sys.stderr)
+        return 1
     if args.aggregate and args.format != "mermaid":
         print("エラー: --aggregateは、--format mermaidのときだけ使える", file=sys.stderr)
         return 1
@@ -112,16 +117,20 @@ def cmd_render(args: argparse.Namespace) -> int:
         if unknown:
             print(f"エラー: 存在しないノード: {', '.join(unknown)}", file=sys.stderr)
             return 1
-        graph = graph.neighborhood(
-            sorted(focus),
-            depth=args.depth,
-            include_mentions=args.include_mentions,
+        distance = graph.hops(
+            sorted(focus), depth=args.depth, include_mentions=args.include_mentions
         )
+        selected = set(distance)
+        if args.budget is not None:
+            selected, omitted = _fit_budget(graph, distance, args.budget)
+        graph = graph.subgraph(selected, include_mentions=args.include_mentions)
         print(
             f"{', '.join(sorted(focus))}から{args.depth}ホップ以内: "
-            f"{len(graph.nodes)}ノード",
+            f"{len(distance)}ノード",
             file=sys.stderr,
         )
+        if omitted:
+            print(f"予算{args.budget}字に収まらず、名前だけを出したノード: {len(omitted)}", file=sys.stderr)
 
     if args.format == "mermaid" and args.aggregate:
         output = render_mod.to_mermaid_aggregate(
@@ -132,7 +141,9 @@ def cmd_render(args: argparse.Namespace) -> int:
             graph, include_mentions=args.include_mentions, focus=focus
         )
     elif args.format == "json":
-        output = render_mod.to_json(graph, include_mentions=args.include_mentions)
+        output = render_mod.to_json(
+            graph, include_mentions=args.include_mentions, omitted=omitted
+        )
     else:
         output = render_mod.to_dot(graph, include_mentions=args.include_mentions)
 
@@ -392,10 +403,62 @@ def cmd_upgrade(args: argparse.Namespace) -> int:
     return 0
 
 
+def _fit_budget(graph, distance: dict[str, int], budget: int):
+    """近いノードから順に、本文の文字数の合計が`budget`に収まるところまで残す。
+
+    焦点のノードは、予算を超えても残す。同じホップの中では、収まるものを残す。
+    あるホップで1つでも外したら、それより遠いノードはすべて外す。
+    近いノードを外したまま遠いノードを読むと、前提を飛ばして読むことになる。
+    """
+    order = sorted(distance, key=lambda node_id: (distance[node_id], node_id))
+    kept: set[str] = set()
+    omitted = []
+    total = 0
+    cut_after: int | None = None
+    for node_id in order:
+        hop = distance[node_id]
+        size = len(graph.nodes[node_id].body)
+        if hop > 0 and (
+            (cut_after is not None and hop > cut_after) or total + size > budget
+        ):
+            omitted.append(graph.nodes[node_id])
+            if cut_after is None:
+                cut_after = hop
+            continue
+        kept.add(node_id)
+        total += size
+    return kept, omitted
+
+
 def cmd_stats(args: argparse.Namespace) -> int:
     root = _repo_root(args.root)
     graph = load(root)
     sys.stdout.write(render_mod.summary(graph))
+    sys.stdout.write(structure.report(graph))
+    return 0
+
+
+def cmd_path(args: argparse.Namespace) -> int:
+    root = _repo_root(args.root)
+    graph = load(root)
+    unknown = [i for i in (args.src, args.dst) if i not in graph.nodes]
+    if unknown:
+        print(f"エラー: 存在しないノード: {', '.join(unknown)}", file=sys.stderr)
+        return 1
+
+    steps = structure.shortest_path(graph, args.src, args.dst)
+    if steps is None:
+        # 逆向きなら繋がっていることがある。向きを取り違えただけかを知らせる
+        steps = structure.shortest_path(graph, args.dst, args.src)
+        if steps is None:
+            print(f"{args.src}と{args.dst}は、depends_on・refinesで繋がっていない")
+            return 1
+        print(f"{args.src}から{args.dst}への経路は無い。逆向き（{args.dst}が{args.src}を前提にしている）なら、次のとおり繋がっている")
+
+    for kind, node_id in steps:
+        node = graph.nodes[node_id]
+        prefix = f"  {kind} → " if kind else ""
+        print(f"{prefix}{node_id} {node.title}")
     return 0
 
 
@@ -545,7 +608,22 @@ def build_parser() -> argparse.ArgumentParser:
         action="store_true",
         help="型ごとに1つの箱へまとめる（ノードが増えても図が大きくならない。G018を避ける）",
     )
+    p_render.add_argument(
+        "--budget",
+        type=int,
+        metavar="CHARS",
+        help="--format jsonと--focusと一緒に使う。本文の文字数の合計がこれに収まるまで、"
+        "近いノードから残す。外したノードはomittedに名前だけを出す",
+    )
     p_render.set_defaults(func=cmd_render)
+
+    p_path = sub.add_parser(
+        "path",
+        help="2つのノードを結ぶ前提の経路を出す（depends_on・refinesを辿る）",
+    )
+    p_path.add_argument("src", metavar="FROM", help="依存している側のid（例: UC-01）")
+    p_path.add_argument("dst", metavar="TO", help="前提の側のid（例: ARCH-01）")
+    p_path.set_defaults(func=cmd_path)
 
     p_sync = sub.add_parser("sync", help="関連ドキュメントのブロックを作り直す")
     p_sync.add_argument("--dry-run", action="store_true", help="書き込まずに、差分だけを表示する")
@@ -650,7 +728,7 @@ def build_parser() -> argparse.ArgumentParser:
     p_review.add_argument("--format", choices=("text", "json"), default="text")
     p_review.set_defaults(func=cmd_review)
 
-    p_stats = sub.add_parser("stats", help="集計を表示する")
+    p_stats = sub.add_parser("stats", help="集計と、構造の見直しの候補を表示する")
     p_stats.set_defaults(func=cmd_stats)
 
     return parser

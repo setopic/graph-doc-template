@@ -7,7 +7,7 @@ import re
 from pathlib import Path
 
 from . import schema
-from .model import Graph
+from .model import Graph, Node
 
 DIAGRAM_BLOCK_RE = re.compile(
     re.escape(schema.DIAGRAM_BLOCK_START) + r".*?" + re.escape(schema.DIAGRAM_BLOCK_END),
@@ -150,7 +150,17 @@ def count_edges_in_markdown(path: Path) -> int | None:
     return sum(1 for line in match.group(0).splitlines() if EDGE_LINE_RE.match(line))
 
 
-def to_json(graph: Graph, include_mentions: bool = True) -> str:
+def to_json(
+    graph: Graph,
+    include_mentions: bool = True,
+    *,
+    omitted: list[Node] | None = None,
+) -> str:
+    """`chars`は自動生成ブロックを除いた本文の文字数。読む前に量を見積もるためのもの。
+
+    `omitted`は、`render --budget`が予算で外したノード。中身は読まずに済むよう、
+    名前と場所だけを出す。
+    """
     payload = {
         "nodes": [
             {
@@ -160,6 +170,7 @@ def to_json(graph: Graph, include_mentions: bool = True) -> str:
                 "status": n.status,
                 "tags": n.tags,
                 "path": n.rel,
+                "chars": len(n.body),
             }
             for n in graph.sorted_nodes()
         ],
@@ -168,6 +179,11 @@ def to_json(graph: Graph, include_mentions: bool = True) -> str:
             for e in _edges(graph, include_mentions)
         ],
     }
+    if omitted is not None:
+        payload["omitted"] = [
+            {"id": n.id, "title": n.title, "path": n.rel, "chars": len(n.body)}
+            for n in omitted
+        ]
     return json.dumps(payload, ensure_ascii=False, indent=2) + "\n"
 
 

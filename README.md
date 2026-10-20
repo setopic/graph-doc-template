@@ -147,7 +147,7 @@ python -m tools.graph render --format mermaid --focus DOM-01
 
 エッジの向きは無視して、両方向に辿る。前提（何に依存しているか）と影響範囲（誰から依存されているか）は、どちらも同時に見たいものだからである。`--depth N`で範囲を広げられる（既定は1）。焦点のノードは、枠が太くなる。
 
-`--focus`は`--format json`でも使えるので、変更の影響範囲を機械的に取り出すのにも役立つ。
+`--focus`は`--format json`でも使えるので、変更の影響範囲を機械的に取り出すのにも役立つ。JSONの各ノードには、本文の文字数（`chars`）が付く。`--budget <文字数>`を足すと、本文の文字数の合計がその値に収まるまで、近いノードから残す。外したノードは`omitted`に、名前と場所だけを出す。
 
 ## コマンド
 
@@ -164,6 +164,8 @@ python -m tools.graph render --format mermaid --focus DOM-01
 | `python -m tools.graph linkify --check` | 直す必要があれば終了コード1（CI用） |
 | `python -m tools.graph render --format mermaid\|json\|dot` | 図やデータを書き出す |
 | `python -m tools.graph render --focus <ID>` | そのノードの近傍だけを描く（`--depth N`） |
+| `python -m tools.graph render --format json --focus <ID> --budget <文字数>` | 本文の文字数の合計が収まる範囲で、近傍を近い順に残す |
+| `python -m tools.graph path <FROM> <TO>` | `depends_on`・`refines`を辿って、2つのノードを結ぶ最短の経路を出す |
 | `python -m tools.graph render --aggregate` | 型ごとに1つの箱へまとめる（`G018`を避ける） |
 | `python -m tools.graph render --into README.md` | READMEの図を作り直す |
 | `python -m tools.graph render --into README.md --check` | 図が古ければ終了コード1（CI用） |
@@ -172,9 +174,20 @@ python -m tools.graph render --format mermaid --focus DOM-01
 | `python -m tools.graph reset-samples` | 同梱のサンプルノードをまとめて取り除く |
 | `python -m tools.graph upgrade` | テンプレートとの差を調べる（読み取りのみ） |
 | `python -m tools.graph --version` | テンプレートの版を表示する |
-| `python -m tools.graph stats` | ノード数・エッジ数を集計する |
+| `python -m tools.graph stats` | ノード数・エッジ数を集計し、構造の見直しの候補を出す（下の「構造の見直しの候補」） |
 | `python -m tools.graph review` | 本文の質をAIに見てもらう（任意・通信あり） |
 | `python -m unittest discover -s tests -t .` | ツール自体のテスト |
+
+### 構造の見直しの候補
+
+`stats`は、集計のあとに次の4つを出す。どれも誤りとは限らないので、`check`のルールにはしていない。`G015`と同じく、見たうえで変えなくてよいと判断したなら、そのままでよい。
+
+| 見出し | 挙げるもの | 見直すこと |
+| --- | --- | --- |
+| depends_onされている数 | 被依存の多いノードの上位5件と、その数 | `G012`の上限に近づいていたら、概念が混ざっていないかを点検する |
+| どこからも前提にされていないノード | いちばん上の層より下にあり、どのノードからも`depends_on`・`refines`されていないノード | 使われていないか、依存元が`depends_on`に書き忘れていないか |
+| 依存しているノードの本文に出てこない用語 | 用語表にあるのに、依存しているどのノードの本文にも出てこない用語 | 要らない用語か、依存元が別の語で書いていないか |
+| 本文でだけ参照していて、depends_onで辿れない組 | `depends_on`を書ける向きへの本文リンクのうち、前提として辿れないもの | 前提なら`depends_on`に移す（[graph-rules.md](docs/00-meta/graph-rules.md)の「本文リンクは層と循環の検査を受けない」） |
 
 `make check`・`make sync`・`make linkify`・`make readme`も、同じことをする（Makefileを参照）。まとめて回すなら`make all`を使う（`check`・`sync`・`linkify`・`readme`）。
 
