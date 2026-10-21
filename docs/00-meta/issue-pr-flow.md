@@ -109,15 +109,15 @@ fix: 1.36.14 サンプルを配るテンプレートではreset-samplesを回さ
 
 派生はマージコミットで本体のコミットを取り込むので、本体のコミットもこの形に合わせる。本体が合っていないと、派生の検査で本体のコミットを外す仕組みが別に要る。
 
-上の層（graph-project-templateなど）は、PRの題に版を求めるかを、層の宣言（`tools/graph/layers/<層の名前>.toml`）の`versioned_title`で選ぶ。`true`にすると求め、書かなければ求めない。宣言は派生にも写るが、CIは宣言の`repository`がPRのリポジトリと同じときだけ版を求める。取り込みのPRの題には、どの層でも版を求めない。宣言の書き方は[META-08](./template-upgrade.md)の「3. テンプレートの層」にある。
+上の層は、PRの題に版を求めるかを、層の宣言（`tools/graph/layers/<層の名前>.toml`）の`versioned_title`で選ぶ。`true`にすると求め、書かなければ求めない。宣言は派生にも写るが、CIは宣言の`repository`がPRのリポジトリと同じときだけ版を求める。取り込みのPRの題には、どの層でも版を求めない。宣言の書き方は[META-08](./template-upgrade.md)の「3. テンプレートの層」にある。
 
-ブランチ名は、`<種類>/<issueの番号>-<内容>`の形にする。内容は英小文字とハイフンで書き、英小文字で始めれば数字も使える。issueが無いときは番号を省く。テンプレートの取り込みは、`chore/template-<版>`にする。版は、`python -m tools.graph upgrade --label`が出すものを使う。遅れている層の版を下の層から並べ、上の層には`project-`のような名前が付く。取り込みの手順と、取り込みのPRの書き方は、[META-08](./template-upgrade.md)にある。
+ブランチ名は、`<種類>/<issueの番号>-<内容>`の形にする。内容は英小文字とハイフンで書き、英小文字で始めれば数字も使える。issueが無いときは番号を省く。テンプレートの取り込みは、`chore/template-<版>`にする。版は、`python -m tools.graph upgrade --label`が出すものを使う。遅れている層の版を下の層から並べ、上の層の版の前には層の宣言の`label`が付く（`<label>-<版>`）。取り込みの手順と、取り込みのPRの書き方は、[META-08](./template-upgrade.md)にある。
 
 ```text
 feat/121-branch-commit-rules
 chore/template-1.37.0
-chore/template-project-0.14.0
-chore/template-1.38.0-project-0.14.0
+chore/template-<label>-0.14.0
+chore/template-1.38.0-<label>-0.14.0
 ```
 
 種類は、Conventional Commitsの次の7つを使う。ブランチ名とコミットで同じ一覧を使うので、ブランチ名からも変更の意図が分かる。標準の語なので、commitlintのような道具や、ほかの人にもそのまま通じる。
