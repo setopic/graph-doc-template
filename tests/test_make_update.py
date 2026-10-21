@@ -3,7 +3,7 @@
 `make update`がメッセージを渡さないと、gitの既定の英語の文
 （Merge remote-tracking branch 'template/main'）が付く。コミットメッセージも
 日本語の書き方の対象なので、「テンプレートの<版>を取り込む」を渡す。
-版は、取り込む側のテンプレートの`tools/graph/version.py`から読む。
+版は、`upgrade --label`が、遅れている層の版を並べて作る（setopic/graph-doc-template#125）。
 """
 
 from __future__ import annotations
@@ -48,6 +48,10 @@ class MakeUpdateMessageTest(unittest.TestCase):
 
         run(base, "git", "init", "-q", "-b", "main", str(self.upstream))
         shutil.copy(ROOT / "Makefile", self.upstream / "Makefile")
+        # make updateは、版を読むためにtools.graphを呼ぶ
+        shutil.copytree(
+            ROOT / "tools", self.upstream / "tools", ignore=shutil.ignore_patterns("__pycache__")
+        )
         write(self.upstream / "tools/graph/version.py", 'TEMPLATE_VERSION = "1.0.0"\n')
         write(self.upstream / "x.txt", "base\n")
         run(self.upstream, "git", "add", ".")
@@ -90,6 +94,33 @@ class MakeUpdateMessageTest(unittest.TestCase):
         run(self.derived, "git", "commit", "-q", "--no-edit")
         subject = run(self.derived, "git", "log", "-1", "--format=%s").stdout.strip()
         self.assertEqual(subject, "テンプレートの1.2.4を取り込む")
+
+    def test_upper_layer_only(self) -> None:
+        """上の層だけが変わっても、その層の名前と版をメッセージに入れる。"""
+        layer = (
+            'name = "graph-project-template"\n'
+            'label = "project"\n'
+            'below = "graph-doc-template"\n'
+            'version = "{}"\n'
+            'changelog = "PROJECT_TEMPLATE_CHANGELOG.md"\n'
+            'repository = "https://github.com/setopic/graph-project-template.git"\n'
+        )
+        path = "tools/graph/layers/graph-project-template.toml"
+        write(self.upstream / path, layer.format("0.1.0"))
+        run(self.upstream, "git", "add", ".")
+        run(self.upstream, "git", "commit", "-q", "-m", "layer")
+        run(self.derived, "git", "pull", "-q", "template", "main")
+
+        write(self.derived / "local.txt", "local\n")
+        run(self.derived, "git", "add", ".")
+        run(self.derived, "git", "commit", "-q", "-m", "local")
+        write(self.upstream / path, layer.format("0.2.0"))
+        run(self.upstream, "git", "commit", "-q", "-am", "up")
+
+        result = self.make_update()
+        self.assertEqual(result.returncode, 0, result.stderr)
+        subject = run(self.derived, "git", "log", "-1", "--format=%s").stdout.strip()
+        self.assertEqual(subject, "テンプレートのproject-0.2.0を取り込む")
 
 
 if __name__ == "__main__":

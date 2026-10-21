@@ -22,6 +22,33 @@ python -m tools.graph --version
 
 ---
 
+## 1.38.0 — 2026-10-21
+
+### 追加
+
+`upgrade`が、テンプレートの層ごとに版と変更履歴を比べるようにした（#125）。これまでは下の層の`version.py`と`TEMPLATE_CHANGELOG.md`だけを比べていた。そのため、graph-project-templateだけが変わっても「最新である。取り込むものは無い。」と出ていた。
+
+上の層は、`tools/graph/layers/<層の名前>.toml`を1つ置き、版と変更履歴の場所を書く。層ごとにファイルの名前が違うので、層を重ねても取り込みで競合しない。下の層の版は、これまでどおり`tools/graph/version.py`にある。
+
+| キー | 中身 |
+| --- | --- |
+| `name` | 層の名前（`graph-project-template`） |
+| `label` | 取り込みの版で層を見分ける名前。英小文字と数字（`project`） |
+| `below` | 1つ下の層の`name` |
+| `version` | その層の版 |
+| `changelog` | その層の変更履歴のファイル |
+| `repository` | その層のリポジトリのURL |
+
+取り込みの版は、遅れている層の版を下の層から並べたものにした。下の層だけなら`1.38.0`、上の層だけなら`project-0.14.0`、両方なら`1.38.0-project-0.14.0`になる。`make update`のマージのメッセージと、取り込みのブランチ名`chore/template-<版>`に、この版を入れる。版は`python -m tools.graph upgrade --label`が出す。CIの`names`も、この形のブランチ名を取り込みとして扱う。
+
+`upgrade`は、テンプレートの側にある層だけを比べる。層のテンプレート本体では、自分の層は手元にしか無く、`template`が1つ下の層を指しているからである。手元にまだ無い層は、遅れているとして扱う。リモート`template`が無いときの案内は、いちばん上の層の`repository`を指す。
+
+### 取り込む側の作業
+
+なし。上の層を持つテンプレート（graph-project-templateなど）は、`tools/graph/layers/<層の名前>.toml`を置くと、その層の版も比べられるようになる。
+
+---
+
 ## 1.37.1 — 2026-10-21
 
 ### 修正

@@ -83,6 +83,8 @@ class Branch(unittest.TestCase):
             "feat/121-branch-commit-rules",
             "fix/g013-old-names",
             "chore/template-1.37.0",
+            "chore/template-project-0.14.0",
+            "chore/template-1.38.0-project-0.14.0",
             "claude/confident-wescoff-08c4e3",
             "claude/何でもよい",
         ):
@@ -103,6 +105,9 @@ class Branch(unittest.TestCase):
 
     def test_template_import_skips_commits(self):
         self.assertTrue(self.names.skips_commits("chore/template-1.37.0"))
+        self.assertTrue(self.names.skips_commits("chore/template-project-0.14.0"))
+        self.assertTrue(self.names.skips_commits("chore/template-1.38.0-project-0.14.0"))
+        self.assertFalse(self.names.skips_commits("chore/template-project"))
         self.assertFalse(self.names.skips_commits("chore/update-deps"))
         self.assertFalse(self.names.skips_commits("chore/template-latest"))
 

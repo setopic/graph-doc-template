@@ -363,13 +363,19 @@ def cmd_upgrade(args: argparse.Namespace) -> int:
     root = _repo_root(args.root)
 
     try:
+        if args.label:
+            # make updateが、マージのメッセージに入れる版を読む。fetchはmake updateが済ませる
+            print(upgrade_mod.inspect_label(root))
+            return 0
         result = upgrade_mod.inspect(root)
     except upgrade_mod.UpgradeError as exc:
         print(f"エラー: {exc}", file=sys.stderr)
         return 1
 
-    print(f"ローカル:     {result['local']}")
-    print(f"テンプレート: {result['remote']}")
+    for layer in result["layers"]:
+        print(f"{layer['name']}")
+        print(f"  ローカル:     {layer['local'] or '（まだ取り込んでいない）'}")
+        print(f"  テンプレート: {layer['remote']}")
     print("")
 
     if result["ahead"]:
@@ -385,10 +391,14 @@ def cmd_upgrade(args: argparse.Namespace) -> int:
         print("下の移行手順を読んでから取り込む。")
         print("")
 
-    for version, body in result["entries"]:
-        print(f"--- {version} ---")
-        print(body if body else "（記載なし）")
-        print("")
+    print(f"取り込みの版: {result['label']}")
+    print("")
+
+    for layer in result["layers"]:
+        for version, body in layer["entries"]:
+            print(f"--- {layer['name']} {version} ---")
+            print(body if body else "（記載なし）")
+            print("")
 
     if result["files"]:
         print(f"変更されるファイル（{len(result['files'])}件）")
@@ -708,6 +718,11 @@ def build_parser() -> argparse.ArgumentParser:
     p_upgrade = sub.add_parser(
         "upgrade",
         help="テンプレートとの差を調べる（読み取りのみ。取り込みは手で行う）",
+    )
+    p_upgrade.add_argument(
+        "--label",
+        action="store_true",
+        help="取り込みの版（ブランチ名とマージのメッセージに入れるもの）だけを出す。fetchはしない",
     )
     p_upgrade.set_defaults(func=cmd_upgrade)
 

@@ -173,6 +173,7 @@ python -m tools.graph render --format mermaid --focus DOM-01
 | `python -m tools.graph new --from <file>` | 1行に1ノードを書いたファイルから、まとめて作る |
 | `python -m tools.graph reset-samples` | 同梱のサンプルノードをまとめて取り除く |
 | `python -m tools.graph upgrade` | テンプレートとの差を調べる（読み取りのみ） |
+| `python -m tools.graph upgrade --label` | 取り込みの版だけを出す（`make update`が使う。fetchはしない） |
 | `python -m tools.graph --version` | テンプレートの版を表示する |
 | `python -m tools.graph stats` | ノード数・エッジ数を集計し、構造の見直しの候補を出す（下の「構造の見直しの候補」） |
 | `python -m tools.graph review` | 本文の質をAIに見てもらう（任意・通信あり） |
@@ -360,7 +361,27 @@ python -m tools.graph upgrade
 make update
 ```
 
-`make update`は、マージコミットのメッセージを「テンプレートの<版>を取り込む」にする。版は、取り込むテンプレートの`tools/graph/version.py`から読む。競合したときも、解いたあとの`git commit`で同じメッセージが使われる。
+`make update`は、マージコミットのメッセージを「テンプレートの<版>を取り込む」にする。版は`python -m tools.graph upgrade --label`が作り、遅れている層の版を下の層から並べる。競合したときも、解いたあとの`git commit`で同じメッセージが使われる。
+
+テンプレートは層を重ねられる。graph-project-templateは、graph-doc-templateの上に重ねた層である。版と変更履歴は層ごとにあり、`upgrade`は層ごとに比べる。
+
+| 層 | 版 | 変更履歴 | 取り込みの版の書き方 |
+| --- | --- | --- | --- |
+| graph-doc-template | `tools/graph/version.py`の`TEMPLATE_VERSION` | `TEMPLATE_CHANGELOG.md` | `1.38.0` |
+| 上の層 | `tools/graph/layers/<層の名前>.toml`の`version` | 同じファイルの`changelog`が指すもの | `<label>-<版>`（`project-0.14.0`など） |
+
+両方の層が遅れていれば、取り込みの版は`1.38.0-project-0.14.0`になる。上の層を作るときは、`tools/graph/layers/<層の名前>.toml`を1つ置く。層ごとにファイルの名前が違うので、層を重ねても取り込みで競合しない。
+
+```toml
+name = "graph-project-template"
+label = "project"
+below = "graph-doc-template"
+version = "0.14.0"
+changelog = "PROJECT_TEMPLATE_CHANGELOG.md"
+repository = "https://github.com/setopic/graph-project-template.git"
+```
+
+`label`は、取り込みの版で層を見分ける名前で、英小文字と数字で書く。`below`には1つ下の層の`name`を書く。リモート`template`が無いとき、`upgrade`はいちばん上の層の`repository`を案内する。
 
 ```bash
 python -m tools.graph reset-samples --yes
@@ -374,7 +395,7 @@ python -m tools.graph check && python -m tools.graph sync
 
 取り込みをPRにするときは、本文の「対応するノード」の節に、行の頭から`なし`と書く（`- なし`のように箇条書きにしてもよい）。取り込みには対応するノードが無いからである。`gh pr create --body`で本文を渡すと、PRの雛形を通らず、この節が入らない。節が無いと、CIの`refs`が落ちる。
 
-取り込みのブランチ名は`chore/template-<版>`にし、PRの題は`chore: テンプレートの<版>を取り込む`のように書く。CIの`names`が、ブランチ名とPRの題を確かめる（[META-07](docs/00-meta/issue-pr-flow.md)）。取り込みに入る上流のコミットは確かめない。
+取り込みのブランチ名は`chore/template-<版>`にし（版は`make update`のメッセージと同じもの）、PRの題は`chore: テンプレートの<版>を取り込む`のように書く。CIの`names`が、ブランチ名とPRの題を確かめる（[META-07](docs/00-meta/issue-pr-flow.md)）。取り込みに入る上流のコミットは確かめない。
 
 ```markdown
 ## 対応するノード
