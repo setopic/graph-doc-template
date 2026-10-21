@@ -408,7 +408,7 @@ def cmd_upgrade(args: argparse.Namespace) -> int:
             print(f"  ... ほか{len(result['files']) - 20}件")
         print("")
 
-    print("取り込む手順は、READMEの「テンプレートの更新を取り込む」にある。")
+    print("取り込む手順は、docs/00-meta/template-upgrade.md（META-08）にある。")
     print("このコマンドは、何も書き込んでいない。")
     return 0
 

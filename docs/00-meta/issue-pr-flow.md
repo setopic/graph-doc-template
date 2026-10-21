@@ -6,6 +6,7 @@ status: stable
 tags: [meta, flow]
 related:
   - META-01
+  - META-08
 ---
 
 # issueとPRの流れ
@@ -115,7 +116,7 @@ fix: 1.36.14 サンプルを配るテンプレートではreset-samplesを回さ
 
 派生はマージコミットで本体のコミットを取り込むので、本体のコミットもこの形に合わせる。本体が合っていないと、派生の検査で本体のコミットを外す仕組みが別に要る。
 
-ブランチ名は、`<種類>/<issueの番号>-<内容>`の形にする。内容は英小文字とハイフンで書き、英小文字で始めれば数字も使える。issueが無いときは番号を省く。テンプレートの取り込みは、`chore/template-<版>`にする。版は、`python -m tools.graph upgrade --label`が出すものを使う。遅れている層の版を下の層から並べ、上の層には`project-`のような名前が付く。
+ブランチ名は、`<種類>/<issueの番号>-<内容>`の形にする。内容は英小文字とハイフンで書き、英小文字で始めれば数字も使える。issueが無いときは番号を省く。テンプレートの取り込みは、`chore/template-<版>`にする。版は、`python -m tools.graph upgrade --label`が出すものを使う。遅れている層の版を下の層から並べ、上の層には`project-`のような名前が付く。取り込みの手順と、取り込みのPRの書き方は、[META-08](./template-upgrade.md)にある。
 
 ```text
 feat/121-branch-commit-rules
@@ -177,9 +178,11 @@ CI（`graph-check.yml`の`names`）が、PRのブランチ名、PRの題、PRに
 `related`: 依存はしないが、一緒に読むべきノード
 
 - [META-01 グラフの規約](./graph-rules.md)
+- [META-08 テンプレートの更新を取り込む](./template-upgrade.md)
 
 このノードを参照しているノード
 
 - (related) [META-01 グラフの規約](./graph-rules.md)
+- (related) [META-08 テンプレートの更新を取り込む](./template-upgrade.md)
 
 <!-- graph:auto:end -->
