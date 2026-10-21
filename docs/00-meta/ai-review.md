@@ -22,7 +22,7 @@ python -m tools.graph review --format json
 
 ## checkとは別物である
 
-`check`と`review`を一緒にしてはいけない理由がある。
+`check`と`review`は次の表のように違うので、一緒にしてはいけない。
 
 | | `check`（G001〜G023） | `review`（A001〜A009） |
 | --- | --- | --- |

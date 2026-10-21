@@ -45,7 +45,7 @@ related:
    make update UPDATE_ARGS=--allow-unrelated-histories
    ```
 
-   `make update`は、`.gitattributes`の`merge=ours`を効かせて取り込む。`merge=ours`のドライバは、この取り込みのときだけ効かせる。クローンに常設すると、作業ブランチどうしのマージでも`merge=ours`が効き、相手の変更が何も言わずに落ちる。
+   `make update`は、`.gitattributes`の`merge=ours`を有効にして取り込む。`merge=ours`のドライバは、この取り込みのときだけ有効にする。クローンに常設すると、作業ブランチどうしのマージでも`merge=ours`が使われ、相手の変更が気づかないうちに捨てられる。
 
 4. 以前の`make setup`でドライバを常設したクローンなら、設定を外す。設定が無ければ何もしないので、何度実行してもよい。
 
@@ -59,7 +59,7 @@ related:
    gh label clone setopic/graph-doc-template
    ```
 
-   ラベルの実体が無いと、`labels:`の指定は何も言わずに無視される。issueは立つが、ラベルが付かないまま残る。`gh`の組み込みのコマンドで、すでにあるラベルは飛ばすので、何度実行してもよい。
+   ラベルの実体が無いと、`labels:`の指定はエラーを出さずに無視される。issueは立つが、ラベルが付かないまま残る。`gh`の組み込みのコマンドで、すでにあるラベルは飛ばすので、何度実行してもよい。
 
 ## 2. 取り込む
 
@@ -94,7 +94,7 @@ python -m tools.graph check && python -m tools.graph sync
 | 知っておくこと | 説明 |
 | --- | --- |
 | サンプルノードは毎回追加される | マージは、テンプレート側にしかないファイルをそのまま足す。そのため、`reset-samples`で消すところまでが1セットである。省くと、プロジェクト側の同じidと衝突して`G002`が残る。サンプルノードを配るテンプレートは例外で、`reset-samples`を回さない |
-| `README.md`と`docs/index.md`は競合しない | `make update`で取り込めば、`.gitattributes`の`merge=ours`で、プロジェクト側が優先される。`git merge`を直接使うと`merge=ours`が効かず、競合する。テンプレート側の改善を取り込みたいときは、`git diff HEAD template/main -- README.md`で差分を見て、手で反映する |
+| `README.md`と`docs/index.md`は競合しない | `make update`で取り込めば、`.gitattributes`の`merge=ours`で、プロジェクト側が優先される。`git merge`を直接使うと`merge=ours`が使われず、競合する。テンプレート側の改善を取り込みたいときは、`git diff HEAD template/main -- README.md`で差分を見て、手で反映する |
 | テンプレートがサンプルノードを変更したときだけ、modify/deleteの競合が出る | `git rm <path>`で解決してよい |
 | 初回のマージだけ`--allow-unrelated-histories`が要る | GitHubの"Use this template"は、履歴を引き継がないため |
 

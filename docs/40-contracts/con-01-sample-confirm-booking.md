@@ -37,7 +37,7 @@ bodyは無い。
 | フィールド | 型 | 説明 |
 | --- | --- | --- |
 | id | string | 予約の識別子 |
-| status | string | 常に `confirmed` |
+| status | string | 常に`confirmed` |
 | resourceId | string | 確保された資源 |
 | startAt | string (ISO 8601) | 開始時刻 |
 | endAt | string (ISO 8601) | 終了時刻 |

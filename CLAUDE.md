@@ -182,7 +182,7 @@ python -m tools.graph path CON-01 ARCH-01
 
 ## 共通ファイルを直すとき
 
-このリポジトリを`graph-doc-template`から起こしたなら、`tools/`・`docs/00-meta/`・ルートの`CLAUDE.md`などは、テンプレート側と共通である。これらを共通ファイルと呼ぶ。範囲は[META-08](docs/00-meta/template-upgrade.md)の「共通ファイル」で決めてある。そのリポジトリに固有の決まりは、`.claude/CLAUDE.md`に書く。更新は`make update`で取り込む。`git merge template/main`を直接使うと`merge=ours`が効かず、`README.md`や`docs/index.md`が競合する。
+このリポジトリを`graph-doc-template`から起こしたなら、`tools/`・`docs/00-meta/`・ルートの`CLAUDE.md`などは、テンプレート側と共通である。これらを共通ファイルと呼ぶ。範囲は[META-08](docs/00-meta/template-upgrade.md)の「共通ファイル」で決めてある。そのリポジトリに固有の決まりは、`.claude/CLAUDE.md`に書く。更新は`make update`で取り込む。`git merge template/main`を直接使うと`merge=ours`が使われず、`README.md`や`docs/index.md`が競合する。
 
 **共通ファイルを手でコピーして同期しない。** 削除が伝わらず、テンプレートとの差が広がっていく。共通ファイルに手を入れるなら、テンプレート側に入れてからマージで戻す。こちらだけで直すと、次のマージで競合する。取り込みの手順は[META-08](docs/00-meta/template-upgrade.md)にあり、`reset-samples --yes`まで含めて1セットである。ただし、自分でもサンプルノードを配るテンプレート（graph-project-templateなど）では、`reset-samples`を回さない。配るはずのサンプルノードが消えるからである。
 

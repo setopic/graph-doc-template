@@ -9,7 +9,7 @@
 
 ## 確認したこと
 
-- [ ] `python -m tools.graph check --since origin/main` を回した
+- [ ] `python -m tools.graph check --since origin/main`を回した
 - [ ] `G015`・`G017`に挙がったノードを開き、追従が要るかを判断した
 - [ ] 追従が要らないと判断したものは、その理由を自分の言葉で言える
 
