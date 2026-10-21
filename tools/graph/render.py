@@ -84,8 +84,19 @@ def to_mermaid(
         arrow = _UNDIRECTED.get(edge.kind) or _ARROW.get(edge.kind, "-->")
         lines.append(f"  {edge.src} {arrow}|{edge.kind}| {edge.dst}")
 
-    # statusで色を分ける。描かないノードを挙げると、Mermaidがそのノードを作ってしまう
-    shown = [n for n in graph.sorted_nodes() if n.id in drawn]
+    _status_classes(lines, [n for n in graph.sorted_nodes() if n.id in drawn])
+
+    if focus:
+        marked = [n.id for n in graph.sorted_nodes() if n.id in focus]
+        if marked:
+            lines.append("  classDef focus stroke-width:3px;")
+            lines.append(f"  class {','.join(marked)} focus;")
+
+    return "\n".join(lines) + "\n"
+
+
+def _status_classes(lines: list[str], shown: list[Node]) -> None:
+    """statusで色を分ける。描かないノードを挙げると、Mermaidがそのノードを作ってしまう"""
     draft = [n.id for n in shown if n.status == "draft"]
     deprecated = [n.id for n in shown if n.status == "deprecated"]
     # mermaidのstyleの定義はカンマ区切りなので、値に含めるカンマは\,と書く。
@@ -97,12 +108,72 @@ def to_mermaid(
     if deprecated:
         lines.append(f"  class {','.join(deprecated)} deprecated;")
 
-    if focus:
-        marked = [n.id for n in graph.sorted_nodes() if n.id in focus]
-        if marked:
-            lines.append("  classDef focus stroke-width:3px;")
-            lines.append(f"  class {','.join(marked)} focus;")
 
+def to_mermaid_types(
+    graph: Graph,
+    types: set[str],
+    include_mentions: bool = False,
+) -> str:
+    """`types`の種別のノードだけを個別に描き、ほかの種別は型ごとに1つの箱へまとめる。
+
+    層の中の依存の形と、その層がどの層とつながっているかを1枚で見るための図である。
+    箱は`--aggregate`と同じ形で、箱との間の線には、ノード × 種別 × 型ごとの本数を書く。
+    箱の数はほかの種別の数までしか増えない。
+    """
+    lines = ["graph LR"]
+    inside = {n.id for n in graph.nodes.values() if n.type in types}
+
+    inner = []
+    # (始点, 種別, 終点)ごとの本数。層の外の側は、型の接頭辞に置き換える
+    totals: dict[tuple[str, str, str], int] = {}
+    for edge in _diagram_edges(graph, include_mentions):
+        src_in, dst_in = edge.src in inside, edge.dst in inside
+        if src_in and dst_in:
+            inner.append(edge)
+            continue
+        if not src_in and not dst_in:
+            continue
+        src = graph.nodes.get(edge.src)
+        dst = graph.nodes.get(edge.dst)
+        if src is None or dst is None:
+            continue
+        outer = dst if src_in else src
+        if outer.type not in schema.NODE_TYPES:
+            continue  # 型の誤りはG003が指摘する。ここでは何も言わずに飛ばす
+        prefix = schema.NODE_TYPES[outer.type]["prefix"]
+        if src_in or edge.kind in _UNDIRECTED:
+            # 向きの無い線は、層の中のノードの側から描く
+            key = (edge.src if src_in else edge.dst, edge.kind, prefix)
+        else:
+            key = (prefix, edge.kind, edge.dst)
+        totals[key] = totals.get(key, 0) + 1
+
+    # 線を1本も持たないノードは、to_mermaidと同じく描かない
+    drawn = {e.src for e in inner} | {e.dst for e in inner}
+    drawn |= {k for src, _, dst in totals for k in (src, dst) if k in inside}
+
+    for type_name, spec in schema.NODE_TYPES.items():
+        if type_name in types:
+            nodes = [n for n in graph.by_type(type_name) if n.id in drawn]
+            if not nodes:
+                continue
+            lines.append(f'  subgraph {type_name}["{spec["label"]}"]')
+            for node in nodes:
+                lines.append(f'    {node.id}["{_escape(node.id)}<br/>{_escape(node.title)}"]')
+            lines.append("  end")
+        elif any(spec["prefix"] in (src, dst) for src, _, dst in totals):
+            label = _escape(spec["label"])
+            count = len(graph.by_type(type_name))
+            lines.append(f'  {spec["prefix"]}["{label}<br/>{count} 件"]')
+
+    for edge in inner:
+        arrow = _UNDIRECTED.get(edge.kind) or _ARROW.get(edge.kind, "-->")
+        lines.append(f"  {edge.src} {arrow}|{edge.kind}| {edge.dst}")
+    for (src, kind, dst), count in sorted(totals.items()):
+        arrow = _UNDIRECTED.get(kind) or _ARROW.get(kind, "-->")
+        lines.append(f"  {src} {arrow}|{kind} {count}| {dst}")
+
+    _status_classes(lines, [n for n in graph.sorted_nodes() if n.id in drawn])
     return "\n".join(lines) + "\n"
 
 

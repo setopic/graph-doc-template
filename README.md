@@ -162,6 +162,7 @@ python -m tools.graph render --format mermaid --focus DOM-01
 | `python -m tools.graph path <FROM> <TO>` | `depends_on`・`refines`を辿って、2つのノードを結ぶ最短の経路を出す |
 | `python -m tools.graph render --aggregate` | 型ごとに1つの箱へまとめる（`G018`を避ける） |
 | `python -m tools.graph render --hide-edges decides,supersedes` | 挙げた種類の線を描かない。その線しか持たないノードも外れる |
+| `python -m tools.graph render --type domain` | 挙げた種別のノードだけを描き、ほかの種別は型ごとの箱にまとめる |
 | `python -m tools.graph render --into README.md` | READMEの図を作り直す |
 | `python -m tools.graph render --into README.md --check` | 図が古ければ終了コード1（CI用） |
 | `python -m tools.graph new --type usecase --id UC-02 --title "..."` | 雛形からノードを作る |

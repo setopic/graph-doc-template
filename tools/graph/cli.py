@@ -111,6 +111,25 @@ def cmd_render(args: argparse.Namespace) -> int:
         )
         return 1
 
+    types: set[str] | None = None
+    if args.type:
+        if args.aggregate or args.focus:
+            print(
+                "エラー: --typeは、--aggregateとも--focusとも同時に使えない"
+                "（どれも図に描くノードを選ぶので、組み合わせると意味が決まらない）",
+                file=sys.stderr,
+            )
+            return 1
+        types = {t.strip() for t in args.type.split(",") if t.strip()}
+        unknown = sorted(t for t in types if t not in schema.NODE_TYPES)
+        if unknown:
+            print(
+                f"エラー: 存在しない種別: {', '.join(unknown)}"
+                f"（使えるのは{', '.join(schema.NODE_TYPES)}）",
+                file=sys.stderr,
+            )
+            return 1
+
     if args.hide_edges:
         hidden = {k.strip() for k in args.hide_edges.split(",") if k.strip()}
         known = (*schema.frontmatter_edge_kinds(), schema.BODY_EDGE_KIND)
@@ -146,7 +165,18 @@ def cmd_render(args: argparse.Namespace) -> int:
         if omitted:
             print(f"予算{args.budget}字に収まらず、名前だけを出したノード: {len(omitted)}", file=sys.stderr)
 
-    if args.format == "mermaid" and args.aggregate:
+    if types and args.format != "mermaid":
+        # jsonとdotには箱を描かない。その種別のノードと、その間の線だけを出す
+        graph = graph.subgraph(
+            {n.id for n in graph.nodes.values() if n.type in types},
+            include_mentions=args.include_mentions,
+        )
+
+    if args.format == "mermaid" and types:
+        output = render_mod.to_mermaid_types(
+            graph, types, include_mentions=args.include_mentions
+        )
+    elif args.format == "mermaid" and args.aggregate:
         output = render_mod.to_mermaid_aggregate(
             graph, include_mentions=args.include_mentions
         )
@@ -637,6 +667,12 @@ def build_parser() -> argparse.ArgumentParser:
         metavar="KIND[,KIND...]",
         help="挙げた種類の線を描かない（例: decides,supersedes）。"
         "その線しか持たないノードは、図から外れる",
+    )
+    p_render.add_argument(
+        "--type",
+        metavar="TYPE[,TYPE...]",
+        help="挙げた種別のノードだけを描く（例: domain）。"
+        "mermaidでは、ほかの種別を型ごとの箱にまとめる",
     )
     p_render.add_argument(
         "--budget",
