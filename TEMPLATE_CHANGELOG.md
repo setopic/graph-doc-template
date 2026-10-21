@@ -26,6 +26,22 @@ python -m tools.graph --version
 
 ---
 
+## 1.44.4（2026-10-21）
+
+### 修正
+
+`tools/graph/schema.py`の冒頭のdocstringと`README.md`から、`schema.py`の書き換えを促す文を外した（#158）。1.44.0で、用語表の見出しと列名と必須の節を`graph.toml`で変えられるようにした。docstringは、`schema.py`を書き換えないことと、`graph.toml`で変えることを書き、書き方の場所として[META-02](docs/00-meta/node-types.md)と[META-01](docs/00-meta/graph-rules.md)を指す。`README.md`の検査の説明は、必須の節を`graph.toml`の`[required_sections]`で変えられると書く。
+
+### 取り込む側の作業
+
+`README.md`は派生では`merge=ours`なので、取り込んでも変わらない。派生の`README.md`に「必須の節の既定は、`tools/graph/schema.py`にある。」の文が残っていれば、次の文に手で直す。
+
+```markdown
+必須の節は、`graph.toml`の`[required_sections]`で変えられる（[META-02](docs/00-meta/node-types.md)の「必須の節」）。
+```
+
+この文を消したか書き換えた派生は、何もしなくてよい。`schema.py`は取り込みで変わる。
+
 ## 1.44.3（2026-10-21）
 
 ### 修正
