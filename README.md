@@ -75,20 +75,14 @@ tools/graph/            検証・可視化・生成ツール（依存なし）
 
 同梱のサンプルノードで作ったグラフである。実線が`depends_on`と`refines`、破線が`related`と`decides`を表す。点線の枠は`draft`のノードである。
 
+`related`は向きの無い関係なので、矢印の無い破線で描く。2つのノードの両方に書いてあっても、線は1本である。線を1本も持たないノード（目次など）は、図に出さない。
+
 <!-- graph:diagram:start -->
 
 <!-- この図は render --into が生成する。手で編集しない -->
 
 ```mermaid
 graph LR
-  subgraph index["目次"]
-    IDX-ADR["IDX-ADR<br/>決定記録"]
-    IDX-ARCH["IDX-ARCH<br/>アーキテクチャ"]
-    IDX-CON["IDX-CON<br/>契約"]
-    IDX-DOM["IDX-DOM<br/>ドメイン"]
-    IDX-ROOT["IDX-ROOT<br/>ドキュメントグラフのルート"]
-    IDX-UC["IDX-UC<br/>ユースケース"]
-  end
   subgraph meta["メタ / 規約"]
     META-01["META-01<br/>グラフの規約"]
     META-02["META-02<br/>ノード種別と層"]
@@ -118,16 +112,11 @@ graph LR
   CON-01 -->|depends_on| UC-01
   CON-01 -->|depends_on| DOM-01
   DOM-01 -->|depends_on| ARCH-01
-  META-01 -.->|related| META-02
-  META-01 -.->|related| META-03
-  META-01 -.->|related| META-07
-  META-01 -.->|related| META-08
-  META-02 -.->|related| META-01
-  META-03 -.->|related| META-01
-  META-07 -.->|related| META-01
-  META-07 -.->|related| META-08
-  META-08 -.->|related| META-01
-  META-08 -.->|related| META-07
+  META-01 -.-|related| META-02
+  META-01 -.-|related| META-03
+  META-01 -.-|related| META-07
+  META-01 -.-|related| META-08
+  META-07 -.-|related| META-08
   UC-01 -->|depends_on| DOM-01
   classDef draft stroke-dasharray: 4\,3;
   classDef deprecated opacity:0.5;
@@ -150,7 +139,7 @@ python -m tools.graph render --format mermaid --into README.md
 python -m tools.graph render --format mermaid --focus DOM-01
 ```
 
-エッジの向きは無視して、両方向に辿る。前提（何に依存しているか）と影響範囲（誰から依存されているか）は、どちらも同時に見たいものだからである。`--depth N`で範囲を広げられる（既定は1）。焦点のノードは、枠が太くなる。
+エッジの向きは無視して、両方向に辿る。前提（何に依存しているか）と影響範囲（誰から依存されているか）は、どちらも同時に見たいものだからである。`--depth N`で範囲を広げられる（既定は1）。焦点のノードは、枠が太くなる。線を1本も持たなくても、焦点のノードは図に出す。
 
 `--focus`は`--format json`でも使えるので、変更の影響範囲を機械的に取り出すのにも役立つ。JSONの各ノードには、本文の文字数（`chars`）が付く。`--budget <文字数>`を足すと、本文の文字数の合計がその値に収まるまで、近いノードから残す。外したノードは`omitted`に、名前と場所だけを出す。
 

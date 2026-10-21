@@ -23,6 +23,10 @@ _ARROW = {
     schema.BODY_EDGE_KIND: "-.->",
 }
 
+# 向きの無いエッジの種別。個別のノードの図では、A→BとB→Aを1本にまとめ、
+# 矢印の無い線で描く。相互に書く決まり（G010）なので、矢印にすると関係1つが2本になる。
+_UNDIRECTED = {"related": "-.-"}
+
 
 def _edges(graph: Graph, include_mentions: bool):
     seen: set[tuple[str, str, str]] = set()
@@ -39,6 +43,18 @@ def _edges(graph: Graph, include_mentions: bool):
             yield edge
 
 
+def _diagram_edges(graph: Graph, include_mentions: bool):
+    """個別のノードの図に描くエッジ。向きの無い種別は、ノードの組ごとに1本にする。"""
+    pairs: set[tuple[frozenset[str], str]] = set()
+    for edge in _edges(graph, include_mentions):
+        if edge.kind in _UNDIRECTED:
+            key = (frozenset((edge.src, edge.dst)), edge.kind)
+            if key in pairs:
+                continue
+            pairs.add(key)
+        yield edge
+
+
 def _escape(text: str) -> str:
     return text.replace('"', "'").replace("\n", " ")
 
@@ -50,8 +66,13 @@ def to_mermaid(
 ) -> str:
     lines = ["graph LR"]
 
+    edges = list(_diagram_edges(graph, include_mentions))
+    # 線を1本も持たないノードは描かない。場所を取るだけで、何も伝えないからである。
+    # focusのノードは、線が無くても残す。何を中心にした図かが分からなくなる。
+    drawn = {e.src for e in edges} | {e.dst for e in edges} | (focus or set())
+
     for type_name, spec in schema.NODE_TYPES.items():
-        nodes = graph.by_type(type_name)
+        nodes = [n for n in graph.by_type(type_name) if n.id in drawn]
         if not nodes:
             continue
         lines.append(f'  subgraph {type_name}["{spec["label"]}"]')
@@ -59,13 +80,14 @@ def to_mermaid(
             lines.append(f'    {node.id}["{_escape(node.id)}<br/>{_escape(node.title)}"]')
         lines.append("  end")
 
-    for edge in _edges(graph, include_mentions):
-        arrow = _ARROW.get(edge.kind, "-->")
+    for edge in edges:
+        arrow = _UNDIRECTED.get(edge.kind) or _ARROW.get(edge.kind, "-->")
         lines.append(f"  {edge.src} {arrow}|{edge.kind}| {edge.dst}")
 
-    # statusで色を分ける
-    draft = [n.id for n in graph.sorted_nodes() if n.status == "draft"]
-    deprecated = [n.id for n in graph.sorted_nodes() if n.status == "deprecated"]
+    # statusで色を分ける。描かないノードを挙げると、Mermaidがそのノードを作ってしまう
+    shown = [n for n in graph.sorted_nodes() if n.id in drawn]
+    draft = [n.id for n in shown if n.status == "draft"]
+    deprecated = [n.id for n in shown if n.status == "deprecated"]
     # mermaidのstyleの定義はカンマ区切りなので、値に含めるカンマは\,と書く。
     # 空白区切り（"4 3"）は仕様で定義されておらず、描画されないことがある。
     lines.append("  classDef draft stroke-dasharray: 4\\,3;")
@@ -129,8 +151,8 @@ def to_mermaid_aggregate(graph: Graph, include_mentions: bool = False) -> str:
     return "\n".join(lines) + "\n"
 
 
-# 図の中でエッジを表している行。`A --> B`・`A -.-> B`・`A ==> B`に当たる。
-EDGE_LINE_RE = re.compile(r"^\s*[A-Za-z][\w-]*\s+(?:-->|-\.->|==>)")
+# 図の中でエッジを表している行。`A --> B`・`A -.-> B`・`A -.- B`・`A ==> B`に当たる。
+EDGE_LINE_RE = re.compile(r"^\s*[A-Za-z][\w-]*\s+(?:-->|-\.->|-\.-|==>)")
 
 
 def count_edges_in_markdown(path: Path) -> int | None:

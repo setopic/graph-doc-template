@@ -70,6 +70,7 @@ class CountEdgesTest(unittest.TestCase):
                         "  end",
                         "  UC-01 -->|depends_on| DOM-01",
                         "  UC-01 -.->|related| DOM-02",
+                        "  UC-02 -.-|related| UC-03",
                         "  ADR-01 ==>|supersedes| ADR-02",
                         "  classDef draft stroke-dasharray: 4\\,3;",
                         "  class UC-01 draft;",
@@ -78,7 +79,7 @@ class CountEdgesTest(unittest.TestCase):
                 encoding="utf-8",
             )
             # ノード行・subgraph・classDef・classは数えない
-            self.assertEqual(render.count_edges_in_markdown(readme), 3)
+            self.assertEqual(render.count_edges_in_markdown(readme), 4)
 
     def test_no_marker_returns_none(self) -> None:
         with tempfile.TemporaryDirectory() as tmp:
