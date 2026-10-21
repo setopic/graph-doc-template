@@ -290,6 +290,13 @@ def to_dot(graph: Graph, include_mentions: bool = False) -> str:
     return "\n".join(lines) + "\n"
 
 
+def note_reduced(output: str, fmt: str, count: int) -> str:
+    """`render --reduce`で省いた本数を、図のコメントとして1行目の後ろに書く。描画には現れない。"""
+    mark = "%%" if fmt == "mermaid" else "//"
+    head, _, rest = output.partition("\n")
+    return f"{head}\n  {mark} ほかのdepends_onを辿れば分かる依存を{count}本省いた（render --reduce）\n{rest}"
+
+
 class InjectError(RuntimeError):
     pass
 

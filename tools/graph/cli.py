@@ -111,6 +111,14 @@ def cmd_render(args: argparse.Namespace) -> int:
         )
         return 1
 
+    if args.reduce and (args.aggregate or args.format == "json"):
+        print(
+            "エラー: --reduceは、--aggregateとも--format jsonとも同時に使えない"
+            "（線の本数や、depends_onに書いた前提が実態とずれる）",
+            file=sys.stderr,
+        )
+        return 1
+
     types: set[str] | None = None
     if args.type:
         if args.aggregate or args.focus:
@@ -172,6 +180,13 @@ def cmd_render(args: argparse.Namespace) -> int:
             include_mentions=args.include_mentions,
         )
 
+    reduced = 0
+    if args.reduce:
+        # 個別に描くノードの間の線だけを見る。--typeの箱を通る経路では省かない
+        among = {n.id for n in graph.nodes.values() if n.type in types} if types else None
+        graph, reduced = graph.without_implied("depends_on", among)
+        print(f"ほかのdepends_onを辿れば分かる依存を、図から{reduced}本省いた", file=sys.stderr)
+
     if args.format == "mermaid" and types:
         output = render_mod.to_mermaid_types(
             graph, types, include_mentions=args.include_mentions
@@ -190,6 +205,9 @@ def cmd_render(args: argparse.Namespace) -> int:
         )
     else:
         output = render_mod.to_dot(graph, include_mentions=args.include_mentions)
+
+    if args.reduce:
+        output = render_mod.note_reduced(output, args.format, reduced)
 
     if args.into:
         if args.format != "mermaid":
@@ -673,6 +691,12 @@ def build_parser() -> argparse.ArgumentParser:
         metavar="TYPE[,TYPE...]",
         help="挙げた種別のノードだけを描く（例: domain）。"
         "mermaidでは、ほかの種別を型ごとの箱にまとめる",
+    )
+    p_render.add_argument(
+        "--reduce",
+        action="store_true",
+        help="ほかのdepends_onを辿れば分かる依存を、図から省く（A→B→CがあるときのA→C）。"
+        "検査とフロントマターは変えない",
     )
     p_render.add_argument(
         "--budget",

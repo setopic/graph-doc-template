@@ -149,3 +149,57 @@ class Graph:
         for node in self.nodes.values():
             out.add(replace(node, edges=[e for e in node.edges if e.kind not in kinds]))
         return out
+
+    def without_implied(
+        self, kind: str, among: set[str] | None = None
+    ) -> tuple["Graph", int]:
+        """`kind`の線のうち、ほかの`kind`の線を辿れば分かるものを除いたグラフと、除いた本数を返す。
+
+        A→B→CとA→Cがあるとき、A→Cを除く。辿る経路も`kind`の線だけにする。
+        `among`を渡すと、その中のノードどうしの線だけを見て、経路もその中だけで辿る。
+        図に描かないノードを通る経路で線を消すと、図だけでは辿れなくなるからである。
+        線を1本除くごとに、残った線で辿れるかを確かめるので、循環があっても、
+        どのノードからどのノードへ辿れるかは変わらない。
+        """
+        inside = set(self.nodes) if among is None else among & set(self.nodes)
+        adjacency: dict[str, set[str]] = {}
+        for node in self.nodes.values():
+            for edge in node.edges:
+                if (
+                    edge.kind == kind
+                    and edge.resolved
+                    and edge.src in inside
+                    and edge.dst in inside
+                    and edge.src != edge.dst
+                ):
+                    adjacency.setdefault(edge.src, set()).add(edge.dst)
+
+        def reachable(src: str, dst: str) -> bool:
+            seen = {src}
+            stack = [src]
+            while stack:
+                for nxt in adjacency.get(stack.pop(), ()):
+                    if nxt == dst:
+                        return True
+                    if nxt not in seen:
+                        seen.add(nxt)
+                        stack.append(nxt)
+            return False
+
+        removed: set[tuple[str, str]] = set()
+        # 名前の順に見て、結果を安定させる
+        for src in sorted(adjacency):
+            for dst in sorted(adjacency[src]):
+                adjacency[src].discard(dst)
+                if reachable(src, dst):
+                    removed.add((src, dst))
+                else:
+                    adjacency[src].add(dst)
+
+        out = Graph(root=self.root)
+        for node in self.nodes.values():
+            kept = [
+                e for e in node.edges if not (e.kind == kind and (e.src, e.dst) in removed)
+            ]
+            out.add(replace(node, edges=kept))
+        return out, len(removed)
