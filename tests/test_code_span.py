@@ -1,7 +1,7 @@
 """コードスパンの判定のテスト（setopic/graph-doc-template#24）。
 
 コードスパンは、開きと同じ数のバッククォートで閉じる（CommonMark）。
-バッククォート1つだけを数える判定だと、`` ` `` のようにバッククォートを含む
+バッククォート1つだけを数える判定だと、`` ` ``のようにバッククォートを含む
 コードスパンの後ろで組み合わせがずれ、同じ行のコードの中と外が入れ替わる。
 
 判定は2か所で使っている。リンクを数える`strip_non_prose`（loader）と、
@@ -24,7 +24,7 @@ from tests.test_strict_mode import build_docs
 
 USECASE_PATH = "docs/30-usecases/uc-01-confirm-booking.md"
 
-# #17 で G004 を出した行と同じ形
+# #17でG004を出した行と同じ形
 DOUBLE_BACKTICK_LINE = "コードスパン（`` ` ``で囲んだ範囲）の中にある`[[ID]]`は数えない。"
 
 
@@ -46,7 +46,7 @@ class StripNonProseTest(unittest.TestCase):
         self.assertEqual(links("``[[UC-01]] と `x` を書く``"), [])
 
     def test_unclosed_backtick_is_plain_text(self) -> None:
-        """閉じていないバッククォートは、ただの文字として扱う（CommonMark と同じ）。"""
+        """閉じていないバッククォートは、ただの文字として扱う（CommonMarkと同じ）。"""
         self.assertEqual(links("`の後ろの[[UC-01]]"), ["UC-01"])
 
     def test_span_does_not_cross_lines(self) -> None:

@@ -1,7 +1,7 @@
-"""linkify（本文の [[ID]] を相対リンクに直す）のテスト。
+"""linkify（本文の[[ID]]を相対リンクに直す）のテスト。
 
-**グラフを変えないこと**が最も大事な性質である。loader は `[[ID]]` と
-相対リンクの両方を同じ `mentions` として拾うので、書き換えても
+**グラフを変えないこと**が最も大事な性質である。loaderは`[[ID]]`と
+相対リンクの両方を同じ`mentions`として拾うので、書き換えても
 参照の集合は一致していなければならない。
 """
 
@@ -68,7 +68,7 @@ class LinkifyTest(unittest.TestCase):
         self.assertIn("`[[DOM-01]]`", text)
 
     def test_unknown_id_is_left_alone(self) -> None:
-        """存在しない id は残す。消すと G004 の検査をすり抜ける。"""
+        """存在しないidは残す。消すとG004の検査をすり抜ける。"""
         self.append(USECASE_PATH, "\n[[ARCH-99]] は存在しない。\n")
         self._run()
         self.assertIn("[[ARCH-99]]", self.body(USECASE_PATH))
@@ -76,7 +76,7 @@ class LinkifyTest(unittest.TestCase):
     def test_idempotent(self) -> None:
         self.append(USECASE_PATH, "\n[[DOM-01]] を参照する。\n")
         self._run()
-        self.assertEqual(self._run(), [], "2 回目は書き換えが起きないはず")
+        self.assertEqual(self._run(), [], "2回目は書き換えが起きないはず")
 
     def test_dry_run_does_not_write(self) -> None:
         self.append(USECASE_PATH, "\n[[DOM-01]] を参照する。\n")
@@ -86,7 +86,7 @@ class LinkifyTest(unittest.TestCase):
         self.assertEqual(self.body(USECASE_PATH), before)
 
     def test_graph_is_unchanged(self) -> None:
-        """**これが linkify を入れられる根拠。** 参照の集合が変わらない。"""
+        """**これがlinkifyを入れられる根拠。** 参照の集合が変わらない。"""
         self.append(USECASE_PATH, "\n[[DOM-01]] を参照する。\n")
 
         def mentions(graph) -> set[tuple[str, str]]:
@@ -102,23 +102,23 @@ class LinkifyTest(unittest.TestCase):
         self.assertEqual(mentions(load(self.tmp)), before)
 
     def test_scans_root_markdown_too(self) -> None:
-        """README のようにグラフ外のファイルも直す。"""
+        """READMEのようにグラフ外のファイルも直す。"""
         readme = self.tmp / "README.md"
         readme.write_text("# 題\n\n[[DOM-01]] を見る。\n", encoding="utf-8")
         changed = self._run()
         self.assertIn("README.md", changed)
-        # 下向きの相対パスには ./ が付く（rename が張り替えるときと同じ形）
+        # 下向きの相対パスには ./が付く（renameが張り替えるときと同じ形）
         self.assertIn(
             "[DOM-01](./docs/20-domain/dom-01-booking.md)",
             readme.read_text(encoding="utf-8"),
         )
 
     def test_writes_lf_even_on_windows(self) -> None:
-        """書き戻しで CRLF に化けない。**バイトで見る。**
+        """書き戻しでCRLFに化けない。**バイトで見る。**
 
-        テキストとして読み直すと Python が改行を正規化してしまい、
-        CRLF になっていても気付けない。git も `text=auto eol=lf` で
-        コミット時に直すので `git status` にも出ない。
+        テキストとして読み直すとPythonが改行を正規化してしまい、
+        CRLFになっていても気付けない。gitも`text=auto eol=lf`で
+        コミット時に直すので`git status`にも出ない。
         """
         path = self.tmp / USECASE_PATH
         path.write_bytes(b"# uc\n\n[[DOM-01]] \xe3\x82\x92\xe8\xa6\x8b\xe3\x82\x8b\xe3\x80\x82\n")

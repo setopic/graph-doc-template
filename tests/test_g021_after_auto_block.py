@@ -1,15 +1,15 @@
 """G021（自動生成ブロックより後ろに本文がある）のテスト。
 
 自動ブロックは「関連ドキュメント（自動生成 / 手で編集しない）」という**文書の締め**
-である。その下に本文が続くとは読む人は思わない。しかも CLAUDE.md が
+である。その下に本文が続くとは読む人は思わない。しかもCLAUDE.mdが
 「この塊を手で編集するな」と書いているので、**下の本文を直したい人は
 「触るな」と書かれた塊を越えて行くことになる。**
 
-**`sync` は自分では直せない。** ブロックが既にあればその場で入れ替えるだけで、
+**`sync`は自分では直せない。** ブロックが既にあればその場で入れ替えるだけで、
 後ろに回った本文は動かさない。だから一度こうなると黙って残り続ける。
 
-実際に `META-01` で 84 行が落ちていて、**共通ファイルなので 7 リポジトリすべてが
-同じ状態だった**（1.14.2 で直した）。いまは全リポジトリ 0 件なので、
+実際に`META-01`で84行が落ちていて、**共通ファイルなので7リポジトリすべてが
+同じ状態だった**（1.14.2で直した）。いまは全リポジトリ0件なので、
 このルールは**再発防止**として入っている。
 """
 
@@ -46,7 +46,7 @@ class ContentAfterAutoBlock(unittest.TestCase):
         self.assertIsNone(content_after_auto_block(f"# 題\n\n本文。\n\n---\n\n{BLOCK}"))
 
     def test_no_block_at_all_is_clean(self) -> None:
-        """`sync` を一度も回していない文書。**何も言わない。**"""
+        """`sync`を一度も回していない文書。**何も言わない。**"""
         self.assertIsNone(content_after_auto_block("# 題\n\n本文。\n"))
 
     def test_trailing_whitespace_is_clean(self) -> None:
@@ -84,7 +84,7 @@ class ContentAfterAutoBlock(unittest.TestCase):
         self.assertIsNone(content_after_auto_block(text))
 
     def test_last_block_wins(self) -> None:
-        """ブロックが 2 つある文書は既に壊れているが、**最後の 1 つ**を基準にする。
+        """ブロックが2つある文書は既に壊れているが、**最後の1つ**を基準にする。
 
         間に挟まった本文まで数えると、直す場所が分からない指摘になる。
         """
@@ -130,9 +130,9 @@ class Rule(unittest.TestCase):
         self.assertIn("## 不変条件", issues[0].message)
 
     def test_body_is_still_stripped_for_other_rules(self) -> None:
-        """**`node.body` では判定できないことを固定する。**
+        """**`node.body`では判定できないことを固定する。**
 
-        `strip_auto_block` を通した後の本文はブロックの前後が繋がるので、
+        `strip_auto_block`を通した後の本文はブロックの前後が繋がるので、
         後ろに回った本文が「文書の途中」に見えてしまう。生テキストを読むこと。
         """
         self.write_domain("\n取り残された本文。\n")

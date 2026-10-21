@@ -1,14 +1,14 @@
-"""G019（Markdown の表が途中で切れている）のテスト。
+"""G019（Markdownの表が途中で切れている）のテスト。
 
-**グラフの検査は通るのに、GitHub 上の表示だけが壊れる**という種類の問題である。
-実際に 2 件見つかった。README のコマンド表（段落を挿し込んで 14 行が流れた）と、
-ドメインノードの用語表（段落 3 つを挟んで 1 行が取り残された）。
+**グラフの検査は通るのに、GitHub上の表示だけが壊れる**という種類の問題である。
+実際に2件見つかった。READMEのコマンド表（段落を挿し込んで14行が流れた）と、
+ドメインノードの用語表（段落3つを挟んで1行が取り残された）。
 
-どちらも `check` は通っていた。`G013` の用語表パーサは行ベースなので、
+どちらも`check`は通っていた。`G013`の用語表パーサは行ベースなので、
 取り残された行すら拾えている。**機械は困らず、読む人だけが困る。**
 
-**誤検出を出さないことが最も大事。** ERROR なので、外すと派生プロジェクトの
-CI が一斉に落ちる。実データ 435 ファイルに当てて、本物 2 件・誤検出 0 件を
+**誤検出を出さないことが最も大事。** ERRORなので、外すと派生プロジェクトの
+CIが一斉に落ちる。実データ435ファイルに当てて、本物2件・誤検出0件を
 確かめたうえで入れた。
 """
 
@@ -42,7 +42,7 @@ class FindBrokenTablesTest(unittest.TestCase):
         self.assertEqual(self.lines(GOOD_TABLE), [])
 
     def test_paragraph_inside_table(self) -> None:
-        """README で実際に起きた形。段落の後ろの行が表から外れる。"""
+        """READMEで実際に起きた形。段落の後ろの行が表から外れる。"""
         text = (
             "| a | b |\n"
             "| --- | --- |\n"
@@ -59,7 +59,7 @@ class FindBrokenTablesTest(unittest.TestCase):
         self.assertEqual(self.lines(text), [5])
 
     def test_two_tables_separated_by_paragraph_are_fine(self) -> None:
-        """段落を挟んだ 2 つの表は正しい。**2 つ目にヘッダと区切りがある。**"""
+        """段落を挟んだ2つの表は正しい。**2つ目にヘッダと区切りがある。**"""
         text = (
             "| a | b |\n"
             "| --- | --- |\n"
@@ -81,7 +81,7 @@ class FindBrokenTablesTest(unittest.TestCase):
     def test_broken_example_in_code_block_is_ignored(self) -> None:
         """**壊れた表を例として載せても落ちない。**
 
-        この規約自身が `graph-rules.md` に悪い例を書くので、
+        この規約自身が`graph-rules.md`に悪い例を書くので、
         ここが効かないと自分の文書で落ちる。
         """
         text = "悪い例:\n\n```markdown\n説明。\n| 3 | 4 |\n```\n"
@@ -134,7 +134,7 @@ class RuleG019Test(unittest.TestCase):
         self.assertIn("dom-01-booking.md", issues[0].location)
 
     def test_readme_is_scanned_too(self) -> None:
-        """**実際に壊れていたのは README だった。** グラフの外も見る。"""
+        """**実際に壊れていたのはREADMEだった。** グラフの外も見る。"""
         (self.tmp / "README.md").write_text(
             "# 題\n\n段落。\n| a | b |\n", encoding="utf-8", newline="\n"
         )

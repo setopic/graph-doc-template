@@ -1,8 +1,8 @@
 """G015（依存先が変わったのに追従していない）のテスト。
 
 **このルールだけはグラフの状態ではなく変更の状態を見る。**
-そのため一時ディレクトリに本物の git リポジトリを作る。
-git が無い環境では丸ごと飛ばす（`check` は git 無しでも動かなければならない）。
+そのため一時ディレクトリに本物のgitリポジトリを作る。
+gitが無い環境では丸ごと飛ばす（`check`はgit無しでも動かなければならない）。
 """
 
 from __future__ import annotations
@@ -47,7 +47,7 @@ def run_check(root: Path, *extra: str) -> tuple[int, str]:
     return code, out.getvalue()
 
 
-@unittest.skipUnless(git_available(), "git が無い")
+@unittest.skipUnless(git_available(), "gitが無い")
 class UnfollowedChanges(unittest.TestCase):
     def setUp(self):
         self.tmp = Path(tempfile.mkdtemp())
@@ -77,7 +77,7 @@ class UnfollowedChanges(unittest.TestCase):
         self.edit(DOMAIN_PATH, "席を押さえた記録。", "席と時間帯を押さえた記録。")
 
         code, output = run_check(self.tmp)
-        self.assertEqual(code, 0, "G015 は警告なので通常の check は通る")
+        self.assertEqual(code, 0, "G015は警告なので通常のcheckは通る")
         self.assertIn("G015", output)
         self.assertIn("uc-01-confirm-booking.md", output)
         self.assertIn("DOM-01", output)
@@ -91,7 +91,7 @@ class UnfollowedChanges(unittest.TestCase):
         self.assertNotIn("G015", output)
 
     def test_auto_block_only_change_is_not_a_change(self):
-        """sync が書き換えたブロックだけでは、依存元に追従の余地が無い。"""
+        """syncが書き換えたブロックだけでは、依存元に追従の余地が無い。"""
         path = self.tmp / DOMAIN_PATH
         path.write_text(
             path.read_text(encoding="utf-8")
@@ -131,7 +131,7 @@ class UnfollowedChanges(unittest.TestCase):
         self.assertIn("G015", within)
 
     def test_changed_binary_file_does_not_crash(self):
-        """画像などテキストでないファイルを描き直しても、check は落ちない（#13）。"""
+        """画像などテキストでないファイルを描き直しても、checkは落ちない（#13）。"""
         image = self.tmp / "art.png"
         image.write_bytes(bytes([0x89, 0x50, 0x4E, 0x47, 0x00, 0xFF]))
         git(self.tmp, "add", "-A")
@@ -149,7 +149,7 @@ class UnfollowedChanges(unittest.TestCase):
 
 
 class WithoutGit(unittest.TestCase):
-    """git リポジトリでなくても check は動く。"""
+    """gitリポジトリでなくてもcheckは動く。"""
 
     def test_check_still_runs(self):
         tmp = Path(tempfile.mkdtemp())

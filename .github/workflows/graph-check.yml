@@ -50,7 +50,7 @@ jobs:
     steps:
       - uses: actions/checkout@v7
         with:
-          # G011（放置された未確定ノードの検出）は git 履歴の日付を使う。
+          # G011（放置された未確定ノードの検出）はgit履歴の日付を使う。
           # 既定の浅いクローンだと全ファイルが同じ日付になり、検査が飛ばされる。
           fetch-depth: 0
 
@@ -58,48 +58,48 @@ jobs:
         with:
           python-version: "3.12"
 
-      # 外部依存はないので install なし
+      # 外部依存はないのでinstallなし
       - name: テストを走らせる
         run: python -m unittest discover -s tests -t .
 
-      # main への push と PR では警告も失敗にする（--strict）。
-      # それ以外のブランチへの push では警告を出すだけにして、作業の途中で止めない。
+      # mainへのpushとPRでは警告も失敗にする（--strict）。
+      # それ以外のブランチへのpushでは警告を出すだけにして、作業の途中で止めない。
       #
-      # PR でも --strict を走らせるのは、PR が緑のまま main が落ちたため
-      # （graph-doc-template#6。tournament-bot で 3 回続けてマージし、約 10 時間気づかなかった）。
-      # --since を付けない --strict では G015 / G017 は出ない（変更の窓が空になる）。
-      # 落ちるのはグラフそのものの警告とエラーだけで、マージした後の main と同じ判定になる。
+      # PRでも--strictを走らせるのは、PRが緑のままmainが落ちたため
+      # （graph-doc-template#6。tournament-botで3回続けてマージし、約10時間気づかなかった）。
+      # --sinceを付けない--strictではG015 / G017は出ない（変更の窓が空になる）。
+      # 落ちるのはグラフそのものの警告とエラーだけで、マージした後のmainと同じ判定になる。
       #
-      # PR では別に、G015（追従漏れ）と G017 の窓を base ブランチまで広げて一覧を出す。
+      # PRでは別に、G015（追従漏れ）とG017の窓をbaseブランチまで広げて一覧を出す。
       # こちらは失敗にしない。「見たか」を聞く警告で、追従が要るかどうかは人が決める。
-      - name: グラフを検証する（main と PR は strict / PR は追従漏れも見る）
+      - name: グラフを検証する（mainとPRはstrict / PRは追従漏れも見る）
         run: |
           if [ "${{ github.ref }}" = "refs/heads/main" ] && [ "${{ github.event_name }}" = "push" ]; then
-            echo "main への push なので --strict で検証します"
+            echo "mainへのpushなので--strictで検証します"
             python -m tools.graph check --strict
           elif [ "${{ github.event_name }}" = "pull_request" ]; then
-            echo "PR なので origin/${{ github.base_ref }} との差分で G015 / G017 も見ます（失敗にはしません）"
+            echo "PRなのでorigin/${{ github.base_ref }}との差分でG015 / G017も見ます（失敗にはしません）"
             python -m tools.graph check --since "origin/${{ github.base_ref }}"
-            echo "マージした後の main と同じ判定を --strict で走らせます"
+            echo "マージした後のmainと同じ判定を--strictで走らせます"
             python -m tools.graph check --strict
           else
-            echo "警告は失敗にしません（main への push と PR だけ --strict）"
+            echo "警告は失敗にしません（mainへのpushとPRだけ--strict）"
             python -m tools.graph check
           fi
 
       - name: 関連ドキュメントが最新か確かめる
         run: python -m tools.graph sync --check
 
-      # [[ID]] のままだと GitHub 上でただの文字として出る（クリックできない）。
-      # 相対リンクに直っているかを見る。グラフは両方を同じ mentions として
+      # [[ID]]のままだとGitHub上でただの文字として出る（クリックできない）。
+      # 相対リンクに直っているかを見る。グラフは両方を同じmentionsとして
       # 扱うので、直しても検証結果は変わらない。
       - name: 本文の参照がリンクになっているか確かめる
         run: python -m tools.graph linkify --check
 
-      # make 経由で呼ぶ。graph.mk の README_GRAPH_ARGS（--aggregate など）を
-      # 効かせるため。直接 python を叩くと、間引いているリポジトリで
+      # make経由で呼ぶ。graph.mkのREADME_GRAPH_ARGS（--aggregateなど）を
+      # 効かせるため。直接pythonを叩くと、間引いているリポジトリで
       # 「図が古い」と誤判定して落ちる。
-      - name: README の図が最新か確かめる
+      - name: READMEの図が最新か確かめる
         run: make readme-check
 
       - name: 集計を出す
@@ -107,4 +107,4 @@ jobs:
         run: python -m tools.graph stats
 
       # AI lint（graph review）はここで回さない。
-      # 指摘が再現せず、API キーと費用と通信が要るため。人が手で回す。
+      # 指摘が再現せず、APIキーと費用と通信が要るため。人が手で回す。

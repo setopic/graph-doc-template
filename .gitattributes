@@ -1,5 +1,5 @@
-# tools/graph は常に LF で書き出す（sync が改行を書き換える）。
-# 作業コピーも LF に固定しないと、sync のたびに全行差分になる。
+# tools/graphは常にLFで書き出す（syncが改行を書き換える）。
+# 作業コピーもLFに固定しないと、syncのたびに全行差分になる。
 * text=auto eol=lf
 
 *.png binary
@@ -8,17 +8,17 @@
 
 # テンプレートから更新を取り込む（make update）とき、
 # ここに挙げたものは常にプロジェクト側を残す。中身がプロジェクト固有だから。
-# merge=ours のドライバは、make update がその場だけ設定する。常設はしない
-# （以前に常設した設定は make setup で外せる）。git merge template/main を
-# 直接使うと、ドライバが無いので merge=ours が効かず、競合する。
+# merge=oursのドライバは、make updateがその場だけ設定する。常設はしない
+# （以前に常設した設定はmake setupで外せる）。git merge template/mainを
+# 直接使うと、ドライバが無いのでmerge=oursが効かず、競合する。
 #
-# index.md はスラッシュを含まないので、どの階層の index.md にも当たる。
+# index.mdはスラッシュを含まないので、どの階層のindex.mdにも当たる。
 # 目次の一覧はプロジェクトのノードで埋まっているため、常に自分側が正しい。
 README.md merge=ours
 index.md  merge=ours
 docs/50-adr/adr-0001-graph-driven-docs.md merge=ours
 
-# PROJECT_CHANGELOG.md は**そのリポジトリ自身の履歴**であって、上流のものではない。
+# PROJECT_CHANGELOG.mdは**そのリポジトリ自身の履歴**であって、上流のものではない。
 # 上流が同じ名前で自分の履歴を持っていると、取り込みのたびに上書きするか
 # 全面的に競合する。**上流の履歴は別の名前で流す。**
 #

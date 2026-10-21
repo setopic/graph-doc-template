@@ -1,7 +1,7 @@
 """`graph review`（AI lint）のテスト。
 
 **ここでネットワークに出てはいけない。** 送信は差し替え可能な関数にしてあるので、
-すべてモックで確かめる。実際に API を叩くのは人が手で 1 回だけ試す。
+すべてモックで確かめる。実際にAPIを叩くのは人が手で1回だけ試す。
 """
 
 from __future__ import annotations
@@ -48,7 +48,7 @@ class ParseFindings(unittest.TestCase):
         self.assertEqual(found[0].message, "曖昧")
 
     def test_drops_unknown_codes(self):
-        """G 系の番号を返してきても受け取らない。名前空間を分けた意味が消える。"""
+        """G系の番号を返してきても受け取らない。名前空間を分けた意味が消える。"""
         data = api_response([{"code": "G014", "message": "節が無い"}])
         self.assertEqual(review.parse_findings(node(), data), [])
 
@@ -103,7 +103,7 @@ class OverDesign(unittest.TestCase):
         self.assertEqual([f.code for f in found], ["A008", "A009"])
 
     def test_the_prompt_keeps_what_is_not_over_design(self):
-        """案を並べる ADR も、先送りの明記も正しい書き方である。除外が消えるとそこを挙げる。"""
+        """案を並べるADRも、先送りの明記も正しい書き方である。除外が消えるとそこを挙げる。"""
         self.assertIn("却下した案", review.SYSTEM_PROMPT)
         self.assertIn("先送りを明記した", review.SYSTEM_PROMPT)
 
@@ -119,7 +119,7 @@ class Prompt(unittest.TestCase):
         self.assertIn("type: domain", prompt)
 
     def test_carries_the_forbidden_terms_of_dependencies(self):
-        """G013 が届かない揺れを見てもらうため、依存先の用語表を渡す。"""
+        """G013が届かない揺れを見てもらうため、依存先の用語表を渡す。"""
         owner = node("DOM-02", body=(
             "## 用語\n\n"
             "| 用語 | 意味 | 使ってはいけない言い換え |\n"
@@ -135,7 +135,7 @@ class Prompt(unittest.TestCase):
         self.assertIn("エントリー", prompt)
 
     def test_carries_the_terms_of_domain_nodes_it_does_not_depend_on(self):
-        """**依存先に絞らない。** 兄弟や上流のノードの語も渡さないと、A003 が揺れを拾えない。"""
+        """**依存先に絞らない。** 兄弟や上流のノードの語も渡さないと、A003が揺れを拾えない。"""
         sibling = node("DOM-14", body=(
             "## 用語\n\n"
             "| 用語 | 意味 | 旧称 |\n"

@@ -1,8 +1,8 @@
-"""G023（契約が「対応」に挙げたユースケースを depends_on に書いていない）のテスト。
+"""G023（契約が「対応」に挙げたユースケースをdepends_onに書いていない）のテスト。
 
 **読む場所を絞ること**が最も大事な性質である。見出しが「対応」で始まる列と
 「対応するユースケース:」の行だけを読み、本文の道案内のリンクは読まない
-（読むと tournament-bot だけで 29 件当たった）。
+（読むとtournament-botだけで29件当たった）。
 """
 
 from __future__ import annotations
@@ -81,7 +81,7 @@ class ContractUseCases(unittest.TestCase):
         self.assertEqual([i.code for i in run(contract(body), usecase("UC-01"))], ["G023"])
 
     def test_a_borrowed_behaviour_counts(self):
-        """「UC-25 と同じ」も前提として数える（借りている UC が仕様そのもの）。"""
+        """「UC-25と同じ」も前提として数える（借りているUCが仕様そのもの）。"""
         body = (
             "| 種別 | 識別子 | 置き場所 | 実行できる人 | 対応 |\n"
             "| --- | --- | --- | --- | --- |\n"
@@ -102,7 +102,7 @@ class ContractUseCases(unittest.TestCase):
         self.assertEqual(run(contract(body, deps=("UC-01",)), usecase("UC-01"), usecase("UC-02")), [])
 
     def test_only_use_cases_are_expected(self):
-        """「対応」の列に ADR やドメインのリンクがあっても、依存は求めない。"""
+        """「対応」の列にADRやドメインのリンクがあっても、依存は求めない。"""
         body = (
             "| 種別 | 識別子 | 実行できる人 | 対応 |\n"
             "| --- | --- | --- | --- |\n"

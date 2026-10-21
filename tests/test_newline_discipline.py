@@ -1,15 +1,15 @@
 """書き出しの改行と文字コードが揃っているかを機械で見る。
 
-**Windows で `write_text(text, encoding="utf-8")` は LF を CRLF に変換して書く。**
-`.gitattributes` の `text=auto eol=lf` がコミット時に正規化するため
-`git status` はきれいなままで、作業ツリーだけが CRLF に化ける。
+**Windowsで`write_text(text, encoding="utf-8")`はLFをCRLFに変換して書く。**
+`.gitattributes`の`text=auto eol=lf`がコミット時に正規化するため
+`git status`はきれいなままで、作業ツリーだけがCRLFに化ける。
 **壊れていることが表に出ないので、目視では見つからない。**
 
-実際に `linkify` の書き出し 1 箇所だけがこの指定を落としていて、
-他の 8 箇所は手で気を付けて書かれていた。手で気を付ける方式は、
+実際に`linkify`の書き出し1箇所だけがこの指定を落としていて、
+他の8箇所は手で気を付けて書かれていた。手で気を付ける方式は、
 **書き出しを足すたびに同じ確率で失敗する。** だから機械で見る。
 
-`open()` も同じで、テキストモードで書くなら `newline` と `encoding` が要る。
+`open()`も同じで、テキストモードで書くなら`newline`と`encoding`が要る。
 バイナリ（`"b"`）は変換が起きないので対象外。
 """
 
@@ -23,7 +23,7 @@ TOOLS_DIR = Path(__file__).resolve().parents[1] / "tools" / "graph"
 
 
 def _callee(func: ast.expr) -> str:
-    """`a.b.write_text(...)` の `write_text`、`open(...)` の `open` を返す。"""
+    """`a.b.write_text(...)`の`write_text`、`open(...)`の`open`を返す。"""
     if isinstance(func, ast.Attribute):
         return func.attr
     if isinstance(func, ast.Name):
@@ -43,7 +43,7 @@ def _literal(node: ast.expr | None) -> object:
 
 
 def _mode(call: ast.Call) -> str:
-    """`open` のモード。位置引数の 2 つ目か `mode=`。省略時は読み取り。"""
+    """`open`のモード。位置引数の2つ目か`mode=`。省略時は読み取り。"""
     if len(call.args) >= 2:
         found = _literal(call.args[1])
         if isinstance(found, str):
@@ -83,38 +83,38 @@ class NewlineDisciplineTest(unittest.TestCase):
     def test_every_text_write_pins_lf(self) -> None:
         """改行を渡していない書き出しがあれば落とす。
 
-        既定に任せると Windows だけ CRLF になる。**プラットフォームで
+        既定に任せるとWindowsだけCRLFになる。**プラットフォームで
         結果が変わる書き出しを残さない。**
         """
         bad = self._offenders("newline", "\n")
         self.assertEqual(
             bad,
             [],
-            "テキストの書き出しには newline=\"\\n\" が要る。"
+            "テキストの書き出しにはnewline=\"\\n\"が要る。"
             f" 指定の無い箇所: {bad}",
         )
 
     def test_every_text_write_pins_utf8(self) -> None:
-        """文字コードも同じ理由で明示する。既定は Windows で cp932 になる。"""
+        """文字コードも同じ理由で明示する。既定はWindowsでcp932になる。"""
         bad = self._offenders("encoding", "utf-8")
         self.assertEqual(
             bad,
             [],
-            'テキストの書き出しには encoding="utf-8" が要る。'
+            'テキストの書き出しにはencoding="utf-8"が要る。'
             f" 指定の無い箇所: {bad}",
         )
 
     def test_scan_actually_finds_the_writes(self) -> None:
         """検査が空振りしていないことを確かめる。
 
-        走査が 0 件でも上の 2 つは通ってしまう。**「見つからない」と
+        走査が0件でも上の2つは通ってしまう。**「見つからない」と
         「問題が無い」を取り違えない**ための保険。
         """
         total = sum(
             len(_text_writes(ast.parse(path.read_text(encoding="utf-8"))))
             for path in TOOLS_DIR.glob("*.py")
         )
-        self.assertGreater(total, 5, "書き出しを 1 つも拾えていない。走査が壊れている")
+        self.assertGreater(total, 5, "書き出しを1つも拾えていない。走査が壊れている")
 
     def test_detects_a_missing_newline(self) -> None:
         """検査そのものが違反を見つけられることを確かめる。"""

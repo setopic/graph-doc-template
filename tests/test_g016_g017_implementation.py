@@ -22,7 +22,7 @@ SOURCE_PATH = "src/booking.py"
 
 
 def declare(root: Path, rel: str, *targets: str) -> None:
-    """フロントマターの末尾に implemented_by を足す。"""
+    """フロントマターの末尾にimplemented_byを足す。"""
     path = root / rel
     body = path.read_text(encoding="utf-8")
     block = "implemented_by:\n" + "".join(f"  - {t}\n" for t in targets)
@@ -32,7 +32,7 @@ def declare(root: Path, rel: str, *targets: str) -> None:
 
 
 class WithoutDeclaration(unittest.TestCase):
-    """文書だけのリポジトリでは 1 件も出ない。"""
+    """文書だけのリポジトリでは1件も出ない。"""
 
     def test_nothing_fires(self):
         tmp = Path(tempfile.mkdtemp())
@@ -82,7 +82,7 @@ class TargetExists(unittest.TestCase):
         self.assertEqual(rules.rule_g016_implementation_exists(graph), [])
 
 
-@unittest.skipUnless(git_available(), "git が無い")
+@unittest.skipUnless(git_available(), "gitが無い")
 class Drift(unittest.TestCase):
     def setUp(self):
         self.tmp = Path(tempfile.mkdtemp())
@@ -110,7 +110,7 @@ class Drift(unittest.TestCase):
     def test_implementation_moved_alone(self):
         self.touch(SOURCE_PATH, "def confirm():\n    pass\n")
         code, output = run_check(self.tmp)
-        self.assertEqual(code, 0, "G017 は警告")
+        self.assertEqual(code, 0, "G017は警告")
         self.assertIn("G017", output)
         self.assertIn("実装が変わった", output)
         self.assertIn("dom-01-booking.md", output)

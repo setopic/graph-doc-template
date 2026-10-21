@@ -1,16 +1,16 @@
 PYTHON ?= python
 
 # リポジトリ固有の設定があれば読む（無くてもよい）。
-# README の図が GitHub の描画上限（エッジ 500 本 / G018）に近づいたら、
-# **そのリポジトリの graph.mk にだけ**次の 1 行を置く。
+# READMEの図がGitHubの描画上限（エッジ500本 / G018）に近づいたら、
+# **そのリポジトリのgraph.mkにだけ**次の1行を置く。
 #
 #     README_GRAPH_ARGS = --aggregate
 #
-# テンプレートは graph.mk を配らない。だから取り込み（make update）
+# テンプレートはgraph.mkを配らない。だから取り込み（make update）
 # のたびに競合しないし、リポジトリごとに図の形を選べる。
 -include graph.mk
 
-# README の図に足す引数。既定は無し（全ノードをそのまま描く）。
+# READMEの図に足す引数。既定は無し（全ノードをそのまま描く）。
 README_GRAPH_ARGS ?=
 
 .PHONY: help setup update update-fetch check strict sync sync-check linkify linkify-check graph json readme readme-check stats all
@@ -21,13 +21,13 @@ help:
 	@echo "check         グラフを検証する（エラーがあれば失敗）"
 	@echo "strict        警告も失敗として扱う"
 	@echo "sync          各文書末尾の関連ドキュメントを再生成する"
-	@echo "sync-check    再生成が必要なら失敗する（CI 用）"
-	@echo "linkify       本文の [[ID]] を相対リンクに直す"
-	@echo "linkify-check 直す必要があれば失敗する（CI 用）"
-	@echo "graph         docs/graph.mmd を書き出す（Mermaid）"
-	@echo "json          docs/graph.json を書き出す"
-	@echo "readme        README の図を再生成する"
-	@echo "readme-check  README の図が古ければ失敗する（CI 用）"
+	@echo "sync-check    再生成が必要なら失敗する（CI用）"
+	@echo "linkify       本文の[[ID]]を相対リンクに直す"
+	@echo "linkify-check 直す必要があれば失敗する（CI用）"
+	@echo "graph         docs/graph.mmdを書き出す（Mermaid）"
+	@echo "json          docs/graph.jsonを書き出す"
+	@echo "readme        READMEの図を再生成する"
+	@echo "readme-check  READMEの図が古ければ失敗する（CI用）"
 	@echo "stats         ノード数・エッジ数を表示する"
 	@echo "all           check + sync + linkify + readme"
 
@@ -64,7 +64,7 @@ update-fetch:
 # 何も言わずに落ちる代わりに、競合として表に出る。
 setup:
 	@git config --unset merge.ours.driver || true
-	@echo "merge=oursドライバの常設を外した。テンプレートの取り込みは make update で行う。"
+	@echo "merge=oursドライバの常設を外した。テンプレートの取り込みはmake updateで行う。"
 
 check:
 	$(PYTHON) -m tools.graph check

@@ -1,17 +1,17 @@
 """G020（取り下げた決定を現在の根拠として引いている）のテスト。
 
 **問題は「参照していること」ではなく「現在の根拠として引いていること」である。**
-歴史として引くのは正当なので、`G019` と違ってエラーにはできない。
-`G009`〜`G015` と同じ警告にして、承知のうえで放置できる形にする。
+歴史として引くのは正当なので、`G019`と違ってエラーにはできない。
+`G009`〜`G015`と同じ警告にして、承知のうえで放置できる形にする。
 
-**黙る条件を実データで決めた。** 7 リポジトリに当てて、
+**黙る条件を実データで決めた。** 7リポジトリに当てて、
 
-- 段落の中で置き換え先も指していれば黙る → 44 ノード
-- 文書のどこかで指していれば黙る → 28 ノード。**本物を 1 件取りこぼした**
-- ADR をまるごと除外 → 31 ノード。**本物を 3 件とも取りこぼした**
+- 段落の中で置き換え先も指していれば黙る → 44ノード
+- 文書のどこかで指していれば黙る → 28ノード。**本物を1件取りこぼした**
+- ADRをまるごと除外 → 31ノード。**本物を3件とも取りこぼした**
 
-段落に絞った案だけが、断って引いている 3 件を黙らせたうえで、
-理由の節で古い決定を引いている 3 件を残せた。ここはその判定を固定する。
+段落に絞った案だけが、断って引いている3件を黙らせたうえで、
+理由の節で古い決定を引いている3件を残せた。ここはその判定を固定する。
 """
 
 from __future__ import annotations
@@ -56,7 +56,7 @@ def node(
     )
 
 
-# 取り下げられた決定と、それを置き換えた決定。どのテストもこの 2 つを使う。
+# 取り下げられた決定と、それを置き換えた決定。どのテストもこの2つを使う。
 OLD = node("ADR-0008", type_="adr", status="deprecated")
 NEW = node("ADR-0014", type_="adr", status="stable", supersedes=["ADR-0008"])
 
@@ -104,9 +104,9 @@ class Citations(unittest.TestCase):
     def test_chain_successor_may_cite_two_decisions_back(self) -> None:
         """**連鎖の先にいる側も、遡って引いてよい。**
 
-        `A → B → C` のとき、`C` が `A` を引くのは「あちらはこう決めていた」と
-        書いているだけで、直接の置き換え先 `B` を引くのと変わらない。
-        実データでは `ADR-0007` が 2 つ前の `ADR-0004` を 4 箇所で引いていた。
+        `A → B → C`のとき、`C`が`A`を引くのは「あちらはこう決めていた」と
+        書いているだけで、直接の置き換え先`B`を引くのと変わらない。
+        実データでは`ADR-0007`が2つ前の`ADR-0004`を4箇所で引いていた。
         """
         mid = node("ADR-0010", type_="adr", status="deprecated", supersedes=["ADR-0008"])
         head = node(
@@ -123,9 +123,9 @@ class Citations(unittest.TestCase):
     def test_pointing_at_the_head_of_the_chain_is_silent(self) -> None:
         """**連鎖の先端（現在の決定）を指すのも承知のうえである。**
 
-        `A → B → C` と置き換わったとき、**現在の決定 `C` を指すほうが、
-        直接の置き換え先 `B` を指すより正しい。** 片方しか認めないと、
-        正しく書いた文書が鳴る。実データの表（「ADR-0004 の時点」と
+        `A → B → C`と置き換わったとき、**現在の決定`C`を指すほうが、
+        直接の置き換え先`B`を指すより正しい。** 片方しか認めないと、
+        正しく書いた文書が鳴る。実データの表（「ADR-0004の時点」と
         「現在（ADR-0007）」を並べたもの）がこれで落ちていた。
         """
         mid = node("ADR-0010", type_="adr", status="deprecated", supersedes=["ADR-0008"])
@@ -145,7 +145,7 @@ class Citations(unittest.TestCase):
         self.assertIn("ADR-0008（置き換え先: ADR-0010 / ADR-0012）", issues[0].message)
 
     def test_superseding_cycle_does_not_hang(self) -> None:
-        """`supersedes` の循環は `G006` の仕事。**ここで止まらないことだけを見る。**"""
+        """`supersedes`の循環は`G006`の仕事。**ここで止まらないことだけを見る。**"""
         a = node("ADR-0030", type_="adr", status="deprecated", supersedes=["ADR-0031"])
         b = node("ADR-0031", type_="adr", status="deprecated", supersedes=["ADR-0030"])
         citing = node("UC-01", body="[[ADR-0030]] による。")
@@ -153,7 +153,7 @@ class Citations(unittest.TestCase):
         self.assertEqual(len(issues), 1)
 
     def test_table_row_counts_as_one_paragraph(self) -> None:
-        """表は空行を挟まないので 1 段落。同じ表の中で断れば黙る。"""
+        """表は空行を挟まないので1段落。同じ表の中で断れば黙る。"""
         body = (
             "| 決定 | 扱い |\n"
             "| --- | --- |\n"
@@ -174,7 +174,7 @@ class Citations(unittest.TestCase):
         self.assertEqual(self.cite("[[ADR-0014]] による。"), [])
 
     def test_unresolved_link_is_ignored(self) -> None:
-        """リンク切れは G004 の仕事。ここでは黙る。"""
+        """リンク切れはG004の仕事。ここでは黙る。"""
         self.assertEqual(self.cite("[[ADR-9999]] による。"), [])
 
 
@@ -198,11 +198,11 @@ class Rule(unittest.TestCase):
         self.assertIn("ADR-0008（置き換え先: ADR-0014）", issues[0].message)
 
     def test_settled_adr_is_exempt(self) -> None:
-        """**確定した ADR は不変の記録。** 本文を直させる指摘は成立しない。
+        """**確定したADRは不変の記録。** 本文を直させる指摘は成立しない。
 
-        決定を変えるときは本文を書き換えず、新しい ADR を起こす。古い ADR に
+        決定を変えるときは本文を書き換えず、新しいADRを起こす。古いADRに
         要るのは後継へのリンクだけで、本文の維持は要らない。
-        **直せないものを鳴らし続けると `--strict` が塞がるだけである。**
+        **直せないものを鳴らし続けると`--strict`が塞がるだけである。**
         """
         self.assertEqual(
             self.issues(node("ADR-0020", type_="adr", body="[[ADR-0008]] による。")), []
@@ -240,7 +240,7 @@ class Rule(unittest.TestCase):
         )
 
     def test_one_issue_per_node(self) -> None:
-        """節ごとではなくノードごとに 1 件。指し先は並べて出す。"""
+        """節ごとではなくノードごとに1件。指し先は並べて出す。"""
         old2 = node("ADR-0003", type_="adr", status="deprecated")
         body = "[[ADR-0008]] による。\n\nまた [[ADR-0003]] による。\n"
         graph = make_graph([OLD, NEW, old2, node("UC-01", body=body)])
@@ -257,7 +257,7 @@ class Rule(unittest.TestCase):
 
 
 class MarkdownLinks(unittest.TestCase):
-    """`[題](./xxx.md)` の形も数える。**実データではこちらが主だった。**"""
+    """`[題](./xxx.md)`の形も数える。**実データではこちらが主だった。**"""
 
     def setUp(self) -> None:
         self.tmp = Path(tempfile.mkdtemp())
@@ -287,7 +287,7 @@ class MarkdownLinks(unittest.TestCase):
         )
         self.write(
             "50-adr/adr-0020-citing.md",
-            # **確定前なので対象に残る。** stable にすると不変の記録として黙る。
+            # **確定前なので対象に残る。** stableにすると不変の記録として黙る。
             "---\nid: ADR-0020\ntype: adr\ntitle: 引いている決定\nstatus: review\n---\n\n"
             "# 引いている決定\n\n" + citing_body,
         )
@@ -313,10 +313,10 @@ if __name__ == "__main__":
 
 
 class Readme(unittest.TestCase):
-    """README はノードではないが、決定を引く。**ここで見ないと誰も見ない。**
+    """READMEはノードではないが、決定を引く。**ここで見ないと誰も見ない。**
 
-    7 リポジトリの実測で 3 つの README が取り下げ済みの ADR を現在の根拠として
-    引いていた。1 つは**移った先の事実を古いまま述べていた**（「3 つの Bot を
+    7リポジトリの実測で3つのREADMEが取り下げ済みのADRを現在の根拠として
+    引いていた。1つは**移った先の事実を古いまま述べていた**（「3つのBotを
     同居」。置き換えた決定の題は「台数を問わない」）。
     """
 
@@ -344,9 +344,9 @@ class Readme(unittest.TestCase):
         )
 
     def test_generated_diagram_is_ignored(self) -> None:
-        """README の図は自動生成で、取り下げたノードも題ごと並ぶ。
+        """READMEの図は自動生成で、取り下げたノードも題ごと並ぶ。
 
-        **コードブロックなので数えない。** ここを数えると、図を持つ README が
+        **コードブロックなので数えない。** ここを数えると、図を持つREADMEが
         すべて鳴る。
         """
         readme = """説明。
@@ -359,9 +359,9 @@ graph LR
         self.assertEqual(self.issues(readme), [])
 
     def test_relative_links_resolve_from_the_repository_root(self) -> None:
-        """**README はリポジトリの根から書く。** ノードは自分のディレクトリから。
+        """**READMEはリポジトリの根から書く。** ノードは自分のディレクトリから。
 
-        基準を取り違えるとリンクが解決できず、**黙って 0 件になる。**
+        基準を取り違えるとリンクが解決できず、**黙って0件になる。**
         """
         old = Node(
             id="ADR-0008",
@@ -394,5 +394,5 @@ graph LR
         self.assertEqual(rule_g020_deprecated_references(graph), [])
 
     def test_partial_graph_without_root_is_silent(self) -> None:
-        """部分グラフには root が無い。**検査が落ちてはいけない。**"""
+        """部分グラフにはrootが無い。**検査が落ちてはいけない。**"""
         self.assertEqual(rule_g020_deprecated_references(make_graph([OLD, NEW])), [])

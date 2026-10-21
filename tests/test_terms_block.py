@@ -1,9 +1,9 @@
-"""用語の一覧（sync がドメインの目次に作る）のテスト。
+"""用語の一覧（syncがドメインの目次に作る）のテスト。
 
 **写しにならないこと**が最も大事な性質である。元の表が変われば作り直され、
-`sync --check` が古いままを見つける。目次の案内文には触らない。
+`sync --check`が古いままを見つける。目次の案内文には触らない。
 
-グラフはこの場で組み立てる。**リポジトリの docs/ を読まない**（派生ではサンプルが消える）。
+グラフはこの場で組み立てる。**リポジトリのdocs/を読まない**（派生ではサンプルが消える）。
 """
 
 from __future__ import annotations
@@ -137,8 +137,8 @@ class TermsBlock(unittest.TestCase):
         self.run_sync()
         self.rewrite(DOM_01, "席を押さえた記録", "資源を押さえた記録")
 
-        self.assertEqual(self.run_sync(dry_run=True), [IDX_DOM], "sync --check が古いままを見つける")
-        self.assertIn("席を押さえた記録", self.text(IDX_DOM), "dry_run は書き込まない")
+        self.assertEqual(self.run_sync(dry_run=True), [IDX_DOM], "sync --checkが古いままを見つける")
+        self.assertIn("席を押さえた記録", self.text(IDX_DOM), "dry_runは書き込まない")
 
         self.run_sync()
         text = self.text(IDX_DOM)
