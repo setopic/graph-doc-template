@@ -102,6 +102,44 @@ stale_after_days = 90
 
 どちらも1以上の整数で書く。書かなかったキーは既定の値を使う。
 
+### 用語表の見出しと列名
+
+`graph.toml`の`[terms]`の表には、用語表の見出しと列名を書ける。文書を日本語以外で書く派生が使う。この表も種別を差し替えないので、`[node_types]`を書かずに使ってよい。
+
+```toml
+[terms]
+section_heading = "Terms"
+term_column = "Term"
+meaning_column = "Meaning"
+old_name_column = "Former names"
+```
+
+| キー | 意味 | 既定 |
+| --- | --- | --- |
+| `section_heading` | 用語表を置く節の見出し | 用語 |
+| `term_column` | 用語の列名 | 用語 |
+| `meaning_column` | 意味の列名 | 意味 |
+| `old_name_column` | 旧称の列名（`G013`） | 旧称 |
+
+どれも空でない文字列で書き、`|`は使えない。3つの列名は互いに違う名前にする。書かなかったキーは既定の値を使う。1.19までの列名「使ってはいけない言い換え」は、`old_name_column`を変えても旧称の列として読む。
+
+### 必須の節
+
+`graph.toml`の`[required_sections]`の表には、既定の種別の必須の節（`G014`）を書ける。`refines`を持つノードに求める節は、`[required_sections_refined]`の表に書く。どちらも、書いた種別だけを差し替え、書かなかった種別は既定のままにする。
+
+```toml
+[required_sections]
+domain = ["定義", "用語"]
+usecase = []
+
+[required_sections_refined]
+domain = ["用語"]
+```
+
+値は見出しの文字列の配列で書く。空の配列にすると、その種別は検査しない。既定の値は[META-01](graph-rules.md)の`G014`の節と`schema.py`の`REQUIRED_SECTIONS`にある。
+
+この2つの表は、`[node_types]`と一緒には書けない。種別を差し替えたときは、各種別の`required_sections`と`required_sections_refined`に書く。知らない種別の名前を書くと、エラーで止まる。
+
 ## 契約か、アーキテクチャか
 
 `40-contracts`を「外部との約束」と説明すると、どこからが外部かで迷う。自分たちで書いた2つの部品の間の取り決めは契約なのか、構造の話なのか、という迷いである。

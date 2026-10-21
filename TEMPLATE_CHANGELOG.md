@@ -24,6 +24,41 @@ python -m tools.graph --version
 
 ---
 
+## 1.44.0（2026-10-21）
+
+### 追加
+
+`graph.toml`に、`[terms]`・`[required_sections]`・`[required_sections_refined]`の表を足した（#151）。用語表の見出しと列名と、既定の種別の必須の節を、`schema.py`を書き換えずに変えられる。これまでは`schema.py`の`TERM_*`と`REQUIRED_SECTIONS`を書き換えるしかなかった。`graph.toml`の`required_sections`は、種別を差し替えたときしか使えなかった。
+
+| 表 | キー | 差し替える定数 |
+| --- | --- | --- |
+| `[terms]` | `section_heading` | `TERM_SECTION_HEADING` |
+| `[terms]` | `term_column` | `TERM_COLUMN` |
+| `[terms]` | `meaning_column` | `TERM_MEANING_COLUMN` |
+| `[terms]` | `old_name_column` | `TERM_OLD_NAME_COLUMN` |
+| `[required_sections]` | 種別の名前 | `REQUIRED_SECTIONS` |
+| `[required_sections_refined]` | 種別の名前 | `REQUIRED_SECTIONS_REFINED` |
+
+`[terms]`の値は空でない文字列で書き、`|`は使えない。列名が重なったら、エラーで断る。1.19までの列名「使ってはいけない言い換え」は、列名を変えても読み続ける。`[required_sections]`と`[required_sections_refined]`は、書いた種別だけを差し替える。知らない種別と、`[node_types]`と一緒に書いたものは、エラーで断る。種別を差し替えたときは、これまでどおり`[node_types]`の各種別に書く。
+
+書き方は[META-02](docs/00-meta/node-types.md)の「用語表の見出しと列名」と「必須の節」にある。[META-01](docs/00-meta/graph-rules.md)の用語表の節と`G014`の節から、`schema.py`の書き換えを促す文を外し、`graph.toml`を指すようにした。
+
+### 取り込む側の作業
+
+`schema.py`の`TERM_*`か`REQUIRED_SECTIONS`を書き換えている派生は、その値を`graph.toml`に移し、`schema.py`をテンプレートの内容に戻す。取り込みで`schema.py`が競合したら、テンプレート側を残す。
+
+```toml
+[terms]
+section_heading = "Terms"
+
+[required_sections]
+domain = ["定義", "用語"]
+```
+
+書き換えていない派生は、何もしなくてよい。変えたファイルに`merge=ours`のものは無い。
+
+---
+
 ## 1.43.4（2026-10-21）
 
 ### 修正

@@ -19,7 +19,12 @@ from pathlib import Path
 from tools.graph import cli, schema
 from tools.graph.loader import load
 from tools.graph.model import Edge, Node
-from tools.graph.rules import rule_g012_hub_nodes, rule_g022_duplicate_terms
+from tools.graph.rules import (
+    required_sections,
+    rule_g012_hub_nodes,
+    rule_g022_duplicate_terms,
+    term_rows,
+)
 from tools.graph.sync import sync
 
 from .helpers import make_graph
@@ -343,6 +348,86 @@ class Thresholds(Base):
         self.assertEqual(schema.STALE_AFTER_DAYS, schema._DEFAULTS["STALE_AFTER_DAYS"])
 
 
+class TermTable(Base):
+    """[terms]で、schema.pyを書き換えずに用語表の見出しと列名を変えられること。"""
+
+    BODY = (
+        "## Terms\n\n"
+        "| Term | Meaning | Former names |\n"
+        "| --- | --- | --- |\n"
+        "| 予約 | 席を押さえること | 仮押さえ |\n"
+    )
+
+    def configure_english(self) -> None:
+        self.write(
+            schema.CONFIG_FILE,
+            '[terms]\nsection_heading = "Terms"\nterm_column = "Term"\n'
+            'meaning_column = "Meaning"\nold_name_column = "Former names"\n',
+        )
+        schema.configure(self.tmp)
+
+    def test_terms_change_the_heading_and_columns(self):
+        self.configure_english()
+        rows = term_rows(self.BODY)
+        self.assertEqual([row[schema.TERM_COLUMN] for row in rows], ["予約"])
+        self.assertEqual(rows[0][schema.TERM_MEANING_COLUMN], "席を押さえること")
+        self.assertEqual(schema.TERM_OLD_NAME_COLUMNS[0], "Former names")
+
+    def test_the_old_column_name_is_still_read(self):
+        """1.19までの列名は、列名を差し替えても読み続ける。"""
+        self.configure_english()
+        self.assertIn(schema.TERM_FORBIDDEN_COLUMN, schema.TERM_OLD_NAME_COLUMNS)
+
+    def test_the_default_heading_is_no_longer_read(self):
+        self.configure_english()
+        self.assertEqual(term_rows("## 用語\n\n| 用語 | 意味 |\n| --- | --- |\n| 予約 | 席 |\n"), [])
+
+    def test_terms_alone_keep_the_template_types(self):
+        before = copy.deepcopy(schema.NODE_TYPES)
+        self.configure_english()
+        self.assertEqual(schema.NODE_TYPES, before)
+
+    def test_configure_without_the_table_returns_to_defaults(self):
+        self.configure_english()
+        (self.tmp / schema.CONFIG_FILE).unlink()
+        schema.configure(self.tmp)
+        self.assertEqual(schema.TERM_SECTION_HEADING, schema._DEFAULTS["TERM_SECTION_HEADING"])
+        self.assertEqual(schema.TERM_COLUMN, schema._DEFAULTS["TERM_COLUMN"])
+        self.assertEqual(
+            schema.TERM_OLD_NAME_COLUMNS,
+            (schema._DEFAULTS["TERM_OLD_NAME_COLUMN"], schema.TERM_FORBIDDEN_COLUMN),
+        )
+
+
+class DefaultRequiredSections(Base):
+    """[required_sections]で、既定の種別のまま必須の節を変えられること。"""
+
+    def node(self, node_type: str, *, refines: bool = False) -> Node:
+        edges = [Edge("DOM-02", "DOM-01", "refines", "frontmatter")] if refines else []
+        return Node("DOM-02", node_type, "x", "stable", [], self.tmp / "x.md", "x.md", {}, "", edges)
+
+    def test_required_sections_replace_only_the_written_types(self):
+        before = dict(schema.REQUIRED_SECTIONS)
+        self.write(schema.CONFIG_FILE, '[required_sections]\ndomain = ["定義", "用語"]\nusecase = []\n')
+        schema.configure(self.tmp)
+        self.assertEqual(required_sections(self.node("domain")), ("定義", "用語"))
+        self.assertEqual(required_sections(self.node("usecase")), ())
+        self.assertEqual(schema.REQUIRED_SECTIONS["adr"], before["adr"])
+
+    def test_required_sections_refined(self):
+        self.write(schema.CONFIG_FILE, '[required_sections_refined]\ndomain = ["用語"]\n')
+        schema.configure(self.tmp)
+        self.assertEqual(required_sections(self.node("domain", refines=True)), ("用語",))
+
+    def test_configure_without_the_table_returns_to_defaults(self):
+        before = dict(schema.REQUIRED_SECTIONS)
+        self.write(schema.CONFIG_FILE, "[required_sections]\ndomain = []\n")
+        schema.configure(self.tmp)
+        (self.tmp / schema.CONFIG_FILE).unlink()
+        schema.configure(self.tmp)
+        self.assertEqual(schema.REQUIRED_SECTIONS, before)
+
+
 class BrokenConfig(Base):
     def assert_rejected(self, config: str, message: str) -> None:
         self.write(schema.CONFIG_FILE, config)
@@ -383,6 +468,27 @@ class BrokenConfig(Base):
                 self.assert_rejected(
                     f"[thresholds]\nmax_incoming_dependencies = {value}\n", "1以上の整数"
                 )
+
+    def test_terms_reject_unknown_keys(self):
+        self.assert_rejected('[terms]\nheading = "Terms"\n', "知らないキー")
+
+    def test_terms_must_be_non_empty_strings(self):
+        for value in ('""', "1", '"a | b"'):
+            with self.subTest(value=value):
+                self.assert_rejected(f"[terms]\nterm_column = {value}\n", "空でない文字列")
+
+    def test_term_columns_must_not_overlap(self):
+        self.assert_rejected('[terms]\nmeaning_column = "用語"\n', "列名が重なっている")
+
+    def test_required_sections_reject_unknown_types(self):
+        self.assert_rejected('[required_sections]\ncharacter = ["人物像"]\n', "知らない種別")
+
+    def test_required_sections_must_be_arrays_of_headings(self):
+        self.assert_rejected('[required_sections]\ndomain = "定義"\n', "見出しの文字列の配列")
+
+    def test_required_sections_cannot_be_mixed_with_node_types(self):
+        """種別を差し替えたら、必須の節は[node_types]の各種別に書く。"""
+        self.assert_rejected(CONFIG + '\n[required_sections]\nworld = ["用語"]\n', "一緒には書けない")
 
     def test_the_cli_reports_and_fails(self):
         self.write(schema.CONFIG_FILE, "[node_types\n")

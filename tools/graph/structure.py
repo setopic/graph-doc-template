@@ -12,7 +12,7 @@ from collections import deque
 from . import schema
 from .loader import strip_non_prose
 from .model import Graph, Node
-from .rules import _EMPHASIS_RE, _TERM_SECTION_RE, _prerequisites, term_rows
+from .rules import _EMPHASIS_RE, _prerequisites, term_rows, term_section_re
 
 # 「付与 / 剥奪」のように、対になる語を1行に並べた用語表がある。まとめたままでは
 # 本文に出てこないので、語ごとに探す。「A/B」のように空白の無い斜線は語の一部として残す
@@ -68,7 +68,7 @@ def unused_nodes(graph: Graph) -> list[Node]:
 
 
 def _prose(node: Node) -> str:
-    return strip_non_prose(_TERM_SECTION_RE.sub(" ", node.body))
+    return strip_non_prose(term_section_re().sub(" ", node.body))
 
 
 def unused_terms(graph: Graph) -> list[tuple[str, str]]:

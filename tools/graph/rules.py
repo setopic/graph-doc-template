@@ -438,10 +438,22 @@ def rule_g010_related_symmetry(graph: Graph) -> list[Issue]:
 # 用語表（G013・G022・用語の一覧・reviewのA003が読む）
 # --------------------------------------------------------------------------
 # 「## 用語」の節。次の同じレベルの見出しか、文末まで。
-_TERM_SECTION_RE = re.compile(
-    rf"^##\s+{re.escape(schema.TERM_SECTION_HEADING)}\s*$(.*?)(?=^##\s|\Z)",
-    re.MULTILINE | re.DOTALL,
-)
+# 見出しはgraph.tomlで変えられるので、読み込んだ後の値で作る。
+_term_section_cache: dict[str, re.Pattern[str]] = {}
+
+
+def term_section_re() -> re.Pattern[str]:
+    heading = schema.TERM_SECTION_HEADING
+    pattern = _term_section_cache.get(heading)
+    if pattern is None:
+        pattern = re.compile(
+            rf"^##\s+{re.escape(heading)}\s*$(.*?)(?=^##\s|\Z)",
+            re.MULTILINE | re.DOTALL,
+        )
+        _term_section_cache[heading] = pattern
+    return pattern
+
+
 # セルの末尾の丸括弧。旧称になった経緯か、使ってよい条件が入っている
 _TRAILING_NOTE_RE = re.compile(r"[（(]([^）)]*)[）)]\s*$")
 _INNER_PAREN_RE = re.compile(r"[（(][^）)]*[）)]")
@@ -464,7 +476,7 @@ def term_table_lines(body: str) -> list[str]:
     用語が空の行（雛形の空行）は落とす。見出しと区切りの行は残す。
     用語の一覧（`sync`）が、ノードの表をそのまま写すのに使う。
     """
-    section = _TERM_SECTION_RE.search(body)
+    section = term_section_re().search(body)
     if section is None:
         return []
 
@@ -592,7 +604,7 @@ def rule_g013_term_consistency(graph: Graph) -> list[Issue]:
     issues: list[Issue] = []
     for node in graph.sorted_nodes():
         # 用語表そのものは対象外。旧称を挙げていることは、使っていることではない
-        text = strip_non_prose(_TERM_SECTION_RE.sub(" ", node.body))
+        text = strip_non_prose(term_section_re().sub(" ", node.body))
 
         for owner_id in _prerequisites(graph, node.id):
             for word, (term, note) in sorted(vocabulary.get(owner_id, {}).items()):

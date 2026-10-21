@@ -166,7 +166,7 @@ MAX_INCOMING_DEPENDENCIES = 8
 HUB_EXEMPT_TYPES: tuple[str, ...] = ()
 
 # ドメインノードの「用語」表。G013・G022・用語の一覧・reviewのA003が読む。
-# 見出しと列名は文書の言語に依存するので、ここで差し替えられるようにしてある。
+# 見出しと列名は文書の言語に依存するので、graph.tomlの`[terms]`で差し替えられる。
 TERM_SECTION_HEADING = "用語"
 TERM_COLUMN = "用語"
 TERM_MEANING_COLUMN = "意味"
@@ -177,7 +177,7 @@ TERM_OLD_NAME_COLUMN = "旧称"
 # 1.19までの列名。**読み続ける。** 見出しが合わない表は用語表として読まないので、
 # 読むのをやめると、それを取り込んだ派生で、気づかないうちにG013が止まる。
 TERM_FORBIDDEN_COLUMN = "使ってはいけない言い換え"
-TERM_OLD_NAME_COLUMNS = (TERM_OLD_NAME_COLUMN, TERM_FORBIDDEN_COLUMN)
+TERM_OLD_NAME_COLUMNS: tuple[str, ...] = (TERM_OLD_NAME_COLUMN, TERM_FORBIDDEN_COLUMN)
 
 # 短すぎる語は本文のどこにでも現れるので、対象から外す（誤検知の害が、検知の益を上回る）。
 TERM_MIN_LENGTH = 2
@@ -189,10 +189,7 @@ TERM_MIN_LENGTH = 2
 # ここに挙げるのは、既存のノードのほぼすべてが実際に持っている節だけにする。
 #
 # 見出しは、`## `の直後の文字列と完全に一致するかで照合する。文書の言語に依存するので、
-# プロジェクトの語彙に合わせて書き換えてよい。空のタプルにすれば、そのtypeは検査しない。
-#
-# テンプレートを取り込む（make update）ときに、この行が競合したら、
-# **こちら側の値を残す。** 節の名前はプロジェクトごとに違う。
+# 派生ではgraph.tomlの`[required_sections]`で変える。空の配列にすれば、そのtypeは検査しない。
 REQUIRED_SECTIONS: dict[str, tuple[str, ...]] = {
     "adr": ("背景", "決定", "理由", "却下した案", "影響", "見直しの条件"),
     # 「構成」は入れない。構成要素を持たず、方針だけを書くノードがある
@@ -316,6 +313,23 @@ def frontmatter_edge_kinds() -> tuple[str, ...]:
 #     [commit]
 #     extra_types = ["episode"]
 #
+# `[terms]`の表には、用語表の見出しと列名を書ける。上のTERM_SECTION_HEADING・
+# TERM_COLUMN・TERM_MEANING_COLUMN・TERM_OLD_NAME_COLUMNを差し替える。
+# 1.19までの列名（TERM_FORBIDDEN_COLUMN）は、差し替えても読み続ける。
+#
+#     [terms]
+#     section_heading = "Terms"
+#     term_column = "Term"
+#     meaning_column = "Meaning"
+#     old_name_column = "Former names"
+#
+# `[required_sections]`と`[required_sections_refined]`の表には、既定の種別の
+# 必須の節（G014）を書ける。書いた種別だけを差し替え、書かなかった種別は既定のままにする。
+# 種別を差し替えたときは、[node_types]の各種別に書くので、この2つの表は使えない。
+#
+#     [required_sections]
+#     domain = ["定義", "用語"]
+#
 # `[thresholds]`の表には、健全性のしきい値を書ける。上のSTALE_AFTER_DAYS（G011）と
 # MAX_INCOMING_DEPENDENCIES（G012）を、schema.pyを書き換えずに変えるためのものである。
 # schema.pyは共通ファイルなので、書き換えると取り込みのたびに競合する。
@@ -344,6 +358,12 @@ _TYPE_KEYS = {
     "hub_exempt",
 }
 _THRESHOLD_KEYS = {"max_incoming_dependencies", "stale_after_days"}
+_TERMS_KEYS = {
+    "section_heading": "TERM_SECTION_HEADING",
+    "term_column": "TERM_COLUMN",
+    "meaning_column": "TERM_MEANING_COLUMN",
+    "old_name_column": "TERM_OLD_NAME_COLUMN",
+}
 
 # configureが何度呼ばれても同じ結果になるよう、テンプレートの定義を取っておく
 # 差し替えても常に残す種別
@@ -359,6 +379,10 @@ _DEFAULTS = {
     "COMMIT_TYPES": COMMIT_TYPES,
     "MAX_INCOMING_DEPENDENCIES": MAX_INCOMING_DEPENDENCIES,
     "STALE_AFTER_DAYS": STALE_AFTER_DAYS,
+    "TERM_SECTION_HEADING": TERM_SECTION_HEADING,
+    "TERM_COLUMN": TERM_COLUMN,
+    "TERM_MEANING_COLUMN": TERM_MEANING_COLUMN,
+    "TERM_OLD_NAME_COLUMN": TERM_OLD_NAME_COLUMN,
 }
 
 
@@ -370,6 +394,8 @@ def reset() -> None:
     """語彙をテンプレートの定義に戻す。"""
     global IMMUTABLE_RECORD_TYPES, TERM_TYPES, HUB_EXEMPT_TYPES, COMMIT_TYPES
     global MAX_INCOMING_DEPENDENCIES, STALE_AFTER_DAYS
+    global TERM_SECTION_HEADING, TERM_COLUMN, TERM_MEANING_COLUMN, TERM_OLD_NAME_COLUMN
+    global TERM_OLD_NAME_COLUMNS
     # 辞書は中身を入れ替える。ほかのモジュールが同じ辞書を参照しているためである
     NODE_TYPES.clear()
     NODE_TYPES.update(copy.deepcopy(_DEFAULTS["NODE_TYPES"]))
@@ -383,6 +409,11 @@ def reset() -> None:
     COMMIT_TYPES = _DEFAULTS["COMMIT_TYPES"]
     MAX_INCOMING_DEPENDENCIES = _DEFAULTS["MAX_INCOMING_DEPENDENCIES"]
     STALE_AFTER_DAYS = _DEFAULTS["STALE_AFTER_DAYS"]
+    TERM_SECTION_HEADING = _DEFAULTS["TERM_SECTION_HEADING"]
+    TERM_COLUMN = _DEFAULTS["TERM_COLUMN"]
+    TERM_MEANING_COLUMN = _DEFAULTS["TERM_MEANING_COLUMN"]
+    TERM_OLD_NAME_COLUMN = _DEFAULTS["TERM_OLD_NAME_COLUMN"]
+    TERM_OLD_NAME_COLUMNS = (TERM_OLD_NAME_COLUMN, TERM_FORBIDDEN_COLUMN)
 
 
 def configure(root: Path) -> None:
@@ -401,16 +432,37 @@ def configure(root: Path) -> None:
     except tomllib.TOMLDecodeError as exc:
         raise ConfigError(f"{CONFIG_FILE}が読めない: {exc}") from exc
 
-    unknown = set(data) - {"node_types", "commit", "thresholds"}
+    unknown = set(data) - {
+        "node_types",
+        "commit",
+        "thresholds",
+        "terms",
+        "required_sections",
+        "required_sections_refined",
+    }
     if unknown:
         raise ConfigError(f"{CONFIG_FILE}に知らないキーがある: {', '.join(sorted(unknown))}")
     if "commit" in data:
         _apply_commit(data["commit"])
     if "thresholds" in data:
         _apply_thresholds(data["thresholds"])
+    if "terms" in data:
+        _apply_terms(data["terms"])
     types = data.get("node_types")
     if types is None:
+        for key, target in (
+            ("required_sections", REQUIRED_SECTIONS),
+            ("required_sections_refined", REQUIRED_SECTIONS_REFINED),
+        ):
+            if key in data:
+                _apply_default_sections(key, data[key], target)
         return
+    for key in ("required_sections", "required_sections_refined"):
+        if key in data:
+            raise ConfigError(
+                f"{CONFIG_FILE}の[{key}]は、[node_types]と一緒には書けない。"
+                f"種別を差し替えたときは、[node_types]の各種別に{key}を書く"
+            )
     if not isinstance(types, dict) or not types:
         raise ConfigError(f"{CONFIG_FILE}の[node_types]に、種別が1つも無い")
     _apply_node_types(types)
@@ -528,6 +580,35 @@ def _apply_thresholds(table: object) -> None:
             raise ConfigError(f"{where}: {key}は1以上の整数にする")
     MAX_INCOMING_DEPENDENCIES = table.get("max_incoming_dependencies", MAX_INCOMING_DEPENDENCIES)
     STALE_AFTER_DAYS = table.get("stale_after_days", STALE_AFTER_DAYS)
+
+
+def _apply_terms(table: object) -> None:
+    global TERM_OLD_NAME_COLUMNS
+    where = f"{CONFIG_FILE}の[terms]"
+    if not isinstance(table, dict):
+        raise ConfigError(f"{where}: 表で書く")
+    unknown = set(table) - set(_TERMS_KEYS)
+    if unknown:
+        raise ConfigError(f"{where}: 知らないキーがある: {', '.join(sorted(unknown))}")
+    for key, value in table.items():
+        if not isinstance(value, str) or not value.strip() or "|" in value:
+            raise ConfigError(f"{where}: {key}は空でない文字列にする（|は使えない）")
+        globals()[_TERMS_KEYS[key]] = value.strip()
+    columns = [TERM_COLUMN, TERM_MEANING_COLUMN, TERM_OLD_NAME_COLUMN]
+    if len(set(columns)) != len(columns):
+        raise ConfigError(f"{where}: 列名が重なっている: {', '.join(columns)}")
+    TERM_OLD_NAME_COLUMNS = (TERM_OLD_NAME_COLUMN, TERM_FORBIDDEN_COLUMN)
+
+
+def _apply_default_sections(key: str, table: object, target: dict[str, tuple[str, ...]]) -> None:
+    where = f"{CONFIG_FILE}の[{key}]"
+    if not isinstance(table, dict):
+        raise ConfigError(f"{where}: 表で書く")
+    unknown = set(table) - set(NODE_TYPES)
+    if unknown:
+        raise ConfigError(f"{where}: 知らない種別がある: {', '.join(sorted(unknown))}")
+    for name in table:
+        target[name] = _sections(where, table, name)
 
 
 def _sections(where: str, spec: dict, key: str) -> tuple[str, ...] | None:
