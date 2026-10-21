@@ -164,7 +164,7 @@ python -m tools.graph check
 python -m tools.graph check --since origin/main
 ```
 
-各文書の末尾にある「このノードを参照しているノード」も同じ一覧である。`sync`が生成しているので、手で数えない。図で見るなら次を使う。
+各文書の末尾にある「このノードを参照しているノード」も同じ一覧である。`sync`が生成しているので、手で数えない。規約の文書（`meta`）には載せないので、`check`の`G015`で確かめる。図で見るなら次を使う。
 
 ```bash
 python -m tools.graph render --format mermaid --focus DOM-01 --depth 1

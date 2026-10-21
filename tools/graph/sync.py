@@ -4,6 +4,10 @@
 されているか）だけを自動で埋める。ブロックはマーカーで囲まれていて、
 loaderが読み込むときに取り除くので、グラフの入力にはならない。
 
+規約の文書（`meta`）には、逆引きを書かない。`meta`はテンプレートが配る共通ファイルで、
+逆引きはそのリポジトリにあるほかのノードで決まる。書くと、派生や上の層ごとに中身が
+違い、取り込みのたびに競合する（setopic/graph-doc-template#129）。
+
 目次ノードだけは扱いが違い、一覧ブロックを丸ごと作り直す。
 中身は「同じディレクトリにあるノード」で機械的に決まる。
 `<!-- graph:children:start -->`の外に書いた案内文には触らない。
@@ -28,6 +32,8 @@ CHILDREN_RE = re.compile(
     re.escape(schema.CHILDREN_START) + r".*?" + re.escape(schema.CHILDREN_END),
     re.DOTALL,
 )
+# 規約の文書の種別。逆引きを書かない（モジュールのdocstring）
+META_TYPE = "meta"
 # "DOM-01"を("DOM", 1)にして、DOM-2がDOM-10より前に来るようにする
 ID_RE = re.compile(r"^(.*?)-(\d+)$")
 
@@ -143,7 +149,7 @@ def build_block(graph: Graph, node: Node) -> str:
 
     incoming: dict[str, set[str]] = {}
     for edge in graph.incoming(node.id):
-        if edge.kind == schema.BODY_EDGE_KIND:
+        if edge.kind == schema.BODY_EDGE_KIND or node.type == META_TYPE:
             continue
         incoming.setdefault(edge.kind, set()).add(edge.src)
 
@@ -159,7 +165,10 @@ def build_block(graph: Graph, node: Node) -> str:
                 )
         lines.append("")
 
-    if not wrote_any:
+    if not wrote_any and node.type == META_TYPE:
+        lines.append("_規約の文書なので、このノードを参照しているノードは載せない。_")
+        lines.append("")
+    elif not wrote_any:
         lines.append("_まだリンクが無い。孤立ノードのままにしないこと。_")
         lines.append("")
 

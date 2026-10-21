@@ -122,6 +122,12 @@ python -m tools.graph linkify
 | `supersedes` | この決定が置き換える過去の決定 | ADR同士のみ |
 | `decides` | この決定が影響を与えるノード | ADRから張る |
 
+### 規約の文書には逆引きを書かない
+
+`sync`は、各ノードの自動生成ブロックに、そのノードを参照しているノード（逆引き）を書く。ただし、規約の文書（`meta`）には書かない。`meta`は、テンプレートが配る共通ファイルである。逆引きは、そのリポジトリにあるほかのノードで決まる。書くと、派生や上の層ごとに共通ファイルの中身が違い、取り込みのたびに競合する。
+
+そのため、派生や上の層のノードから規約の文書へ`depends_on`や`decides`を張っても、共通ファイルは変わらない。一方で`related`は相互に書く決まりなので（`G010`）、下の層が配る規約の文書を`related`に入れない。入れると、相手のフロントマターを書き換えることになる。上の層や派生が足した規約の文書は目次から辿れるようにし、下の層の規約の文書へは本文のリンクで案内する。
+
 ### `refines`と`depends_on`の使い分け
 
 同じ`type`同士では両方を書けてしまうので、基準を決めておく。**迷ったら`depends_on`を使う。** `refines`を使うのは、分割したときだけである。
@@ -744,13 +750,5 @@ python -m tools.graph new --type contract --template contract-http --id CON-02 -
 - [META-03 本文のレビュー（AI）](./ai-review.md)
 - [META-07 issueとPRの流れ](./issue-pr-flow.md)
 - [META-08 テンプレートの更新を取り込む](./template-upgrade.md)
-
-このノードを参照しているノード
-
-- (decides) [ADR-0001 設計文書をグラフとして管理する](../50-adr/adr-0001-graph-driven-docs.md)
-- (related) [META-02 ノード種別と層](./node-types.md)
-- (related) [META-03 本文のレビュー（AI）](./ai-review.md)
-- (related) [META-07 issueとPRの流れ](./issue-pr-flow.md)
-- (related) [META-08 テンプレートの更新を取り込む](./template-upgrade.md)
 
 <!-- graph:auto:end -->

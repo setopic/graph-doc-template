@@ -180,9 +180,4 @@ CI（`graph-check.yml`の`names`）が、PRのブランチ名、PRの題、PRに
 - [META-01 グラフの規約](./graph-rules.md)
 - [META-08 テンプレートの更新を取り込む](./template-upgrade.md)
 
-このノードを参照しているノード
-
-- (related) [META-01 グラフの規約](./graph-rules.md)
-- (related) [META-08 テンプレートの更新を取り込む](./template-upgrade.md)
-
 <!-- graph:auto:end -->

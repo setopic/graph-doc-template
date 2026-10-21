@@ -243,8 +243,4 @@ python -m tools.graph rename --from IDX-API --to IDX-CON --path docs/40-contract
 
 - [META-01 グラフの規約](./graph-rules.md)
 
-このノードを参照しているノード
-
-- (related) [META-01 グラフの規約](./graph-rules.md)
-
 <!-- graph:auto:end -->

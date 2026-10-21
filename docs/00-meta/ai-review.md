@@ -124,8 +124,4 @@ ANTHROPIC_API_KEYが設定されていないので、レビューを行わない
 
 - [META-01 グラフの規約](./graph-rules.md)
 
-このノードを参照しているノード
-
-- (related) [META-01 グラフの規約](./graph-rules.md)
-
 <!-- graph:auto:end -->
