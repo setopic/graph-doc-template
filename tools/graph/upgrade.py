@@ -63,6 +63,8 @@ class Layer:
     # 取り込みのブランチ名で、版の前に付ける名前。下の層は付けない（`chore/template-<版>`のまま）
     label: str | None = None
     below: str | None = None
+    # PRの題（squashのコミット）に版を求めるか。上の層は、tomlの`versioned_title`で選ぶ（META-07）
+    versioned_title: bool = False
 
 
 class UpgradeError(RuntimeError):
@@ -150,6 +152,9 @@ def _parse_layer(text: str, source: str) -> Layer:
         raise UpgradeError(f"{source}に{'・'.join(missing)}が無い")
     if not LABEL_RE.match(data["label"]):
         raise UpgradeError(f"{source}のlabelは、英小文字で始まる英小文字と数字にする")
+    versioned_title = data.get("versioned_title", False)
+    if not isinstance(versioned_title, bool):
+        raise UpgradeError(f"{source}のversioned_titleは、trueかfalseにする")
     return Layer(
         name=data["name"],
         version=data["version"],
@@ -157,6 +162,7 @@ def _parse_layer(text: str, source: str) -> Layer:
         repository=data["repository"],
         label=data["label"],
         below=data["below"],
+        versioned_title=versioned_title,
     )
 
 
@@ -187,6 +193,7 @@ def read_layers(read: Callable[[str], str | None], names: list[str]) -> list[Lay
         version=found.group(1) if found else None,
         changelog=CHANGELOG_PATH,
         repository=BASE_REPOSITORY,
+        versioned_title=True,
     )
     upper = []
     for name in names:

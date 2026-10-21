@@ -9,6 +9,11 @@
 - `claude/`で始まるブランチ名。Claudeのクラウドのセッションが自動で付ける
 - `chore/template-`のPRに入るコミット。決まりより前に書かれた上流のコミットが入る
 
+テンプレートの層のうち版を求める層では、PRの題に版を求める。下の層（graph-doc-template）は
+いつも求め、上の層は`tools/graph/layers/<層の名前>.toml`の`versioned_title`で選ぶ。
+層の宣言は派生にも写るので、宣言の`repository`がPRのリポジトリと同じときだけ求める。
+取り込みのPRの題には、版を求めない。
+
 日本語の1文かどうかと、括弧のidが実在するかは見ない。idの実在は`check_refs.py`が、
 PRの題と本文で確かめている。
 """
@@ -24,12 +29,12 @@ from pathlib import Path
 sys.path.insert(0, str(Path(__file__).resolve().parents[2]))
 
 from tools.graph import schema  # noqa: E402
-
-# テンプレート本体では、PRの題（squashのコミット）の1文の前に版を書く
-TEMPLATE_REPOSITORY = "setopic/graph-doc-template"
+from tools.graph.upgrade import local_layers  # noqa: E402
 
 SUBJECT = re.compile(r"^(?P<type>[a-z][a-z0-9-]*)(?:\([A-Z]{2,5}-\d{2,4}\))?: \S")
-VERSIONED = re.compile(r"^[a-z][a-z0-9-]*: \d+\.\d+\.\d+ \S")
+VERSIONED = re.compile(r"^[a-z][a-z0-9-]*(?:\([A-Z]{2,5}-\d{2,4}\))?: \d+\.\d+\.\d+ \S")
+# `https://github.com/<owner>/<name>.git`や`git@github.com:<owner>/<name>.git`の`<owner>/<name>`
+REPOSITORY_SLUG = re.compile(r"([^/:]+/[^/:]+?)(?:\.git)?/?$")
 BRANCH = re.compile(r"^(?P<type>[a-z][a-z0-9-]*)/(?:\d+-)?[a-z][a-z0-9]*(?:-[a-z0-9]+)*$")
 # 取り込みの版は、遅れている層の版を並べたもの（`1.38.0`、`project-0.14.0`、
 # `1.38.0-project-0.14.0`）。上の層には名前が付く（setopic/graph-doc-template#125）
@@ -49,10 +54,11 @@ def check_subject(subject: str, types: tuple[str, ...]) -> str | None:
     return None
 
 
-def check_title(title: str, types: tuple[str, ...], repository: str) -> str | None:
+def check_title(title: str, types: tuple[str, ...], versioned: bool = False) -> str | None:
+    """PRの題を確かめる。`versioned`なら、1文の前に版を求める。"""
     problem = check_subject(title, types)
-    if problem is None and repository == TEMPLATE_REPOSITORY and not VERSIONED.match(title):
-        return "テンプレート本体の題は`<種類>: <版> <日本語の1文>（#issue）`にする"
+    if problem is None and versioned and not VERSIONED.match(title):
+        return "版を求める層の題は`<種類>(<ノードのid>): <版> <日本語の1文>（#issue）`にする"
     return problem
 
 
@@ -65,6 +71,16 @@ def check_branch(branch: str, types: tuple[str, ...]) -> str | None:
     if match.group("type") not in types:
         return f"種類`{match.group('type')}`は一覧に無い"
     return None
+
+
+def versioned_repositories(root: Path) -> set[str]:
+    """PRの題に版を求める層の`<owner>/<name>`。"""
+    found = set()
+    for layer in local_layers(root):
+        match = REPOSITORY_SLUG.search(layer.repository)
+        if layer.versioned_title and match:
+            found.add(match.group(1))
+    return found
 
 
 def skips_commits(branch: str) -> bool:
@@ -89,13 +105,17 @@ def run(
     title: str,
     subjects: list[str],
     types: tuple[str, ...],
-    repository: str = "",
+    versioned: bool = False,
 ) -> int:
-    """終了コードを返す。`subjects`は、確かめるコミットの1行目である。"""
+    """終了コードを返す。`subjects`は、確かめるコミットの1行目である。
+
+    `versioned`は、PRの題に版を求める層のリポジトリか。取り込みのPRでは求めない。
+    """
+    versioned = versioned and not TEMPLATE_BRANCH.match(branch)
     problems: list[str] = []
     if problem := check_branch(branch, types):
         problems.append(f"ブランチ名 {branch}: {problem}")
-    if problem := check_title(title, types, repository):
+    if problem := check_title(title, types, versioned):
         problems.append(f"PRの題 {title}: {problem}")
     for subject in subjects:
         if problem := check_subject(subject, types):
@@ -123,7 +143,7 @@ def main() -> int:
         os.environ.get("PR_TITLE", ""),
         subjects,
         schema.COMMIT_TYPES,
-        os.environ.get("GITHUB_REPOSITORY", ""),
+        os.environ.get("GITHUB_REPOSITORY", "") in versioned_repositories(root),
     )
 
 

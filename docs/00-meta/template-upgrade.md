@@ -108,6 +108,8 @@ repository = "https://github.com/setopic/graph-project-template.git"
 
 `label`は、取り込みの版で層を見分ける名前で、英小文字と数字で書く。`below`には1つ下の層の`name`を書く。リモート`template`が無いとき、`upgrade`はいちばん上の層の`repository`を案内する。
 
+PRの題に版を求めるときは、`versioned_title = true`を足す。書かなければ求めない。CIの`names`は、`repository`がPRのリポジトリと同じ層だけに当てるので、宣言が写った派生では求めない（[META-07](issue-pr-flow.md)）。
+
 上の層が足す規約の文書は、下の層の規約の文書を`related`に入れない。`related`は相互に書く決まりなので、入れると下の層の共通ファイルを書き換えることになる。下の層の規約の文書へは、本文のリンクで案内する（[META-01](graph-rules.md)の「規約の文書には逆引きを書かない」）。
 
 上の層のREADMEには、その層が足したもの（共通ファイル・サンプルノード・手順の例外）の説明と、この文書へのリンクだけを書く。取り込みの手順を写すと、写した側が古くなる。

@@ -64,13 +64,58 @@ class Title(unittest.TestCase):
     def setUp(self):
         self.names = load_script()
 
-    def test_template_requires_a_version(self):
-        repo = self.names.TEMPLATE_REPOSITORY
-        self.assertIsNone(self.names.check_title("fix: 1.36.14 手順に書く（#117）", TYPES, repo))
-        self.assertIsNotNone(self.names.check_title("fix: 手順に書く（#117）", TYPES, repo))
+    def test_versioned_requires_a_version(self):
+        self.assertIsNone(self.names.check_title("fix: 1.36.14 手順に書く（#117）", TYPES, True))
+        self.assertIsNone(self.names.check_title("fix(META-04): 0.14.4 手順に書く（#61）", TYPES, True))
+        self.assertIsNotNone(self.names.check_title("fix: 手順に書く（#117）", TYPES, True))
+        self.assertIsNotNone(self.names.check_title("fix(META-04): 手順に書く（#61）", TYPES, True))
 
-    def test_derived_does_not(self):
-        self.assertIsNone(self.names.check_title("fix: 手順に書く（#117）", TYPES, "setopic/noir-sf"))
+    def test_others_do_not(self):
+        self.assertIsNone(self.names.check_title("fix: 手順に書く（#117）", TYPES))
+
+
+@unittest.skipUnless(SCRIPT.exists(), "check_names.pyを消したリポジトリでは飛ばす")
+class VersionedRepositories(unittest.TestCase):
+    """版を求めるリポジトリは、層の宣言から決まる（#131）。"""
+
+    def setUp(self):
+        self.names = load_script()
+        self.tmp = Path(tempfile.mkdtemp())
+        self.addCleanup(shutil.rmtree, self.tmp)
+
+    def declare(self, extra: str = "") -> None:
+        layers = self.tmp / "tools" / "graph" / "layers"
+        layers.mkdir(parents=True)
+        (layers / "graph-project-template.toml").write_text(
+            'name = "graph-project-template"\n'
+            'label = "project"\n'
+            'below = "graph-doc-template"\n'
+            'version = "0.14.4"\n'
+            'changelog = "PROJECT_TEMPLATE_CHANGELOG.md"\n'
+            'repository = "https://github.com/setopic/graph-project-template.git"\n' + extra,
+            encoding="utf-8",
+        )
+
+    def test_the_lower_layer_always_requires(self):
+        self.assertEqual(self.names.versioned_repositories(self.tmp), {"setopic/graph-doc-template"})
+
+    def test_an_upper_layer_does_not_by_default(self):
+        self.declare()
+        self.assertEqual(self.names.versioned_repositories(self.tmp), {"setopic/graph-doc-template"})
+
+    def test_an_upper_layer_can_choose(self):
+        self.declare("versioned_title = true\n")
+        self.assertEqual(
+            self.names.versioned_repositories(self.tmp),
+            {"setopic/graph-doc-template", "setopic/graph-project-template"},
+        )
+
+    def test_a_wrong_value_is_refused(self):
+        from tools.graph.upgrade import UpgradeError
+
+        self.declare('versioned_title = "yes"\n')
+        with self.assertRaises(UpgradeError):
+            self.names.versioned_repositories(self.tmp)
 
 
 @unittest.skipUnless(SCRIPT.exists(), "check_names.pyを消したリポジトリでは飛ばす")
@@ -129,9 +174,15 @@ class Run(unittest.TestCase):
             "feat: 1.37.0 ブランチ名とコミットの1行目の決まりを足す（#121）",
             ["feat(META-07): ブランチ名の決まりを書く（#121）"],
             TYPES,
-            self.names.TEMPLATE_REPOSITORY,
+            True,
         )
         self.assertEqual(code, 0)
+
+    def test_template_import_does_not_require_a_version(self):
+        for branch, code in (("chore/template-1.42.0", 0), ("chore/update-deps", 1)):
+            with self.subTest(branch=branch):
+                got, _ = self.run_quietly(branch, "chore: テンプレートの1.42.0を取り込む", [], TYPES, True)
+                self.assertEqual(got, code)
 
     def test_reports_every_problem(self):
         code, out = self.run_quietly("rules", "決まりを足す", ["決まりを書く"], TYPES)
