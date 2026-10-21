@@ -44,7 +44,8 @@ LAYER_KEYS = ("name", "label", "below", "version", "changelog", "repository")
 LABEL_RE = re.compile(r"^[a-z][a-z0-9]*$")
 
 VERSION_RE = re.compile(r'TEMPLATE_VERSION\s*=\s*["\']([^"\']+)["\']')
-# 変更履歴の見出しの形（例: "## 1.2.0 — 2026-08-14"）
+# 変更履歴の見出しの形（例: "## 1.2.0（2026-08-14）"）。版の後ろは問わない。
+# 1.43.2までの見出しは版と日付をダッシュでつないでいた。上の層や派生の変更履歴には残っているので、どちらも読む
 ENTRY_RE = re.compile(r"^##\s+(\d+\.\d+\.\d+)\b(.*)$")
 
 # check-attrに一度に渡す経路の数。多すぎると、コマンド行の長さの上限に当たる
