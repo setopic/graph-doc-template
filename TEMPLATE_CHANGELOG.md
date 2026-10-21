@@ -22,6 +22,32 @@ python -m tools.graph --version
 
 ---
 
+## 1.40.0 — 2026-10-21
+
+### 追加
+
+`graph.toml`に`[thresholds]`の表を足した（#127）。`G012`の上限と`G011`の日数を、`schema.py`を書き換えずに変えられる。これまでは`schema.py`の`MAX_INCOMING_DEPENDENCIES`を書き換えるしかなかった。`schema.py`は共通ファイルなので、書き換えた派生では取り込みのたびに競合していた。`graph.toml`はテンプレートが配らないので、取り込みで競合しない。
+
+| キー | 差し替える定数 | 既定 |
+| --- | --- | --- |
+| `max_incoming_dependencies` | `MAX_INCOMING_DEPENDENCIES`（`G012`） | 8 |
+| `stale_after_days` | `STALE_AFTER_DAYS`（`G011`） | 90 |
+
+値は1以上の整数で書く。知らないキーと、整数でない値は、エラーで断る。`[thresholds]`だけを書いても、種別は差し替わらない。書き方は[META-02](docs/00-meta/node-types.md)の「しきい値」にある。[META-01](docs/00-meta/graph-rules.md)の`G011`と`G012`の節も、`graph.toml`を指すようにした。
+
+### 取り込む側の作業
+
+`schema.py`の`MAX_INCOMING_DEPENDENCIES`を書き換えている派生は、その値を`graph.toml`に移し、`schema.py`をテンプレートの内容に戻す。取り込みで`schema.py`が競合したら、テンプレート側を残す。
+
+```toml
+[thresholds]
+max_incoming_dependencies = 21
+```
+
+`graph.toml`がまだ無い派生は、根に新しく置く。`[node_types]`を書かなければ、種別はテンプレートのままである。値を変えていない派生は、何もしなくてよい。
+
+---
+
 ## 1.39.0 — 2026-10-21
 
 ### 追加

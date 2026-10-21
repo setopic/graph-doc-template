@@ -315,6 +315,14 @@ def frontmatter_edge_kinds() -> tuple[str, ...]:
 #
 #     [commit]
 #     extra_types = ["episode"]
+#
+# `[thresholds]`の表には、健全性のしきい値を書ける。上のSTALE_AFTER_DAYS（G011）と
+# MAX_INCOMING_DEPENDENCIES（G012）を、schema.pyを書き換えずに変えるためのものである。
+# schema.pyは共通ファイルなので、書き換えると取り込みのたびに競合する。
+#
+#     [thresholds]
+#     max_incoming_dependencies = 12
+#     stale_after_days = 90
 CONFIG_FILE = "graph.toml"
 
 # ブランチ名とコミットの1行目に使う種類（META-07）。Conventional Commitsの語である
@@ -335,6 +343,7 @@ _TYPE_KEYS = {
     "required_sections_refined",
     "hub_exempt",
 }
+_THRESHOLD_KEYS = {"max_incoming_dependencies", "stale_after_days"}
 
 # configureが何度呼ばれても同じ結果になるよう、テンプレートの定義を取っておく
 # 差し替えても常に残す種別
@@ -348,6 +357,8 @@ _DEFAULTS = {
     "TERM_TYPES": TERM_TYPES,
     "HUB_EXEMPT_TYPES": HUB_EXEMPT_TYPES,
     "COMMIT_TYPES": COMMIT_TYPES,
+    "MAX_INCOMING_DEPENDENCIES": MAX_INCOMING_DEPENDENCIES,
+    "STALE_AFTER_DAYS": STALE_AFTER_DAYS,
 }
 
 
@@ -358,6 +369,7 @@ class ConfigError(ValueError):
 def reset() -> None:
     """語彙をテンプレートの定義に戻す。"""
     global IMMUTABLE_RECORD_TYPES, TERM_TYPES, HUB_EXEMPT_TYPES, COMMIT_TYPES
+    global MAX_INCOMING_DEPENDENCIES, STALE_AFTER_DAYS
     # 辞書は中身を入れ替える。ほかのモジュールが同じ辞書を参照しているためである
     NODE_TYPES.clear()
     NODE_TYPES.update(copy.deepcopy(_DEFAULTS["NODE_TYPES"]))
@@ -369,6 +381,8 @@ def reset() -> None:
     TERM_TYPES = _DEFAULTS["TERM_TYPES"]
     HUB_EXEMPT_TYPES = _DEFAULTS["HUB_EXEMPT_TYPES"]
     COMMIT_TYPES = _DEFAULTS["COMMIT_TYPES"]
+    MAX_INCOMING_DEPENDENCIES = _DEFAULTS["MAX_INCOMING_DEPENDENCIES"]
+    STALE_AFTER_DAYS = _DEFAULTS["STALE_AFTER_DAYS"]
 
 
 def configure(root: Path) -> None:
@@ -387,11 +401,13 @@ def configure(root: Path) -> None:
     except tomllib.TOMLDecodeError as exc:
         raise ConfigError(f"{CONFIG_FILE}が読めない: {exc}") from exc
 
-    unknown = set(data) - {"node_types", "commit"}
+    unknown = set(data) - {"node_types", "commit", "thresholds"}
     if unknown:
         raise ConfigError(f"{CONFIG_FILE}に知らないキーがある: {', '.join(sorted(unknown))}")
     if "commit" in data:
         _apply_commit(data["commit"])
+    if "thresholds" in data:
+        _apply_thresholds(data["thresholds"])
     types = data.get("node_types")
     if types is None:
         return
@@ -497,6 +513,21 @@ def _apply_commit(table: object) -> None:
     if len(set(extra)) != len(extra):
         raise ConfigError(f"{where}: extra_typesに同じ語が2つある")
     COMMIT_TYPES = _DEFAULTS["COMMIT_TYPES"] + tuple(extra)
+
+
+def _apply_thresholds(table: object) -> None:
+    global MAX_INCOMING_DEPENDENCIES, STALE_AFTER_DAYS
+    where = f"{CONFIG_FILE}の[thresholds]"
+    if not isinstance(table, dict):
+        raise ConfigError(f"{where}: 表で書く")
+    unknown = set(table) - _THRESHOLD_KEYS
+    if unknown:
+        raise ConfigError(f"{where}: 知らないキーがある: {', '.join(sorted(unknown))}")
+    for key, value in table.items():
+        if not isinstance(value, int) or isinstance(value, bool) or value < 1:
+            raise ConfigError(f"{where}: {key}は1以上の整数にする")
+    MAX_INCOMING_DEPENDENCIES = table.get("max_incoming_dependencies", MAX_INCOMING_DEPENDENCIES)
+    STALE_AFTER_DAYS = table.get("stale_after_days", STALE_AFTER_DAYS)
 
 
 def _sections(where: str, spec: dict, key: str) -> tuple[str, ...] | None:

@@ -302,6 +302,47 @@ label = "各話"
         self.assertEqual(schema.HUB_EXEMPT_TYPES, ())
 
 
+class Thresholds(Base):
+    """[thresholds]で、schema.pyを書き換えずにしきい値を変えられること。
+
+    既定の値（8と90）は決めつけない。schema.pyを書き換えたままの派生でも通るようにする。
+    """
+
+    def g012(self, dependents: int) -> list[str]:
+        nodes = [Node("DOM-01", "domain", "中心", "stable", [], self.tmp / "d.md", "d.md", {}, "")]
+        for n in range(1, dependents + 1):
+            node_id = f"UC-{n:02d}"
+            nodes.append(
+                Node(node_id, "usecase", node_id, "stable", [], self.tmp / f"{n}.md", f"{n}.md", {}, "",
+                     [Edge(node_id, "DOM-01", "depends_on", "frontmatter")])
+            )
+        return [issue.code for issue in rule_g012_hub_nodes(make_graph(nodes))]
+
+
+    def test_thresholds_change_the_g012_limit(self):
+        self.write(schema.CONFIG_FILE, "[thresholds]\nmax_incoming_dependencies = 12\n")
+        schema.configure(self.tmp)
+        self.assertEqual(self.g012(12), [])
+        self.assertEqual(self.g012(13), ["G012"])
+
+    def test_thresholds_alone_keep_the_template_types(self):
+        """[thresholds]だけを書いても、種別は差し替わらない。"""
+        before = copy.deepcopy(schema.NODE_TYPES)
+        self.write(schema.CONFIG_FILE, "[thresholds]\nstale_after_days = 30\n")
+        schema.configure(self.tmp)
+        self.assertEqual(schema.STALE_AFTER_DAYS, 30)
+        self.assertEqual(schema.MAX_INCOMING_DEPENDENCIES, schema._DEFAULTS["MAX_INCOMING_DEPENDENCIES"])
+        self.assertEqual(schema.NODE_TYPES, before)
+
+    def test_configure_without_the_table_returns_to_defaults(self):
+        self.write(schema.CONFIG_FILE, "[thresholds]\nmax_incoming_dependencies = 21\nstale_after_days = 30\n")
+        schema.configure(self.tmp)
+        (self.tmp / schema.CONFIG_FILE).unlink()
+        schema.configure(self.tmp)
+        self.assertEqual(schema.MAX_INCOMING_DEPENDENCIES, schema._DEFAULTS["MAX_INCOMING_DEPENDENCIES"])
+        self.assertEqual(schema.STALE_AFTER_DAYS, schema._DEFAULTS["STALE_AFTER_DAYS"])
+
+
 class BrokenConfig(Base):
     def assert_rejected(self, config: str, message: str) -> None:
         self.write(schema.CONFIG_FILE, config)
@@ -332,6 +373,16 @@ class BrokenConfig(Base):
         self.assert_rejected(
             '[node_types.a]\nprefix = "AA"\ndir = "a"\nlayer = "1"\nlabel = "a"\n', "layerは整数"
         )
+
+    def test_thresholds_reject_unknown_keys(self):
+        self.assert_rejected("[thresholds]\nmax_incoming_dependency = 12\n", "知らないキー")
+
+    def test_thresholds_must_be_positive_integers(self):
+        for value in ("0", '"12"', "true", "1.5"):
+            with self.subTest(value=value):
+                self.assert_rejected(
+                    f"[thresholds]\nmax_incoming_dependencies = {value}\n", "1以上の整数"
+                )
 
     def test_the_cli_reports_and_fails(self):
         self.write(schema.CONFIG_FILE, "[node_types\n")
