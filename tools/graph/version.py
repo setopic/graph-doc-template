@@ -3,15 +3,16 @@
 派生プロジェクトはこのファイルを共有しているので、`make update`でテンプレートを
 取り込むと自動的に更新される。マージの前は自分の版、マージの後はテンプレートの版になる。
 
-**`schema.py`には置かない。** `schema.py`は、プロジェクトが語彙を調整するために
-書き換える前提のファイルなので、版を混ぜると、マージのたびに競合する。
+**`schema.py`には置かない。** プロジェクトは語彙もしきい値も`graph.toml`で変えるので、
+`schema.py`は書き換えない。それでも`schema.py`を手で直した派生では、版を混ぜておくと、
+マージのたびに競合する。
 
 変更の内容と移行手順は、TEMPLATE_CHANGELOG.mdにある。
 """
 
 from __future__ import annotations
 
-TEMPLATE_VERSION = "1.40.0"
+TEMPLATE_VERSION = "1.40.1"
 
 # 動作を保証するPythonの下限。**動かしている場所は、すべて3.12に揃っている。**
 # 開発機・CI・本番のホスト（deadsnakesのpython3.12で作ったvenv）のいずれも3.12で、

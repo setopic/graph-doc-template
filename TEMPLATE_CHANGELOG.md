@@ -22,6 +22,27 @@ python -m tools.graph --version
 
 ---
 
+## 1.40.1 — 2026-10-21
+
+### 修正
+
+語彙を`schema.py`で直す、という古い書き方を、語彙（`graph.toml`）を指す書き方にそろえた（#128）。`CLAUDE.md`は、種別を差し替えるときは`schema.py`ではなく`graph.toml`に書く、としている。直したのは次の箇所である。
+
+| 場所 | 直した内容 |
+| --- | --- |
+| [META-02](docs/00-meta/node-types.md)の冒頭 | 派生で語彙を変えるときは`graph.toml`に書くことを先に書き、表と`schema.py`の両方を直すのはテンプレート本体だけにした |
+| `.github/pull_request_template.md` | 「schema.pyの語彙」を「語彙（graph.toml）」にした |
+| grillの`SKILL.md`のdescription | 「schema.pyの語彙」を「語彙（graph.toml）」にした |
+| READMEの検査の節 | しきい値は`graph.toml`の`[thresholds]`で変える、とした |
+| `tools/graph/version.py`のdocstring | 語彙もしきい値も`graph.toml`で変えるので、`schema.py`は書き換えない、とした |
+| `tools/graph/rename.py`のdocstring | 層を組み替える場所に`graph.toml`を足した |
+
+### 取り込む側の作業
+
+なし。READMEは`merge=ours`なので、READMEの直しは派生に届かない。
+
+---
+
 ## 1.40.0 — 2026-10-21
 
 ### 追加
