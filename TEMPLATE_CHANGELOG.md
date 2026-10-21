@@ -26,6 +26,16 @@ python -m tools.graph --version
 
 ---
 
+## 1.45.1（2026-10-21）
+
+### 修正
+
+1.44.2で[META-07](docs/00-meta/issue-pr-flow.md)にしたのと同じく、ほかの箇所の例からも上の層の名前を外した（#161）。対象は[META-08](docs/00-meta/template-upgrade.md)、`CLAUDE.md`、`Makefile`と`.gitattributes`のコメント、`.github/scripts/check_names.py`のコメント、`tools/graph/upgrade.py`のdocstringである。上の層は「上の層」と書き、取り込みの版は`<label>-<版>`の形で書いた。META-08の層の宣言の例は`<層の名前>`や`<owner>/<repo>`の形にした。META-08の「テンプレートの層」には下の層と上の層の定義を1文足した。[META-02](docs/00-meta/node-types.md)の番号の表は例ではなく、実在する層が使っている番号の一覧なので変えていない。コードの振る舞いは変えていない。
+
+### 取り込む側の作業
+
+なし。変えたファイルに`merge=ours`のものは無いので、取り込むだけで済む。
+
 ## 1.45.0（2026-10-21）
 
 ### 追加

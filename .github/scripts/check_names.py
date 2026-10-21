@@ -36,8 +36,8 @@ VERSIONED = re.compile(r"^[a-z][a-z0-9-]*(?:\([A-Z]{2,5}-\d{2,4}\))?: \d+\.\d+\.
 # `https://github.com/<owner>/<name>.git`や`git@github.com:<owner>/<name>.git`の`<owner>/<name>`
 REPOSITORY_SLUG = re.compile(r"([^/:]+/[^/:]+?)(?:\.git)?/?$")
 BRANCH = re.compile(r"^(?P<type>[a-z][a-z0-9-]*)/(?:\d+-)?[a-z][a-z0-9]*(?:-[a-z0-9]+)*$")
-# 取り込みの版は、遅れている層の版を並べたもの（`1.38.0`、`project-0.14.0`、
-# `1.38.0-project-0.14.0`）。上の層には名前が付く（setopic/graph-doc-template#125）
+# 取り込みの版は、遅れている層の版を並べたもの（`1.38.0`、`<label>-0.14.0`、
+# `1.38.0-<label>-0.14.0`）。上の層の版の前には層の宣言の`label`が付く（setopic/graph-doc-template#125）
 TEMPLATE_BRANCH = re.compile(
     r"^chore/template-(?:[a-z][a-z0-9]*-)?\d+\.\d+\.\d+(?:-[a-z][a-z0-9]*-\d+\.\d+\.\d+)*$"
 )

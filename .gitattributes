@@ -23,6 +23,6 @@ docs/50-adr/adr-0001-graph-driven-docs.md merge=ours
 # 全面的に競合する。**上流の履歴は別の名前で流す。**
 #
 #   TEMPLATE_CHANGELOG.md          graph-doc-template（このリポジトリ）の履歴
-#   PROJECT_TEMPLATE_CHANGELOG.md  graph-project-template の履歴
+#   <上の層の変更履歴>             上の層の履歴。名前は層の宣言のchangelogで決める
 #   PROJECT_CHANGELOG.md           そのプロジェクト自身の履歴。上流は触らない
 PROJECT_CHANGELOG.md merge=ours

@@ -8,8 +8,8 @@
 これが分からないと、派生プロジェクトは、気づかないうちに古くなる。マージし忘れても
 何も起きないので、気づく機会が無い。
 
-テンプレートは層を重ねられる（graph-doc-templateの上にgraph-project-templateを
-重ねるなど）。版と変更履歴は層ごとに持ち、層ごとに比べる（setopic/graph-doc-template#125）。
+テンプレートは層を重ねられる（下の層のgraph-doc-templateの上に、上の層を重ねる）。
+版と変更履歴は層ごとに持ち、層ごとに比べる（setopic/graph-doc-template#125）。
 下の層の版だけを比べると、上の層だけの変更を「取り込むものは無い」と誤って伝える。
 
 - 下の層（graph-doc-template）の版は`tools/graph/version.py`、変更履歴は`TEMPLATE_CHANGELOG.md`
@@ -228,7 +228,7 @@ def remote_layers(root: Path) -> list[Layer]:
 def compare(root: Path) -> list[dict]:
     """テンプレートの側にある層ごとに、手元の版と比べる。下の層から順に返す。
 
-    手元にしか無い層は比べない。層のテンプレート本体（graph-project-templateなど）では、
+    手元にしか無い層は比べない。上の層のテンプレート本体では、
     自分の層は手元にしか無く、`template`は1つ下の層を指しているからである。
     """
     local = {layer.name: layer for layer in local_layers(root)}
@@ -271,8 +271,8 @@ def compare(root: Path) -> list[dict]:
 def label(layers: list[dict]) -> str:
     """取り込みのブランチ名とマージのメッセージに入れる版。遅れている層だけを、下から並べる。
 
-    下の層は版だけ（`1.38.0`）、上の層は名前を前に付ける（`project-0.14.0`）。
-    両方が遅れていれば`1.38.0-project-0.14.0`になる。遅れている層が無ければ空にする。
+    下の層は版だけ（`1.38.0`）、上の層は層の宣言の`label`を前に付ける（`<label>-0.14.0`）。
+    両方が遅れていれば`1.38.0-<label>-0.14.0`になる。遅れている層が無ければ空にする。
     """
     parts = []
     for layer in layers:

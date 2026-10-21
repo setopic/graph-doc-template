@@ -47,7 +47,7 @@ help:
 # 版は、取り込んだ後のテンプレートの版を読むので、fetchが済んでから展開する
 # （makeはレシピの全行を、最初の行を実行する前に展開する。だからfetchを別のターゲットにする）。
 # 版は層ごとにあるので、遅れている層の版を`upgrade --label`で並べる（setopic/graph-doc-template#125）。
-# 下の層だけなら「1.38.0」、上の層だけなら「project-0.14.0」のようになる。
+# 下の層だけなら「1.38.0」、上の層だけなら「<label>-0.14.0」のようになる。
 # UPDATE_ARGSに-mを足すと、そのメッセージは次の段落に付く。
 UPDATE_ARGS ?=
 UPDATE_NEXT = $(shell $(PYTHON) -m tools.graph upgrade --label)
