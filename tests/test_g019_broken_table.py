@@ -23,7 +23,7 @@ from tools.graph.loader import load
 from tools.graph.model import ERROR
 from tools.graph.rules import find_broken_tables, rule_g019_broken_tables
 
-from .test_strict_mode import build_docs
+from tests.test_strict_mode import build_docs
 
 GOOD_TABLE = """# 題
 

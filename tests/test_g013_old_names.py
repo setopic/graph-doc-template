@@ -13,7 +13,7 @@ from pathlib import Path
 from tools.graph.model import Edge, Node
 from tools.graph.rules import forbidden_terms, rule_g013_term_consistency, term_rows
 
-from .helpers import make_graph
+from tests.helpers import make_graph
 
 
 def make(node_id: str, node_type: str, body: str) -> Node:

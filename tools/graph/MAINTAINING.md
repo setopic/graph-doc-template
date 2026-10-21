@@ -4,7 +4,7 @@
 
 語彙（ノード種別・エッジ種別・層）は`tools/graph/schema.py`に集めてある。ここを変えたら、`docs/00-meta/node-types.md`の表も必ず合わせる。
 
-検証ルールは`tools/graph/rules.py`に、1ルール1関数で並んでいる。ルールを足したら、`RULE_INDEX`と`graph-rules.md`の一覧の両方に追記する。テストも足し、`tests/`に`unittest`で置く。`python -m unittest discover -s tests -t .`が、CIで最初に回るテストである。
+検証ルールは`tools/graph/rules.py`に、1ルール1関数で並んでいる。ルールを足したら、`RULE_INDEX`と`graph-rules.md`の一覧の両方に追記する。テストも足し、`tests/`に`unittest`で置く。`python -m unittest discover -s tests -t .`が、CIで最初に回るテストである。テストどうしの読み込みは`from tests.helpers import make_graph`のように`tests.`から書く。`from .helpers`と書くと、`-t .`を付けずに回したときに読み込みで落ちる。
 
 外部依存を足さない。標準ライブラリだけで動くことが、このツールの前提である。`check`はオフラインで完結させる。通信するのは`review`だけで、`review`はCIから呼ばず、終了コードも常に0である（`docs/00-meta/ai-review.md`）。
 

@@ -20,7 +20,7 @@ from tools.graph.linkify import linkify
 from tools.graph.loader import WIKILINK_RE, load, strip_non_prose
 from tools.graph.rename import _apply_outside_protected
 
-from .test_strict_mode import build_docs
+from tests.test_strict_mode import build_docs
 
 USECASE_PATH = "docs/30-usecases/uc-01-confirm-booking.md"
 

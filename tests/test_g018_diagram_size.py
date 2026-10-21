@@ -13,7 +13,7 @@ from pathlib import Path
 from tools.graph import render, schema
 from tools.graph.model import ERROR, WARN, Edge, Graph, Node
 
-from .helpers import make_graph
+from tests.helpers import make_graph
 
 
 def node(node_id: str, node_type: str, *, edges: list[Edge] | None = None) -> Node:

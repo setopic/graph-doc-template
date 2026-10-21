@@ -13,8 +13,8 @@ from pathlib import Path
 
 from tools.graph.loader import load
 
-from .test_g015_unfollowed import git, git_available, run_check
-from .test_strict_mode import build_docs
+from tests.test_g015_unfollowed import git, git_available, run_check
+from tests.test_strict_mode import build_docs
 
 DOMAIN_PATH = "docs/20-domain/dom-01-booking.md"
 USECASE_PATH = "docs/30-usecases/uc-01-confirm-booking.md"

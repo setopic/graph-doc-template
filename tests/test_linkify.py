@@ -16,7 +16,7 @@ from tools.graph import schema
 from tools.graph.linkify import linkify
 from tools.graph.loader import load
 
-from .test_strict_mode import build_docs
+from tests.test_strict_mode import build_docs
 
 USECASE_PATH = "docs/30-usecases/uc-01-confirm-booking.md"
 

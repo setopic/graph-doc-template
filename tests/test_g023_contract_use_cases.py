@@ -13,7 +13,7 @@ from pathlib import Path
 from tools.graph.model import Edge, Node
 from tools.graph.rules import rule_g023_contract_use_cases
 
-from .helpers import make_graph
+from tests.helpers import make_graph
 
 DOCS = Path("/tmp/g023/docs")
 

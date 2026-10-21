@@ -13,7 +13,7 @@ from tools.graph.rules import (
     sections,
 )
 
-from .helpers import make_graph
+from tests.helpers import make_graph
 
 
 def node(node_id: str, node_type: str, body: str, *, refines: str = "") -> Node:

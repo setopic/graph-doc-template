@@ -13,8 +13,8 @@ from pathlib import Path
 from tools.graph import cli, structure
 from tools.graph.model import Edge, Node
 
-from .helpers import make_graph
-from .test_strict_mode import build_docs
+from tests.helpers import make_graph
+from tests.test_strict_mode import build_docs
 
 DOCS = Path("/tmp/structure/docs")
 DIRS = {

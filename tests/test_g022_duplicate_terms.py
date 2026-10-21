@@ -13,7 +13,7 @@ from pathlib import Path
 from tools.graph.model import Node
 from tools.graph.rules import rule_g022_duplicate_terms
 
-from .helpers import make_graph
+from tests.helpers import make_graph
 
 DOMAIN_DIR = Path("/tmp/g022/docs/20-domain")
 

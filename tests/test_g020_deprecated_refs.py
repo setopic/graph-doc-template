@@ -29,7 +29,7 @@ from tools.graph.rules import (
     unacknowledged_citations,
 )
 
-from .helpers import make_graph
+from tests.helpers import make_graph
 
 
 def node(

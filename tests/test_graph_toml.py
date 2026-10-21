@@ -27,7 +27,7 @@ from tools.graph.rules import (
 )
 from tools.graph.sync import sync
 
-from .helpers import make_graph
+from tests.helpers import make_graph
 
 CONFIG = """
 [node_types.world]

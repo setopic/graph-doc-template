@@ -15,7 +15,7 @@ from pathlib import Path
 from tools.graph import cli, review
 from tools.graph.model import Edge, Node
 
-from .helpers import make_graph
+from tests.helpers import make_graph
 
 
 def node(node_id="DOM-01", node_type="domain", body="## 定義\n仮の本文\n") -> Node:
