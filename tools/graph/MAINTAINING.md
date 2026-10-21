@@ -1,6 +1,6 @@
 # tools/graphを直すとき
 
-`tools/graph/`と`tests/`を直すときの決まりである。テンプレート本体（`graph-doc-template`）で直す。派生のリポジトリでは直さず、テンプレート側に入れてから`make update`で取り込む。
+`tools/graph/`と`tests/`を直すときの決まりである。テンプレート本体（`graph-doc-template`）で直す。派生プロジェクトでは直さず、テンプレート側に入れてから`make update`で取り込む。
 
 語彙（ノード種別・エッジ種別・層）は`tools/graph/schema.py`に集めてある。ここを変えたら、`docs/00-meta/node-types.md`の表も必ず合わせる。
 
