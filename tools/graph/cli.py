@@ -111,6 +111,20 @@ def cmd_render(args: argparse.Namespace) -> int:
         )
         return 1
 
+    if args.hide_edges:
+        hidden = {k.strip() for k in args.hide_edges.split(",") if k.strip()}
+        known = (*schema.frontmatter_edge_kinds(), schema.BODY_EDGE_KIND)
+        unknown = sorted(k for k in hidden if k not in known)
+        if unknown:
+            print(
+                f"エラー: 存在しない線の種類: {', '.join(unknown)}"
+                f"（使えるのは{', '.join(known)}）",
+                file=sys.stderr,
+            )
+            return 1
+        # 先に線を外す。--focusも--aggregateも、残った線だけを見る
+        graph = graph.without_kinds(hidden)
+
     if args.focus:
         focus = {i.strip() for i in args.focus.split(",") if i.strip()}
         unknown = sorted(i for i in focus if i not in graph.nodes)
@@ -617,6 +631,12 @@ def build_parser() -> argparse.ArgumentParser:
         "--aggregate",
         action="store_true",
         help="型ごとに1つの箱へまとめる（ノードが増えても図が大きくならない。G018を避ける）",
+    )
+    p_render.add_argument(
+        "--hide-edges",
+        metavar="KIND[,KIND...]",
+        help="挙げた種類の線を描かない（例: decides,supersedes）。"
+        "その線しか持たないノードは、図から外れる",
     )
     p_render.add_argument(
         "--budget",

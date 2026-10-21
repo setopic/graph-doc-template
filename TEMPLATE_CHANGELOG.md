@@ -26,6 +26,28 @@ python -m tools.graph --version
 
 ---
 
+## 1.48.0（2026-10-21）
+
+### 追加
+
+`render`に`--hide-edges <種類>[,<種類>...]`を足した（#171）。挙げた種類の線を描かない。派生のneon-chronicle（ノード129・線300本）で、READMEの図が幅6,182px・高さ20,742pxになり、拡大しても文字が読めなかったからである。線の半分以上はADRから出る`decides`で、図の大きさの多くはその線から来ていた。
+
+線を外したあと、線を1本も持たなくなったノードは図から外れる。1.47.0の「線の無いノードを外す」と同じ扱いで、`--focus`のノードだけは残る。線は読み込んだグラフから先に外すので、`--focus`・`--aggregate`・`--format json`・`--format dot`のどれと組み合わせても効く。`--focus`は残った線だけを辿る。知らない種類の名前を挙げると、エラーで止まる。
+
+READMEの図に使うときは、`graph.mk`に書く。`make readme`と`make readme-check`の両方に渡るので、CIと同じ図になる。
+
+```make
+README_GRAPH_ARGS = --hide-edges decides,supersedes
+```
+
+使い方は[META-01](docs/00-meta/graph-rules.md)のエッジの表の下と、`G018`の直し方に書いた。
+
+### 取り込む側の作業
+
+無い。`--hide-edges`を付けなければ、出力は変わらない。
+
+---
+
 ## 1.47.0（2026-10-21）
 
 ### 変更

@@ -142,3 +142,10 @@ class Graph:
             ]
             sub.add(replace(node, edges=kept))
         return sub
+
+    def without_kinds(self, kinds: set[str]) -> "Graph":
+        """`kinds`の種類のエッジを除いたグラフを返す。ノードはすべて残す。"""
+        out = Graph(root=self.root)
+        for node in self.nodes.values():
+            out.add(replace(node, edges=[e for e in node.edges if e.kind not in kinds]))
+        return out
