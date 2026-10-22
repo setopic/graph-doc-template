@@ -15,8 +15,9 @@ import tempfile
 import unittest
 from contextlib import redirect_stderr, redirect_stdout
 from pathlib import Path
+from unittest import mock
 
-from tools.graph import cli, schema
+from tools.graph import cli, schema, upgrade
 from tools.graph.loader import load
 from tools.graph.model import Edge, Node
 from tools.graph.rules import (
@@ -463,6 +464,32 @@ class DocsDir(Base):
         code, output = run_cli(self.tmp, "check", "--no-history")
         self.assertEqual(code, 1)
         self.assertIn("design/が見つからない", output)
+        self.assertIn("G000: design/の構造が不正", output)
+        self.assertNotIn("docs/", output)
+
+    def test_upgrade_points_to_the_steps_in_the_docs_dir(self):
+        result = {
+            "layers": [{"name": "graph-doc-template", "local": "1.0.0", "remote": "1.1.0", "entries": []}],
+            "ahead": False,
+            "behind": True,
+            "breaking": False,
+            "label": "graph-doc-template 1.1.0",
+            "files": [],
+        }
+        with mock.patch.object(upgrade, "inspect", return_value=result):
+            code, output = run_cli(self.tmp, "upgrade")
+        self.assertEqual(code, 0, output)
+        self.assertIn("design/00-meta/template-upgrade.md", output)
+        self.assertNotIn("docs/", output)
+
+    def test_new_help_does_not_name_docs_as_the_only_place(self):
+        """--helpは設定を読む前に作るので、docs/は既定として書く。"""
+        out = io.StringIO()
+        with redirect_stdout(out), self.assertRaises(SystemExit):
+            cli.main(["new", "--help"])
+        help_text = " ".join(out.getvalue().split())
+        self.assertNotIn("docs/00-meta", help_text)
+        self.assertIn("既定はdocs/", help_text)
 
     def test_the_type_dir_is_under_the_docs_dir(self):
         (self.tmp / "design/40-episodes/ep-01-first.md").rename(self.tmp / "design/ep-01-first.md")

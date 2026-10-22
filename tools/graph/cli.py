@@ -26,7 +26,7 @@ from .loader import load
 from .model import ERROR, WARN
 from .rename import RenameError
 from .rename import rename as rename_node
-from .scaffold import ScaffoldError, create, create_many, parse_batch
+from .scaffold import TEMPLATE_DIR, ScaffoldError, create, create_many, parse_batch
 from .sync import sync as sync_graph
 from .version import TEMPLATE_VERSION
 
@@ -82,7 +82,7 @@ def cmd_check(args: argparse.Namespace) -> int:
             print(f"ノード{len(graph.nodes)} / エラー{len(errors)} / 警告{len(warns)}")
             codes = sorted({i.code for i in issues})
             for code in codes:
-                print(f"  {code}: {rules.RULE_INDEX.get(code, '')}")
+                print(f"  {code}: {rules.rule_summary(code)}")
 
     if errors:
         return 1
@@ -470,7 +470,7 @@ def cmd_upgrade(args: argparse.Namespace) -> int:
             print(f"  ... ほか{len(result['files']) - 20}件")
         print("")
 
-    print("取り込む手順は、docs/00-meta/template-upgrade.md（META-08）にある。")
+    print(f"取り込む手順は、{schema.DOCS_DIR}/00-meta/template-upgrade.md（META-08）にある。")
     print("このコマンドは、何も書き込んでいない。")
     return 0
 
@@ -745,7 +745,9 @@ def build_parser() -> argparse.ArgumentParser:
     p_new.add_argument("--status", default="draft", choices=schema.STATUSES)
     p_new.add_argument(
         "--template",
-        help="使う雛形の名前（docs/00-meta/templates/<名前>.md）。省略したときはtypeと同じ名前",
+        # 設定を読む前に作る文字列なので、docs_dirの値は使えない
+        help=f"使う雛形の名前（文書のフォルダの{TEMPLATE_DIR}/<名前>.md。フォルダの既定はdocs/）。"
+        "省略したときはtypeと同じ名前",
     )
     p_new.add_argument(
         "--from",

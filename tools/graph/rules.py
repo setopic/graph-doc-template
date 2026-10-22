@@ -17,8 +17,9 @@ from .model import ERROR, WARN, Graph, Issue, Node
 from .rename import _scan_targets
 
 # ルールコードと概要（レポートと、docs/00-meta/graph-rules.mdの対応表に使う）
+# `{docs_dir}`は、表示するときに文書のフォルダの名前に置き換える（rule_summary）
 RULE_INDEX: dict[str, str] = {
-    "G000": "docs/の構造が不正",
+    "G000": "{docs_dir}/の構造が不正",
     "G001": "フロントマターが読めない / 必須キー不足",
     "G002": "idが重複している",
     "G003": "id規約・type語彙・配置ディレクトリの不一致",
@@ -43,6 +44,11 @@ RULE_INDEX: dict[str, str] = {
     "G022": "同じ用語が複数のドメインノードで定義されている",
     "G023": "契約が「対応」に挙げたユースケースをdepends_onに書いていない",
 }
+
+
+def rule_summary(code: str) -> str:
+    """ルールの概要を、文書のフォルダの名前を入れて返す。"""
+    return RULE_INDEX.get(code, "").replace("{docs_dir}", schema.DOCS_DIR)
 
 
 def check_all(
