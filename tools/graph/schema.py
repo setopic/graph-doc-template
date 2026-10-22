@@ -221,6 +221,8 @@ REQUIRED_SECTIONS_REFINED: dict[str, tuple[str, ...]] = {
 # --------------------------------------------------------------------------
 # グラフの走査対象
 # --------------------------------------------------------------------------
+# 検証する文書のフォルダ（リポジトリの根からの相対パス）。graph.tomlの一番上の
+# `docs_dir`で変えられる。implemented_byのパスは、これとは関係なく根から数える。
 DOCS_DIR = "docs"
 ROOT_NODE_ID = "IDX-ROOT"
 
@@ -381,6 +383,7 @@ _DEFAULTS = {
     "IMMUTABLE_RECORD_TYPES": IMMUTABLE_RECORD_TYPES,
     "TERM_TYPES": TERM_TYPES,
     "HUB_EXEMPT_TYPES": HUB_EXEMPT_TYPES,
+    "DOCS_DIR": DOCS_DIR,
     "COMMIT_TYPES": COMMIT_TYPES,
     "MAX_INCOMING_DEPENDENCIES": MAX_INCOMING_DEPENDENCIES,
     "STALE_AFTER_DAYS": STALE_AFTER_DAYS,
@@ -397,7 +400,7 @@ class ConfigError(ValueError):
 
 def reset() -> None:
     """語彙をテンプレートの定義に戻す。"""
-    global IMMUTABLE_RECORD_TYPES, TERM_TYPES, HUB_EXEMPT_TYPES, COMMIT_TYPES
+    global IMMUTABLE_RECORD_TYPES, TERM_TYPES, HUB_EXEMPT_TYPES, COMMIT_TYPES, DOCS_DIR
     global MAX_INCOMING_DEPENDENCIES, STALE_AFTER_DAYS
     global TERM_SECTION_HEADING, TERM_COLUMN, TERM_MEANING_COLUMN, TERM_OLD_NAME_COLUMN
     global TERM_OLD_NAME_COLUMNS
@@ -412,6 +415,7 @@ def reset() -> None:
     TERM_TYPES = _DEFAULTS["TERM_TYPES"]
     HUB_EXEMPT_TYPES = _DEFAULTS["HUB_EXEMPT_TYPES"]
     COMMIT_TYPES = _DEFAULTS["COMMIT_TYPES"]
+    DOCS_DIR = _DEFAULTS["DOCS_DIR"]
     MAX_INCOMING_DEPENDENCIES = _DEFAULTS["MAX_INCOMING_DEPENDENCIES"]
     STALE_AFTER_DAYS = _DEFAULTS["STALE_AFTER_DAYS"]
     TERM_SECTION_HEADING = _DEFAULTS["TERM_SECTION_HEADING"]
@@ -438,6 +442,7 @@ def configure(root: Path) -> None:
         raise ConfigError(f"{CONFIG_FILE}が読めない: {exc}") from exc
 
     unknown = set(data) - {
+        "docs_dir",
         "node_types",
         "commit",
         "thresholds",
@@ -447,6 +452,8 @@ def configure(root: Path) -> None:
     }
     if unknown:
         raise ConfigError(f"{CONFIG_FILE}に知らないキーがある: {', '.join(sorted(unknown))}")
+    if "docs_dir" in data:
+        _apply_docs_dir(data["docs_dir"])
     if "commit" in data:
         _apply_commit(data["commit"])
     if "thresholds" in data:
@@ -505,7 +512,7 @@ def _apply_node_types(types: dict) -> None:
 
         directory = spec.get("dir")
         if not isinstance(directory, str) or not directory or "/" in directory:
-            raise ConfigError(f"{where}: dirはdocsの直下のディレクトリ名にする（例: 20-characters）")
+            raise ConfigError(f"{where}: dirは文書のフォルダの直下のディレクトリ名にする（例: 20-characters）")
         if directory in dirs:
             raise ConfigError(f"{where}: dir {directory}は{dirs[directory]}と重なっている")
         dirs[directory] = name
@@ -570,6 +577,22 @@ def _apply_commit(table: object) -> None:
     if len(set(extra)) != len(extra):
         raise ConfigError(f"{where}: extra_typesに同じ語が2つある")
     COMMIT_TYPES = _DEFAULTS["COMMIT_TYPES"] + tuple(extra)
+
+
+def _apply_docs_dir(value: object) -> None:
+    """検証する文書のフォルダを差し替える。
+
+    リポジトリの根からの相対パスだけを受け付ける。根の外を検証させると、
+    ほかのリポジトリの文書を、このリポジトリのグラフとして扱ってしまう。
+    """
+    global DOCS_DIR
+    where = f"{CONFIG_FILE}のdocs_dir"
+    if not isinstance(value, str) or not value.strip():
+        raise ConfigError(f"{where}: リポジトリの根からの相対パスを、空でない文字列で書く（例: design）")
+    parts = value.strip().replace("\\", "/").strip("/").split("/")
+    if value.strip().startswith(("/", "\\")) or ":" in parts[0] or any(p in ("", ".", "..") for p in parts):
+        raise ConfigError(f"{where}: リポジトリの根からの相対パスにする（/で始めない。.や..や空の区切りを使わない）: {value!r}")
+    DOCS_DIR = "/".join(parts)
 
 
 def _apply_thresholds(table: object) -> None:

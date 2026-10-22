@@ -1,4 +1,4 @@
-"""docs/を走査して、グラフを組み立てる。"""
+"""文書のフォルダ（既定はdocs/。graph.tomlのdocs_dirで変えられる）を走査して、グラフを組み立てる。"""
 
 from __future__ import annotations
 

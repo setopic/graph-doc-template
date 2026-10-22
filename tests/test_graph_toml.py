@@ -428,6 +428,85 @@ class DefaultRequiredSections(Base):
         self.assertEqual(schema.REQUIRED_SECTIONS, before)
 
 
+class DocsDir(Base):
+    """docs_dirで、検証する文書のフォルダを変える。
+
+    implemented_byのパスは、文書のフォルダではなく、リポジトリの根から数える。
+    """
+
+    def setUp(self) -> None:
+        super().setUp()
+        self.write(schema.CONFIG_FILE, 'docs_dir = "design"\n' + CONFIG)
+        for rel, text in FILES.items():
+            self.write("design/" + rel.removeprefix("docs/"), text)
+
+    def test_the_config_changes_the_docs_dir(self):
+        schema.configure(self.tmp)
+        self.assertEqual(schema.DOCS_DIR, "design")
+        rels = {node.rel for node in load(self.tmp).nodes.values()}
+        self.assertIn("design/20-characters/chr-01-anne.md", rels)
+
+    def test_configure_without_the_key_returns_to_docs(self):
+        schema.configure(self.tmp)
+        (self.tmp / schema.CONFIG_FILE).unlink()
+        schema.configure(self.tmp)
+        self.assertEqual(schema.DOCS_DIR, "docs")
+
+    def test_check_reads_only_the_configured_dir(self):
+        """docs/に壊れた文書があっても、検証するのはdesign/だけである。"""
+        self.write("docs/broken.md", "フロントマターが無い\n")
+        code, output = run_cli(self.tmp, "check", "--no-history")
+        self.assertEqual(code, 0, output)
+
+    def test_a_missing_dir_is_reported_by_its_name(self):
+        shutil.rmtree(self.tmp / "design")
+        code, output = run_cli(self.tmp, "check", "--no-history")
+        self.assertEqual(code, 1)
+        self.assertIn("design/が見つからない", output)
+
+    def test_the_type_dir_is_under_the_docs_dir(self):
+        (self.tmp / "design/40-episodes/ep-01-first.md").rename(self.tmp / "design/ep-01-first.md")
+        self.write("design/index.md", self.text("design/index.md").replace("./40-episodes/", "./"))
+        code, output = run_cli(self.tmp, "check", "--no-history")
+        self.assertEqual(code, 1)
+        self.assertIn("design/40-episodes/に置く", output)
+
+    def test_implemented_by_is_counted_from_the_repository_root(self):
+        self.write("src/episode.gd", "extends Node\n")
+        path = "design/40-episodes/ep-01-first.md"
+        self.write(
+            path, self.text(path).replace("depends_on:", "implemented_by:\n  - src/episode.gd\ndepends_on:")
+        )
+        code, output = run_cli(self.tmp, "check", "--no-history")
+        self.assertEqual(code, 0, output)
+        self.assertNotIn("G016", output)
+
+    def test_new_creates_the_node_in_the_docs_dir(self):
+        self.write(
+            "design/00-meta/templates/episode.md",
+            "---\nid: {{ID}}\ntype: {{TYPE}}\ntitle: {{TITLE}}\nstatus: {{STATUS}}\ntags: []\n---\n\n# {{TITLE}}\n",
+        )
+        self.write(
+            "design/40-episodes/index.md",
+            "---\nid: IDX-EP\ntype: index\ntitle: 各話\nstatus: stable\ntags: [index]\n---\n\n"
+            "# 各話\n\n<!-- graph:children:start -->\n<!-- graph:children:end -->\n",
+        )
+        code, output = run_cli(
+            self.tmp, "new", "--type", "episode", "--id", "EP-02", "--title", "第2話", "--slug", "second"
+        )
+        self.assertEqual(code, 0, output)
+        self.assertTrue((self.tmp / "design/40-episodes/ep-02-second.md").is_file())
+        self.assertFalse((self.tmp / "docs").exists())
+
+    def test_a_nested_dir_can_be_used(self):
+        (self.tmp / "game").mkdir()
+        (self.tmp / "design").rename(self.tmp / "game/design")
+        self.write(schema.CONFIG_FILE, 'docs_dir = "game/design/"\n' + CONFIG)
+        code, output = run_cli(self.tmp, "check", "--no-history")
+        self.assertEqual(code, 0, output)
+        self.assertEqual(schema.DOCS_DIR, "game/design")
+
+
 class BrokenConfig(Base):
     def assert_rejected(self, config: str, message: str) -> None:
         self.write(schema.CONFIG_FILE, config)
@@ -489,6 +568,12 @@ class BrokenConfig(Base):
     def test_required_sections_cannot_be_mixed_with_node_types(self):
         """種別を差し替えたら、必須の節は[node_types]の各種別に書く。"""
         self.assert_rejected(CONFIG + '\n[required_sections]\nworld = ["用語"]\n', "一緒には書けない")
+
+    def test_docs_dir_must_stay_in_the_repository(self):
+        """根の外の文書を、このリポジトリのグラフとして検証させない。"""
+        for value in ('""', "1", '"/design"', '"../design"', '"design/../docs"', '"./design"', '"C:/design"'):
+            with self.subTest(value=value):
+                self.assert_rejected(f"docs_dir = {value}\n", "docs_dir")
 
     def test_the_cli_reports_and_fails(self):
         self.write(schema.CONFIG_FILE, "[node_types\n")
