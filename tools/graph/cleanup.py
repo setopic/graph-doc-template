@@ -44,8 +44,7 @@ def find_tagged(root: Path, tag: str) -> list[TaggedFile]:
         return found
 
     for path in sorted(docs.rglob("*.md")):
-        rel_to_docs = path.relative_to(docs).as_posix()
-        if any(rel_to_docs.startswith(p) for p in schema.EXCLUDE_PREFIXES):
+        if schema.is_excluded(path.relative_to(root).as_posix()):
             continue
 
         try:
@@ -102,6 +101,8 @@ def remove(root: Path, graph: Graph, tag: str, *, dry_run: bool) -> dict:
 
         docs = root / schema.DOCS_DIR
         for index_path in sorted(docs.rglob("index.md")):
+            if schema.is_excluded(index_path.relative_to(root).as_posix()):
+                continue
             if unregister_from_index(index_path, filenames):
                 index_updated.append(index_path.relative_to(root).as_posix())
 

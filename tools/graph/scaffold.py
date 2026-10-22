@@ -41,8 +41,7 @@ def existing_ids(root: Path) -> set[str]:
         return found
 
     for path in docs.rglob("*.md"):
-        rel = path.relative_to(docs).as_posix()
-        if any(rel.startswith(p) for p in schema.EXCLUDE_PREFIXES):
+        if schema.is_excluded(path.relative_to(root).as_posix()):
             continue
         head = path.read_text(encoding="utf-8")[:600]
         match = ID_LINE_RE.search(head)

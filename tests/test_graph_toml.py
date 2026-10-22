@@ -534,6 +534,84 @@ class DocsDir(Base):
         self.assertEqual(schema.DOCS_DIR, "game/design")
 
 
+class Exclude(Base):
+    """excludeに書いたパスを、グラフに含めない。
+
+    ほかの道具から取り込んだMarkdownは、フロントマターが無くてもノードではないので、
+    G001で止めない。取り込んだファイルなので、linkifyなどで書き換えもしない。
+    """
+
+    def setUp(self) -> None:
+        super().setUp()
+        self.write(
+            schema.CONFIG_FILE,
+            'exclude = ["docs/vendor/", "docs/CLAUDE.md"]\n' + CONFIG,
+        )
+        for rel, text in FILES.items():
+            self.write(rel, text)
+        self.write("docs/vendor/godot/api.md", "フロントマターが無い\n")
+        self.write("docs/CLAUDE.md", "フロントマターが無い。[[CHR-01]]を指す\n")
+
+    def test_the_config_sets_the_paths(self):
+        schema.configure(self.tmp)
+        self.assertEqual(schema.EXCLUDE, ("docs/vendor", "docs/CLAUDE.md"))
+
+    def test_configure_without_the_key_returns_to_none(self):
+        schema.configure(self.tmp)
+        (self.tmp / schema.CONFIG_FILE).unlink()
+        schema.configure(self.tmp)
+        self.assertEqual(schema.EXCLUDE, ())
+
+    def test_check_skips_the_excluded_files(self):
+        code, output = run_cli(self.tmp, "check", "--no-history")
+        self.assertEqual(code, 0, output)
+        self.assertNotIn("G001", output)
+
+    def test_check_still_fails_without_the_key(self):
+        """外さなければ、これまでどおりG001で止まる。"""
+        self.write(schema.CONFIG_FILE, CONFIG)
+        code, output = run_cli(self.tmp, "check", "--no-history")
+        self.assertEqual(code, 1)
+        self.assertIn("docs/vendor/godot/api.md", output)
+        self.assertIn("docs/CLAUDE.md", output)
+
+    def test_paths_are_matched_by_segment(self):
+        """docs/vendorは、docs/vendor2に当たらない。"""
+        self.write("docs/vendor2/api.md", "フロントマターが無い\n")
+        code, output = run_cli(self.tmp, "check", "--no-history")
+        self.assertEqual(code, 1)
+        self.assertIn("docs/vendor2/api.md", output)
+
+    def test_the_template_dir_is_still_excluded(self):
+        self.write("docs/00-meta/templates/x.md", "フロントマターが無い\n")
+        code, output = run_cli(self.tmp, "check", "--no-history")
+        self.assertEqual(code, 0, output)
+
+    def test_check_does_not_read_tables_in_the_excluded_files(self):
+        self.write("docs/vendor/table.md", "| a |\n| --- |\n\n| b |\n")
+        code, output = run_cli(self.tmp, "check", "--no-history")
+        self.assertEqual(code, 0, output)
+        self.assertNotIn("G019", output)
+
+    def test_linkify_does_not_rewrite_the_excluded_files(self):
+        before = self.text("docs/CLAUDE.md")
+        code, output = run_cli(self.tmp, "linkify")
+        self.assertEqual(code, 0, output)
+        self.assertEqual(self.text("docs/CLAUDE.md"), before)
+
+    def test_the_paths_follow_the_docs_dir(self):
+        """docs_dirを変えたら、excludeもそのフォルダの下を書く。"""
+        self.write(
+            schema.CONFIG_FILE,
+            'docs_dir = "design"\nexclude = ["design/registry"]\n' + CONFIG,
+        )
+        for rel, text in FILES.items():
+            self.write("design/" + rel.removeprefix("docs/"), text)
+        self.write("design/registry/notes.md", "フロントマターが無い\n")
+        code, output = run_cli(self.tmp, "check", "--no-history")
+        self.assertEqual(code, 0, output)
+
+
 class BrokenConfig(Base):
     def assert_rejected(self, config: str, message: str) -> None:
         self.write(schema.CONFIG_FILE, config)
@@ -601,6 +679,25 @@ class BrokenConfig(Base):
         for value in ('""', "1", '"/design"', '"../design"', '"design/../docs"', '"./design"', '"C:/design"'):
             with self.subTest(value=value):
                 self.assert_rejected(f"docs_dir = {value}\n", "docs_dir")
+
+    def test_exclude_must_be_paths_in_the_docs_dir(self):
+        """根の外のパスと、文書のフォルダの外のパスを断る。"""
+        for value in (
+            '"docs/vendor"',
+            "[1]",
+            '[""]',
+            '["/docs/vendor"]',
+            '["docs/../vendor"]',
+            '["C:/docs"]',
+            '["vendor"]',
+            '["docs"]',
+        ):
+            with self.subTest(value=value):
+                self.assert_rejected(f"exclude = {value}\n", "exclude")
+
+    def test_exclude_is_checked_against_the_changed_docs_dir(self):
+        """docs_dirを変えたのにexcludeを直し忘れたら、何も外さないまま通さない。"""
+        self.assert_rejected('docs_dir = "design"\nexclude = ["docs/vendor"]\n', "design/")
 
     def test_the_cli_reports_and_fails(self):
         self.write(schema.CONFIG_FILE, "[node_types\n")

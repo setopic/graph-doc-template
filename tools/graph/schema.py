@@ -229,6 +229,28 @@ ROOT_NODE_ID = "IDX-ROOT"
 # グラフに含めないパス（docsからの相対、前方一致）
 EXCLUDE_PREFIXES = ("00-meta/templates",)
 
+# graph.tomlの一番上の`exclude`で足す、グラフに含めないパス（リポジトリの根からの相対）。
+# EXCLUDE_PREFIXESは常に外し、これはそれに足す。ほかの道具から取り込んだMarkdownのように、
+# 文書のフォルダにあってもノードではないファイルを外すのに使う。
+EXCLUDE: tuple[str, ...] = ()
+
+
+def is_excluded(rel: str) -> bool:
+    """リポジトリの根からの相対パス`rel`を、グラフに含めないか。"""
+    prefix = DOCS_DIR + "/"
+    if rel.startswith(prefix) and any(rel[len(prefix) :].startswith(p) for p in EXCLUDE_PREFIXES):
+        return True
+    return is_excluded_by_config(rel)
+
+
+def is_excluded_by_config(rel: str) -> bool:
+    """`rel`が`exclude`に書いたパスに当たるか。区切りの単位で合わせる。
+
+    雛形（EXCLUDE_PREFIXES）は、グラフには含めないが、表の検査やlinkifyでは読む。
+    `exclude`に書いたものは、取り込んだファイルを書き換えないよう、それらからも外す。
+    """
+    return any(rel == p or rel.startswith(p + "/") for p in EXCLUDE)
+
 # --------------------------------------------------------------------------
 # 実装との対応（文書と実装を同じリポジトリに置く場合だけ使う）
 # --------------------------------------------------------------------------
@@ -384,6 +406,7 @@ _DEFAULTS = {
     "TERM_TYPES": TERM_TYPES,
     "HUB_EXEMPT_TYPES": HUB_EXEMPT_TYPES,
     "DOCS_DIR": DOCS_DIR,
+    "EXCLUDE": EXCLUDE,
     "COMMIT_TYPES": COMMIT_TYPES,
     "MAX_INCOMING_DEPENDENCIES": MAX_INCOMING_DEPENDENCIES,
     "STALE_AFTER_DAYS": STALE_AFTER_DAYS,
@@ -400,7 +423,7 @@ class ConfigError(ValueError):
 
 def reset() -> None:
     """語彙をテンプレートの定義に戻す。"""
-    global IMMUTABLE_RECORD_TYPES, TERM_TYPES, HUB_EXEMPT_TYPES, COMMIT_TYPES, DOCS_DIR
+    global IMMUTABLE_RECORD_TYPES, TERM_TYPES, HUB_EXEMPT_TYPES, COMMIT_TYPES, DOCS_DIR, EXCLUDE
     global MAX_INCOMING_DEPENDENCIES, STALE_AFTER_DAYS
     global TERM_SECTION_HEADING, TERM_COLUMN, TERM_MEANING_COLUMN, TERM_OLD_NAME_COLUMN
     global TERM_OLD_NAME_COLUMNS
@@ -416,6 +439,7 @@ def reset() -> None:
     HUB_EXEMPT_TYPES = _DEFAULTS["HUB_EXEMPT_TYPES"]
     COMMIT_TYPES = _DEFAULTS["COMMIT_TYPES"]
     DOCS_DIR = _DEFAULTS["DOCS_DIR"]
+    EXCLUDE = _DEFAULTS["EXCLUDE"]
     MAX_INCOMING_DEPENDENCIES = _DEFAULTS["MAX_INCOMING_DEPENDENCIES"]
     STALE_AFTER_DAYS = _DEFAULTS["STALE_AFTER_DAYS"]
     TERM_SECTION_HEADING = _DEFAULTS["TERM_SECTION_HEADING"]
@@ -443,6 +467,7 @@ def configure(root: Path) -> None:
 
     unknown = set(data) - {
         "docs_dir",
+        "exclude",
         "node_types",
         "commit",
         "thresholds",
@@ -454,6 +479,9 @@ def configure(root: Path) -> None:
         raise ConfigError(f"{CONFIG_FILE}に知らないキーがある: {', '.join(sorted(unknown))}")
     if "docs_dir" in data:
         _apply_docs_dir(data["docs_dir"])
+    # docs_dirの後に読む。docs_dirの外を指していないかを、変えた後のフォルダで確かめる
+    if "exclude" in data:
+        _apply_exclude(data["exclude"])
     if "commit" in data:
         _apply_commit(data["commit"])
     if "thresholds" in data:
@@ -593,6 +621,30 @@ def _apply_docs_dir(value: object) -> None:
     if value.strip().startswith(("/", "\\")) or ":" in parts[0] or any(p in ("", ".", "..") for p in parts):
         raise ConfigError(f"{where}: リポジトリの根からの相対パスにする（/で始めない。.や..や空の区切りを使わない）: {value!r}")
     DOCS_DIR = "/".join(parts)
+
+
+def _apply_exclude(value: object) -> None:
+    """グラフに含めないパスを足す。
+
+    docs_dirと同じく、リポジトリの根からの相対パスで書く。文書のフォルダの外を指す値は断る。
+    docs_dirを変えたのにこちらを直し忘れると、何も外さないまま気づかないからである。
+    """
+    global EXCLUDE
+    where = f"{CONFIG_FILE}のexclude"
+    if not isinstance(value, list):
+        raise ConfigError(f"{where}: パスの文字列の配列にする（例: [\"{DOCS_DIR}/vendor/\"]）")
+    paths: list[str] = []
+    for item in value:
+        if not isinstance(item, str) or not item.strip():
+            raise ConfigError(f"{where}: パスは空でない文字列にする: {item!r}")
+        parts = item.strip().replace("\\", "/").strip("/").split("/")
+        if item.strip().startswith(("/", "\\")) or ":" in parts[0] or any(p in ("", ".", "..") for p in parts):
+            raise ConfigError(f"{where}: リポジトリの根からの相対パスにする（/で始めない。.や..や空の区切りを使わない）: {item!r}")
+        path = "/".join(parts)
+        if not path.startswith(DOCS_DIR + "/"):
+            raise ConfigError(f"{where}: 文書のフォルダ（{DOCS_DIR}/）の下のパスにする: {item!r}")
+        paths.append(path)
+    EXCLUDE = tuple(paths)
 
 
 def _apply_thresholds(table: object) -> None:
