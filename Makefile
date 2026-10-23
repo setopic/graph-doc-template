@@ -6,8 +6,9 @@ PYTHON ?= python
 #
 #     README_GRAPH_ARGS = --aggregate
 #
-# テンプレートはgraph.mkを配らない。だから取り込み（make update）
-# のたびに競合しないし、リポジトリごとに図の形を選べる。
+# graph-doc-templateはgraph.mkを配らない。だから取り込み（make update）で
+# 競合せず、リポジトリごとに図の形を選べる。上の層のテンプレートがgraph.mkを
+# 配るなら、取り込みで競合することがある。そのときは、その層の決まりに従う。
 -include graph.mk
 
 # READMEの図に足す引数。既定は無し（全ノードをそのまま描く）。
