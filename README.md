@@ -308,7 +308,7 @@ python -m tools.graph linkify
 
 このテンプレートから作ったプロジェクトに、あとからテンプレート側の改善を反映する手順は、[META-08 テンプレートの更新を取り込む](docs/00-meta/template-upgrade.md)にある。初回の準備、`make update`での取り込み、テンプレートの層ごとの版、取り込みのPRの書き方を扱う。
 
-手順をこのREADMEに置かないのは、`README.md`が`.gitattributes`の`merge=ours`で、取り込みが届かないからである。META-08は共通ファイルなので、取り込むたびに手順も新しくなる。
+手順をこのREADMEに置かないのは、`README.md`が`.gitattributes`の`merge=ours`で、プロジェクトが書き換えたあとは取り込みが届かないからである。META-08は共通ファイルなので、取り込むたびに手順も新しくなる。
 
 ## AIエージェントと使う
 
