@@ -62,7 +62,7 @@ def create(
     template: str | None = None,
     known_ids: set[str] | None = None,
 ) -> Path:
-    """1つのノードを作る。`template`を省略すると、`<type>.md`の雛形を使う。
+    """1つのノードを作る。`template`を省略すると、graph.tomlの種別の`template`か、`<type>.md`の雛形を使う。
 
     `known_ids`は、まとめて作るときに、既存のidの走査を1回に抑えるための引数である。
     渡した集合には、作ったidが追加される。
@@ -87,12 +87,13 @@ def create(
         raise ScaffoldError(f"id {node_id!r}は、すでに使われている")
 
     docs = root / schema.DOCS_DIR
-    template_name = template or node_type
-    template_path = docs / TEMPLATE_DIR / f"{template_name}.md"
+    template_path = _template_path(root, node_type, template)
     if not template_path.is_file():
         available = ", ".join(sorted(p.stem for p in (docs / TEMPLATE_DIR).glob("*.md")))
         raise ScaffoldError(
-            f"雛形が無い: {template_name}.md（使えるもの: {available}）"
+            f"雛形が無い: {template_path.relative_to(root).as_posix()}（{TEMPLATE_DIR}/にあるもの: {available}）。"
+            f"{schema.CONFIG_FILE}の[node_types.{node_type}]にtemplateで雛形のパスを書くか、"
+            "--templateで雛形の名前を渡す"
         )
 
     filename = f"{node_id.lower()}"
@@ -123,6 +124,20 @@ def create(
 
     register_in_index(docs / target_dir_name / "index.md", node_id, title, target.name)
     return target
+
+
+def _template_path(root: Path, node_type: str, template: str | None) -> Path:
+    """使う雛形を決める。
+
+    `--template`を渡したら、それを使う。渡さなければ、graph.tomlの種別の`template`を使い、
+    それも無ければ`00-meta/templates/<type>.md`を使う。
+    """
+    docs = root / schema.DOCS_DIR
+    if template:
+        return docs / TEMPLATE_DIR / f"{template}.md"
+    if node_type in schema.TYPE_TEMPLATES:
+        return root / schema.TYPE_TEMPLATES[node_type]
+    return docs / TEMPLATE_DIR / f"{node_type}.md"
 
 
 # --------------------------------------------------------------------------

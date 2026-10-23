@@ -28,6 +28,8 @@
 
    雛形を選ぶ場面は3つある。HTTPの契約には`--template contract-http`を使う。チャットの操作（コマンドやボタン）には`--template contract-interaction`を使う。人間が実行する手順（配置・更新・障害対応・移行）は`--template usecase-runbook`で作る。
 
+   `--template`を渡さなければ、`graph.toml`の種別の`template`に書いた雛形を使う。それも無ければ、`docs/00-meta/templates/<type>.md`を使う。
+
 2. 文書を編集したら検証する。通らない状態で「完了」と報告しない。
 
    ```bash

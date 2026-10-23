@@ -266,6 +266,102 @@ class WithConfig(Base):
         self.assertTrue((self.tmp / "docs/40-episodes/ep-02-second.md").is_file())
 
 
+EPISODE_INDEX = (
+    "---\nid: IDX-EP\ntype: index\ntitle: 各話\nstatus: stable\ntags: [index]\n---\n\n"
+    "# 各話\n\n<!-- graph:children:start -->\n<!-- graph:children:end -->\n"
+)
+
+
+def episode_template(marker: str) -> str:
+    return (
+        "---\nid: {{ID}}\ntype: {{TYPE}}\ntitle: {{TITLE}}\nstatus: {{STATUS}}\ntags: []\n---\n\n"
+        f"# {{{{TITLE}}}}\n\n## {marker}\n"
+    )
+
+
+def with_template(path: str) -> str:
+    """CONFIGの各話の種別に、templateを足す。"""
+    return CONFIG.replace('label = "各話"\n', f'label = "各話"\ntemplate = "{path}"\n')
+
+
+class TypeTemplate(Base):
+    """種別の`template`に書いた雛形を、`new --type`が使うこと。"""
+
+    def setUp(self) -> None:
+        super().setUp()
+        self.write(schema.CONFIG_FILE, with_template("templates/episode.md"))
+        for rel, text in FILES.items():
+            self.write(rel, text)
+        self.write("templates/episode.md", episode_template("層の雛形"))
+        self.write("docs/40-episodes/index.md", EPISODE_INDEX)
+
+    def new(self, *extra: str) -> tuple[int, str]:
+        return run_cli(
+            self.tmp, "new", "--type", "episode", "--id", "EP-02", "--title", "第2話", "--slug", "second", *extra
+        )
+
+    def test_the_config_sets_the_path(self):
+        schema.configure(self.tmp)
+        self.assertEqual(schema.TYPE_TEMPLATES, {"episode": "templates/episode.md"})
+
+    def test_configure_without_the_key_returns_to_none(self):
+        schema.configure(self.tmp)
+        self.write(schema.CONFIG_FILE, CONFIG)
+        schema.configure(self.tmp)
+        self.assertEqual(schema.TYPE_TEMPLATES, {})
+
+    def test_new_uses_the_template_of_the_type(self):
+        self.write("docs/00-meta/templates/episode.md", episode_template("共通の雛形"))
+        code, output = self.new()
+        self.assertEqual(code, 0, output)
+        self.assertIn("## 層の雛形", self.text("docs/40-episodes/ep-02-second.md"))
+
+    def test_the_template_option_is_preferred(self):
+        self.write("docs/00-meta/templates/short.md", episode_template("短い雛形"))
+        code, output = self.new("--template", "short")
+        self.assertEqual(code, 0, output)
+        self.assertIn("## 短い雛形", self.text("docs/40-episodes/ep-02-second.md"))
+
+    def test_types_without_the_key_use_the_shared_dir(self):
+        self.write("docs/00-meta/templates/character.md", episode_template("共通の雛形"))
+        code, output = run_cli(
+            self.tmp, "new", "--type", "character", "--id", "CHR-03", "--title", "カイ", "--slug", "kai"
+        )
+        self.assertEqual(code, 0, output)
+        self.assertIn("## 共通の雛形", self.text("docs/20-characters/chr-03-kai.md"))
+
+    def test_a_missing_template_points_to_the_key_and_the_option(self):
+        code, output = run_cli(
+            self.tmp, "new", "--type", "character", "--id", "CHR-03", "--title", "カイ", "--slug", "kai"
+        )
+        self.assertEqual(code, 1)
+        self.assertIn("雛形が無い: docs/00-meta/templates/character.md", output)
+        self.assertIn("[node_types.character]にtemplate", output)
+        self.assertIn("--template", output)
+
+    def test_a_template_in_the_docs_dir_is_not_a_node(self):
+        """雛形のidは{{ID}}のままなので、ノードとして読むとcheckが落ちる。"""
+        self.write(schema.CONFIG_FILE, with_template("docs/40-episodes/template.md"))
+        self.write("docs/40-episodes/template.md", episode_template("層の雛形"))
+        (self.tmp / "docs/40-episodes/index.md").unlink()
+        code, output = run_cli(self.tmp, "check", "--no-history")
+        self.assertEqual(code, 0, output)
+        self.write("docs/40-episodes/index.md", EPISODE_INDEX)
+        code, output = self.new()
+        self.assertEqual(code, 0, output)
+        self.assertIn("## 層の雛形", self.text("docs/40-episodes/ep-02-second.md"))
+
+    def test_the_path_is_counted_from_the_repository_root(self):
+        """docs_dirを変えても、templateは書き直さない。"""
+        self.write(schema.CONFIG_FILE, 'docs_dir = "design"\n' + with_template("templates/episode.md"))
+        for rel, text in FILES.items():
+            self.write("design/" + rel.removeprefix("docs/"), text)
+        self.write("design/40-episodes/index.md", EPISODE_INDEX)
+        code, output = self.new()
+        self.assertEqual(code, 0, output)
+        self.assertIn("## 層の雛形", self.text("design/40-episodes/ep-02-second.md"))
+
+
 class HubExempt(Base):
     """`hub_exempt = true`の種別からの依存を、G012が数えないこと。"""
 
@@ -698,6 +794,22 @@ class BrokenConfig(Base):
     def test_exclude_is_checked_against_the_changed_docs_dir(self):
         """docs_dirを変えたのにexcludeを直し忘れたら、何も外さないまま通さない。"""
         self.assert_rejected('docs_dir = "design"\nexclude = ["docs/vendor"]\n', "design/")
+
+    def test_the_template_must_exist(self):
+        """指した雛形が無ければ、newを待たずに、設定を読むときに止める。"""
+        self.assert_rejected(
+            '[node_types.a]\nprefix = "AA"\ndir = "a"\nlayer = 1\nlabel = "a"\ntemplate = "templates/a.md"\n',
+            "templateに書いた雛形が無い: templates/a.md",
+        )
+
+    def test_the_template_must_stay_in_the_repository(self):
+        self.write("templates/a.md", "雛形\n")
+        for value in ('""', "1", '"/templates/a.md"', '"../templates/a.md"', '"C:/templates/a.md"'):
+            with self.subTest(value=value):
+                self.assert_rejected(
+                    f'[node_types.a]\nprefix = "AA"\ndir = "a"\nlayer = 1\nlabel = "a"\ntemplate = {value}\n',
+                    "template",
+                )
 
     def test_the_cli_reports_and_fails(self):
         self.write(schema.CONFIG_FILE, "[node_types\n")

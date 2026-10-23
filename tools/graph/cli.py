@@ -747,7 +747,7 @@ def build_parser() -> argparse.ArgumentParser:
         "--template",
         # 設定を読む前に作る文字列なので、docs_dirの値は使えない
         help=f"使う雛形の名前（文書のフォルダの{TEMPLATE_DIR}/<名前>.md。フォルダの既定はdocs/）。"
-        "省略したときはtypeと同じ名前",
+        "省略したときは、graph.tomlの種別のtemplateに書いた雛形か、typeと同じ名前の雛形",
     )
     p_new.add_argument(
         "--from",

@@ -72,12 +72,28 @@ required_sections = ["人物像", "用語"]
 | `hub_exempt` | 任意 | `true`なら、その種別からの`depends_on`を`G012`の数に入れない。毎回同じノードに依存するのが当然な末端の種別（連載小説の各話など）に付ける。既定は`false` |
 | `required_sections` | 任意 | 必須の節（`G014`）。既定は無し |
 | `required_sections_refined` | 任意 | `refines`を持つノードに求める節。書かなければ`required_sections`を使う |
+| `template` | 任意 | `new`が使う雛形のファイルのパス。リポジトリの根からの相対で書く。書かなければ`00-meta/templates/<type>.md`を使う |
 
 **種別を1つでも書いたら、書いたものが種別の全体になる。** テンプレートの`architecture`・`domain`・`usecase`・`contract`・`adr`は使えなくなるので、残したいなら同じ内容で書く。混ぜられるようにすると、使わない種別の雛形と規約が残り、どれが生きているのか分からなくなる。
 
 `index`と`meta`だけは、書かなくても常に残り、書き換えられない。`index`は目次の仕組みそのもので、`meta`はテンプレートが配る`00-meta/`の規約文書の種別だからである。
 
-`new`が使う雛形は、ほかの種別と同じく`00-meta/templates/<type>.md`に置く。種別ごとの目次（`index.md`）も、`dir`に置いたディレクトリに自分で作る。`terms = true`の種別の目次には、`sync`が用語の一覧を作る。
+`new`が使う雛形は、`template`に書いたファイルである。書かなければ、ほかの種別と同じく`00-meta/templates/<type>.md`に置く。`00-meta/templates/`は上流と共通のフォルダなので、上の層や派生が自分の雛形をそこに置くと、上流が同じ名前の雛形を変えたときや足したときに、取り込みで競合する。自分の雛形は、`templates/adr.md`のように共通のフォルダの外に置き、`template`で指す。
+
+```toml
+[node_types.adr]
+prefix = "ADR"
+dir = "50-adr"
+layer = 90
+label = "決定記録"
+exempt_layer = true
+immutable = true
+template = "templates/adr.md"
+```
+
+`template`のパスは、`exclude`や`implemented_by`と同じく、リポジトリの根から数える。雛形を文書のフォルダの外にも置けるようにするためと、`docs_dir`を変えても書き直さずに済むようにするためである。`/`で始まるパスと、`.`や`..`を含むパスは断る。指したファイルが無ければ、`new`を待たずに、`graph.toml`を読むときにエラーで止まる。`template`で指したファイルは、文書のフォルダの中に置いても、グラフに含めない。雛形のフロントマターは`{{ID}}`のままで、ノードとして読むと`check`が落ちるからである。
+
+`new`に`--template`を渡したときは、`template`より`--template`を優先する。雛形が見つからないときは、`new`が止まり、`template`を書くか`--template`を渡すよう案内する。種別ごとの目次（`index.md`）も、`dir`に置いたディレクトリに自分で作る。`terms = true`の種別の目次には、`sync`が用語の一覧を作る。
 
 `G023`（契約が対応するユースケース）は、`contract`と`usecase`という名前の種別だけを見る。差し替えてその名前が無くなれば、`G023`は何も出さない。
 
@@ -253,7 +269,7 @@ python -m tools.graph new --type usecase --id UC-02 --title "予約をキャン�
 
 ## 雛形
 
-既定では、`00-meta/templates/<type>.md`が使われる。`contract`と`usecase`には、別の種類の雛形もある。
+既定では、`00-meta/templates/<type>.md`が使われる。`graph.toml`の種別に`template`を書いたときは、そのファイルが使われる（上の「プロジェクトごとの種別」）。`contract`と`usecase`には、別の種類の雛形もある。
 
 | type | 既定の雛形 | 別の雛形 |
 | --- | --- | --- |

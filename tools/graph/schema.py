@@ -234,11 +234,18 @@ EXCLUDE_PREFIXES = ("00-meta/templates",)
 # 文書のフォルダにあってもノードではないファイルを外すのに使う。
 EXCLUDE: tuple[str, ...] = ()
 
+# graph.tomlの種別の`template`に書いた、種別ごとの雛形（種別の名前→リポジトリの根からの相対パス）。
+# 書かなかった種別は、文書のフォルダの00-meta/templates/<種別>.mdを使う。
+# 雛形はノードではないので、文書のフォルダの中に置いても、グラフに含めない。
+TYPE_TEMPLATES: dict[str, str] = {}
+
 
 def is_excluded(rel: str) -> bool:
     """リポジトリの根からの相対パス`rel`を、グラフに含めないか。"""
     prefix = DOCS_DIR + "/"
     if rel.startswith(prefix) and any(rel[len(prefix) :].startswith(p) for p in EXCLUDE_PREFIXES):
+        return True
+    if rel in TYPE_TEMPLATES.values():
         return True
     return is_excluded_by_config(rel)
 
@@ -337,6 +344,9 @@ def frontmatter_edge_kinds() -> tuple[str, ...]:
 # `index`と`meta`は、書かなくても常に残し、書き換えさせない。`index`は目次の仕組み
 # そのもので、`meta`はテンプレートが配る規約文書（00-meta/）の種別だからである。
 #
+# 種別の`template`には、`new`が使う雛形のパスを、リポジトリの根からの相対で書ける。
+# 書かなければ、文書のフォルダの00-meta/templates/<種別>.mdを使う。
+#
 # `[commit]`の表には、ブランチ名とコミットの1行目に使う種類を足せる（META-07）。
 #
 #     [commit]
@@ -385,6 +395,7 @@ _TYPE_KEYS = {
     "required_sections",
     "required_sections_refined",
     "hub_exempt",
+    "template",
 }
 _THRESHOLD_KEYS = {"max_incoming_dependencies", "stale_after_days"}
 _TERMS_KEYS = {
@@ -407,6 +418,7 @@ _DEFAULTS = {
     "HUB_EXEMPT_TYPES": HUB_EXEMPT_TYPES,
     "DOCS_DIR": DOCS_DIR,
     "EXCLUDE": EXCLUDE,
+    "TYPE_TEMPLATES": dict(TYPE_TEMPLATES),
     "COMMIT_TYPES": COMMIT_TYPES,
     "MAX_INCOMING_DEPENDENCIES": MAX_INCOMING_DEPENDENCIES,
     "STALE_AFTER_DAYS": STALE_AFTER_DAYS,
@@ -434,6 +446,8 @@ def reset() -> None:
     REQUIRED_SECTIONS.update(_DEFAULTS["REQUIRED_SECTIONS"])
     REQUIRED_SECTIONS_REFINED.clear()
     REQUIRED_SECTIONS_REFINED.update(_DEFAULTS["REQUIRED_SECTIONS_REFINED"])
+    TYPE_TEMPLATES.clear()
+    TYPE_TEMPLATES.update(_DEFAULTS["TYPE_TEMPLATES"])
     IMMUTABLE_RECORD_TYPES = _DEFAULTS["IMMUTABLE_RECORD_TYPES"]
     TERM_TYPES = _DEFAULTS["TERM_TYPES"]
     HUB_EXEMPT_TYPES = _DEFAULTS["HUB_EXEMPT_TYPES"]
@@ -505,10 +519,10 @@ def configure(root: Path) -> None:
             )
     if not isinstance(types, dict) or not types:
         raise ConfigError(f"{CONFIG_FILE}の[node_types]に、種別が1つも無い")
-    _apply_node_types(types)
+    _apply_node_types(root, types)
 
 
-def _apply_node_types(types: dict) -> None:
+def _apply_node_types(root: Path, types: dict) -> None:
     global IMMUTABLE_RECORD_TYPES, TERM_TYPES, HUB_EXEMPT_TYPES
     node_types = {name: copy.deepcopy(_DEFAULTS["NODE_TYPES"][name]) for name in BUILTIN_TYPES}
     required: dict[str, tuple[str, ...]] = {name: () for name in BUILTIN_TYPES}
@@ -516,6 +530,7 @@ def _apply_node_types(types: dict) -> None:
     immutable: list[str] = []
     terms: list[str] = []
     hub_exempt: list[str] = []
+    templates: dict[str, str] = {}
     prefixes = {spec["prefix"]: name for name, spec in node_types.items()}
     dirs = {spec["dir"]: name for name, spec in node_types.items() if spec["dir"]}
 
@@ -576,6 +591,8 @@ def _apply_node_types(types: dict) -> None:
             terms.append(name)
         if flags["hub_exempt"]:
             hub_exempt.append(name)
+        if "template" in spec:
+            templates[name] = _template_path(root, where, spec["template"])
 
     NODE_TYPES.clear()
     NODE_TYPES.update(node_types)
@@ -583,6 +600,8 @@ def _apply_node_types(types: dict) -> None:
     REQUIRED_SECTIONS.update(required)
     REQUIRED_SECTIONS_REFINED.clear()
     REQUIRED_SECTIONS_REFINED.update(refined)
+    TYPE_TEMPLATES.clear()
+    TYPE_TEMPLATES.update(templates)
     IMMUTABLE_RECORD_TYPES = tuple(immutable)
     TERM_TYPES = tuple(terms)
     HUB_EXEMPT_TYPES = tuple(hub_exempt)
@@ -645,6 +664,24 @@ def _apply_exclude(value: object) -> None:
             raise ConfigError(f"{where}: 文書のフォルダ（{DOCS_DIR}/）の下のパスにする: {item!r}")
         paths.append(path)
     EXCLUDE = tuple(paths)
+
+
+def _template_path(root: Path, where: str, value: object) -> str:
+    """種別の`template`を、リポジトリの根からの相対パスとして読む。
+
+    excludeやimplemented_byと同じく根から数える。雛形を文書のフォルダの外にも置けるようにし、
+    docs_dirを変えても書き直さずに済むようにするためである。指したファイルが無ければ断る。
+    `new`で初めて気づくと、どの種別の書き方が違うのかを探すことになる。
+    """
+    if not isinstance(value, str) or not value.strip():
+        raise ConfigError(f"{where}: templateは雛形のファイルのパスを、空でない文字列で書く（例: \"templates/adr.md\"）")
+    parts = value.strip().replace("\\", "/").strip("/").split("/")
+    if value.strip().startswith(("/", "\\")) or ":" in parts[0] or any(p in ("", ".", "..") for p in parts):
+        raise ConfigError(f"{where}: templateはリポジトリの根からの相対パスにする（/で始めない。.や..や空の区切りを使わない）: {value!r}")
+    path = "/".join(parts)
+    if not (root / path).is_file():
+        raise ConfigError(f"{where}: templateに書いた雛形が無い: {path}（リポジトリの根から数える）")
+    return path
 
 
 def _apply_thresholds(table: object) -> None:
