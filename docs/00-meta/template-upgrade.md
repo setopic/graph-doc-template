@@ -89,6 +89,14 @@ python -m tools.graph reset-samples --yes
 python -m tools.graph check && python -m tools.graph sync
 ```
 
+続けて、READMEの図を作り直す。`make update`は図を作り直さない。取り込みでノードやエッジが変わると、図が古いまま残り、CIの`readme-check`が落ちる。図を持つ`README.md`はふつうプロジェクトが書き換えてあるので、`merge=ours`でプロジェクト側が残り、テンプレート側の図は入らない。
+
+```bash
+make readme
+```
+
+`make all`は`check`・`sync`・`linkify`・`readme`をまとめて回すので、上の`check`・`sync`・`make readme`の代わりに使ってよい。
+
 取り込むときに知っておくことは、次のとおりである。
 
 | 知っておくこと | 説明 |
@@ -143,6 +151,8 @@ PRの題に版を求めるときは、`versioned_title = true`を足す。書か
 ```
 
 取り込みのブランチ名は`chore/template-<版>`にし（版は`make update`のメッセージと同じもの）、PRの題は`chore: テンプレートの<版>を取り込む`のように書く。CIの`names`が、ブランチ名とPRの題を確かめる（[META-07](issue-pr-flow.md)）。取り込みに入る上流のコミットは確かめない。
+
+取り込みのPRは、squashではなくマージコミットでマージする（`gh pr merge --merge`）。squashすると、上流のコミットとの親子関係が消え、次の`make update`の基点が古いままになる。[META-07](issue-pr-flow.md)の「ブランチ名とコミットの1行目」も、派生がマージコミットで本体のコミットを取り込むことを前提にしている。マージコミットの1行目はGitHubの既定の「Merge pull request #N ...」になるが、CIの`names`はマージコミットを確かめないので、直さなくてよい。
 
 `merge=ours`のファイルに手で反映するものは、取り込みのPRとは別のPRにする（[META-07](issue-pr-flow.md)の「1つのPRには、1つの変更だけを入れる」）。
 

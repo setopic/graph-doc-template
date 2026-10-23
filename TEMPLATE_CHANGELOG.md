@@ -26,6 +26,23 @@ python -m tools.graph --version
 
 ---
 
+## 1.54.2（2026-10-23）
+
+### 修正
+
+[META-08](docs/00-meta/template-upgrade.md)の取り込みの手順に、抜けていた2つを足した（#191）。
+
+| 節 | 足したこと |
+| --- | --- |
+| 2. 取り込む | `check`と`sync`のあとに`make readme`を回す。`make update`は図を作り直さないので、取り込みでノードが変わると`readme-check`が落ちる。`make all`で代えてもよい |
+| 4. 取り込みのPR | squashではなくマージコミットでマージする（`gh pr merge --merge`）。squashすると上流のコミットとの親子関係が消え、次の`make update`の基点が古いままになる。マージコミットの1行目は`names`が確かめないので、GitHubの既定のままでよい |
+
+### 取り込む側の作業
+
+無い。次の取り込みから、META-08の手順に従う。
+
+---
+
 ## 1.54.1（2026-10-23）
 
 ### 修正
