@@ -4,7 +4,7 @@
 
 ## 種別を差し替えたリポジトリでの読み方
 
-リポジトリの根に`graph.toml`があれば、ノード種別はその内容に差し替えてある。このファイルに出てくる`architecture`・`domain`・`usecase`・`contract`と、その層の番号・ディレクトリは、既定の種別のときの書き方である。`graph.toml`のあるリポジトリでは、次のように読み替える。
+リポジトリの根に`graph.toml`があれば、ノード種別はその内容に差し替えてある。ただし、`graph.toml`の一番上に`extend_default_types = true`があれば、既定の種別は残っていて、`[node_types]`に書いた種別が足してある（[META-02](docs/00-meta/node-types.md)の「プロジェクトごとの種別」）。このファイルに出てくる`architecture`・`domain`・`usecase`・`contract`と、その層の番号・ディレクトリは、既定の種別のときの書き方である。`graph.toml`のあるリポジトリでは、次のように読み替える。
 
 | このファイルの書き方 | 読み替え |
 | --- | --- |

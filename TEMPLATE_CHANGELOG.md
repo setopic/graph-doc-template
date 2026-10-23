@@ -26,6 +26,28 @@ python -m tools.graph --version
 
 ---
 
+## 1.54.0（2026-10-23）
+
+### 追加
+
+`graph.toml`の一番上に`extend_default_types = true`を置けるようにした（#187）。置くと、`[node_types]`に書いた種別を既定の種別に足す。setopic/game-templateは、決定の記録の種別を足すだけのために、既定の`architecture`・`domain`・`usecase`・`contract`を`graph.toml`に書き写していて、上流が既定の種別に入れた変更が届かなかった。置かなければ、これまでどおり全体を差し替える。
+
+既定と同じ名前の種別は、書いたほうで丸ごと上書きし、キーごとには混ぜない。混ぜると、書かなかったキーが上流の値のまま残り、どの値が効いているのかを`graph.toml`だけでは読めなくなるからである。`[required_sections]`と`[required_sections_refined]`の表は、`extend_default_types = true`のときは、`[node_types]`に書かなかった既定の種別にだけ使える。書き方は[META-02](docs/00-meta/node-types.md)の「プロジェクトごとの種別」にある。
+
+### 取り込む側の作業
+
+無い。`extend_default_types`を置かなければ、これまでどおり全体を差し替える。
+
+既定の種別を`graph.toml`に書き写していた派生は、次のように移ると、上流の既定の種別の変更が届くようになる。
+
+1. `graph.toml`の一番上（最初の表より前）に`extend_default_types = true`を置く。
+2. 書き写した既定の種別のうち、既定と同じ内容のもの（`architecture`など）の`[node_types.<名前>]`を消す。
+3. 既定から変えた種別（`adr`の`label`や必須の節を変えたものなど）は、残す。残した種別は書いたほうで丸ごと上書きされるので、既定から引き継ぎたいキー（`immutable`・`required_sections`など）も書いたままにする。
+4. 消した種別の必須の節だけを既定から変えたいなら、`[required_sections]`の表に書く。
+5. `python -m tools.graph check`が通ることを確かめる。
+
+---
+
 ## 1.53.0（2026-10-23）
 
 ### 追加

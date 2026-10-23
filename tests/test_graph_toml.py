@@ -362,6 +362,95 @@ class TypeTemplate(Base):
         self.assertIn("## 層の雛形", self.text("design/40-episodes/ep-02-second.md"))
 
 
+EXTEND = """extend_default_types = true
+
+[node_types.pdr]
+prefix = "PDR"
+dir = "60-pdr"
+layer = 90
+label = "製品の決定"
+exempt_layer = true
+immutable = true
+
+[node_types.adr]
+prefix = "ADR"
+dir = "50-adr"
+layer = 90
+label = "技術の決定"
+exempt_layer = true
+required_sections = ["決定"]
+"""
+
+
+class ExtendDefaultTypes(Base):
+    """`extend_default_types = true`なら、既定の種別を残したまま種別を足す。"""
+
+    def configure(self, config: str = EXTEND) -> None:
+        self.write(schema.CONFIG_FILE, config)
+        schema.configure(self.tmp)
+
+    def test_the_default_types_are_kept(self):
+        self.configure()
+        self.assertEqual(
+            list(schema.NODE_TYPES),
+            ["index", "meta", "architecture", "domain", "usecase", "contract", "adr", "pdr"],
+        )
+        self.assertEqual(schema.NODE_TYPES["domain"], copy.deepcopy(schema._DEFAULTS["NODE_TYPES"]["domain"]))
+        self.assertEqual(schema.REQUIRED_SECTIONS["domain"], ("定義", "不変条件", "用語"))
+        self.assertEqual(schema.REQUIRED_SECTIONS_REFINED["domain"], ("不変条件", "用語"))
+        self.assertEqual(schema.TERM_TYPES, ("domain",))
+
+    def test_a_written_type_replaces_the_default_as_a_whole(self):
+        """上書きした種別は、書かなかったキーを既定から引き継がない。"""
+        self.configure()
+        self.assertEqual(schema.NODE_TYPES["adr"]["label"], "技術の決定")
+        self.assertEqual(schema.REQUIRED_SECTIONS["adr"], ("決定",))
+        self.assertEqual(schema.IMMUTABLE_RECORD_TYPES, ("pdr",), "adrはimmutableを書いていない")
+
+    def test_without_the_key_the_types_are_replaced(self):
+        self.configure(EXTEND.replace("extend_default_types = true\n", ""))
+        self.assertEqual(list(schema.NODE_TYPES), ["index", "meta", "adr", "pdr"])
+
+    def test_false_replaces_the_types(self):
+        self.configure(EXTEND.replace("= true\n\n[node_types.pdr]", "= false\n\n[node_types.pdr]"))
+        self.assertEqual(list(schema.NODE_TYPES), ["index", "meta", "adr", "pdr"])
+
+    def test_configure_without_the_key_returns_to_defaults(self):
+        before = copy.deepcopy(schema.NODE_TYPES)
+        self.configure()
+        (self.tmp / schema.CONFIG_FILE).unlink()
+        schema.configure(self.tmp)
+        self.assertEqual(schema.NODE_TYPES, before)
+        self.assertEqual(schema.IMMUTABLE_RECORD_TYPES, ("adr",))
+
+    def test_required_sections_change_the_kept_default_types(self):
+        self.configure(EXTEND.replace(
+            "extend_default_types = true\n",
+            "extend_default_types = true\n\n[required_sections]\ndomain = [\"定義\"]\n",
+        ))
+        self.assertEqual(schema.REQUIRED_SECTIONS["domain"], ("定義",))
+        self.assertEqual(schema.REQUIRED_SECTIONS["usecase"], ("概要", "事前条件"))
+
+    def test_check_passes_with_the_default_and_the_added_types(self):
+        self.write(schema.CONFIG_FILE, EXTEND)
+        self.write(
+            "docs/index.md",
+            "---\nid: IDX-ROOT\ntype: index\ntitle: 目次\nstatus: stable\ntags: [index]\n---\n\n"
+            "# 目次\n\n- [DOM-01 予約](./20-domain/dom-01-booking.md)\n- [PDR-0001 決定](./60-pdr/pdr-0001-first.md)\n",
+        )
+        self.write(
+            "docs/20-domain/dom-01-booking.md",
+            "---\nid: DOM-01\ntype: domain\ntitle: 予約\nstatus: draft\ntags: []\n---\n\n# 予約\n\n"
+            "## 定義\n\n予約。\n\n## 不変条件\n\n無い。\n\n## 用語\n\n| 用語 | 意味 | 旧称 |\n| --- | --- | --- |\n| 予約 | 予約 | — |\n",
+        )
+        self.write(
+            "docs/60-pdr/pdr-0001-first.md",
+            "---\nid: PDR-0001\ntype: pdr\ntitle: 決定\nstatus: draft\ntags: []\ndepends_on:\n  - DOM-01\n---\n\n# 決定\n",
+        )
+        code, output = run_cli(self.tmp, "check", "--no-history")
+        self.assertEqual(code, 0, output)
+
+
 class HubExempt(Base):
     """`hub_exempt = true`の種別からの依存を、G012が数えないこと。"""
 
@@ -810,6 +899,33 @@ class BrokenConfig(Base):
                     f'[node_types.a]\nprefix = "AA"\ndir = "a"\nlayer = 1\nlabel = "a"\ntemplate = {value}\n',
                     "template",
                 )
+
+    def test_extend_default_types_must_be_a_bool(self):
+        self.assert_rejected(
+            'extend_default_types = "yes"\n[node_types.a]\nprefix = "AA"\ndir = "a"\nlayer = 1\nlabel = "a"\n',
+            "trueかfalse",
+        )
+
+    def test_extend_default_types_needs_node_types(self):
+        self.assert_rejected("extend_default_types = true\n", "[node_types]が無い")
+
+    def test_added_types_must_not_overlap_the_kept_defaults(self):
+        """既定の種別を残したら、その接頭辞とディレクトリも重ならないようにする。"""
+        self.assert_rejected(
+            'extend_default_types = true\n[node_types.a]\nprefix = "DOM"\ndir = "a"\nlayer = 1\nlabel = "a"\n',
+            "domainと重なっている",
+        )
+        self.assert_rejected(
+            'extend_default_types = true\n[node_types.a]\nprefix = "AA"\ndir = "20-domain"\nlayer = 1\nlabel = "a"\n',
+            "domainと重なっている",
+        )
+
+    def test_required_sections_cannot_be_written_twice(self):
+        """[node_types]に書いた種別の必須の節は、その種別の表にだけ書く。"""
+        self.assert_rejected(
+            EXTEND + '\n[required_sections]\nadr = ["決定"]\n',
+            "adrは[node_types]に書いた種別",
+        )
 
     def test_the_cli_reports_and_fails(self):
         self.write(schema.CONFIG_FILE, "[node_types\n")
