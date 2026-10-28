@@ -236,6 +236,82 @@ class CrowdedTest(unittest.TestCase):
         self.assertEqual(svg.to_svg(crowded(10, 6), css=CSS), svg.to_svg(crowded(10, 6), css=CSS))
 
 
+def superseded(adrs: int):
+    """決定記録がadrs個あり、それぞれが1つ前の決定記録をsupersedesで置き換え、
+    いずれかの層の箱をdecidesで指すグラフ。題の長さを変えて、箱の幅をばらつかせる。"""
+    titles = ["予約", "在庫の引き当て", "とても長い題の文書で折り返しが要るかを確かめる"]
+    targets = ["ARCH-01", "DOM-01", "UC-01"]
+    nodes = [
+        node("UC-01", "usecase", edges=[edge("UC-01", "DOM-01")]),
+        node("DOM-01", "domain", edges=[edge("DOM-01", "ARCH-01")]),
+        node("ARCH-01", "architecture"),
+    ]
+    for i in range(1, adrs + 1):
+        adr = f"ADR-{i:04d}"
+        edges = [edge(adr, targets[i % 3], "decides")]
+        if i > 1:
+            edges.append(edge(adr, f"ADR-{i - 1:04d}", "supersedes"))
+        n = node(adr, "adr", edges=edges)
+        n.title = titles[(i * 7) % 3]
+        nodes.append(n)
+    return make_graph(nodes)
+
+
+def drawn_boxes(out: str) -> list[tuple[float, float, float, float]]:
+    found = re.findall(r'<rect class="box" x="([\d.]+)" y="([\d.]+)" width="([\d.]+)" height="([\d.]+)"', out)
+    return [(float(x), float(y), float(x) + float(w), float(y) + float(h)) for x, y, w, h in found]
+
+
+def drawn_labels(out: str, kinds: set[str]) -> list[tuple[str, tuple[float, float, float, float]]]:
+    """図に書いた線の名前と、その矩形の見積もり。kindsの種類の名前だけを返す。"""
+    found = re.findall(
+        r'<text class="edge-label k-(\w+)[^"]*" x="([\d.]+)" y="([\d.]+)" text-anchor="(\w+)">([^<]*)</text>', out
+    )
+    return [
+        (text, svg.label_rect(text, (float(x), float(y) + 4), anchor))
+        for kind, x, y, anchor, text in found
+        if kind in kinds
+    ]
+
+
+class BandLabelTest(unittest.TestCase):
+    """上の段で決定記録どうしを結ぶ線の名前が、箱に隠れたり、ほかの名前に重なったりしない。"""
+
+    def setUp(self) -> None:
+        self.out = svg.to_svg(superseded(14), css=CSS)
+
+    def test_labels_do_not_hit_boxes(self) -> None:
+        boxes = drawn_boxes(self.out)
+        labels = drawn_labels(self.out, {"supersedes", "decides"})
+        self.assertTrue(labels)
+        for text, rect in labels:
+            for box in boxes:
+                self.assertFalse(svg._meets(rect, box), (text, rect, box))
+
+    def test_labels_do_not_meet_each_other(self) -> None:
+        labels = drawn_labels(self.out, {"supersedes", "decides"})
+        for k, (text, rect) in enumerate(labels):
+            for other, rect2 in labels[k + 1 :]:
+                self.assertFalse(svg._meets(rect, rect2), (text, rect, other, rect2))
+
+    def test_every_line_keeps_its_name(self) -> None:
+        # 図に書けなかった名前は、線のツールチップに回す。どの線も名前を失わない
+        shown = len(drawn_labels(self.out, {"supersedes"}))
+        tooltips = self.out.count("<title>supersedes</title>")
+        self.assertEqual(shown + tooltips, 13)
+
+    def test_adjacent_boxes_leave_room_for_the_name(self) -> None:
+        boxes, lines = svg._parts_plain(superseded(2), False, set())
+        lay = svg._layout(boxes, lines)
+        a, b = sorted((lay.boxes[k] for k in ("ADR-0001", "ADR-0002")), key=lambda x: x.x)
+        self.assertEqual(a.y, b.y)
+        need = svg.text_width("supersedes", svg.EDGE_LABEL_FONT) + 2 * svg.LABEL_PAD
+        self.assertGreaterEqual(round(b.x - (a.x + a.w), 1), round(need, 1))
+
+    def test_same_input_gives_same_bytes(self) -> None:
+        self.assertEqual(self.out, svg.to_svg(superseded(14), css=CSS))
+
+
 def run(root: Path, *args: str) -> tuple[int, str, str]:
     out, err = io.StringIO(), io.StringIO()
     with contextlib.redirect_stdout(out), contextlib.redirect_stderr(err):

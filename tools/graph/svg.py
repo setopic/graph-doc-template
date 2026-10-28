@@ -34,6 +34,10 @@ DEFAULT_THEME = Path(__file__).resolve().parent / "themes" / "default.css"
 ID_FONT = 12.0
 TITLE_FONT = 12.5
 LABEL_FONT = 13.0
+EDGE_LABEL_FONT = 10.5  # 線の名前
+
+# 既定のテーマが名前を書かない線の種類（まとめた線でないとき）。帯の箱の間に、名前の幅を取らない
+QUIET_LABELS = {"depends_on", "related"}
 
 MARGIN = 20
 PAD_X = 12
@@ -41,6 +45,7 @@ BOX_MIN_W = 120
 BOX_MAX_W = 240
 LINE_H = 17
 BOX_GAP = 22  # 列の中の箱と箱、帯の中の箱と箱の間
+LABEL_PAD = 10  # 帯の中で隣り合う箱を結ぶ線の、名前の左右に空ける幅
 LANE_PAD = 14
 LANE_HEAD = 34  # 列の見出しの高さ
 COL_GAP = 64  # 列と列の間。線と、その名前を通す
@@ -195,6 +200,10 @@ def _wrap(text: str, size: float, limit: float, max_lines: int = 2) -> list[str]
         last = last[:-1]
     out[-1] = last.rstrip() + "…"
     return out
+
+
+def _label_text(line: Line) -> str:
+    return line.kind if line.count is None else f"{line.kind} {line.count}"
 
 
 def _measure(box: Box) -> None:
@@ -393,17 +402,23 @@ def _layout(boxes: list[Box], lines: list[Line]) -> Layout:
     side = SIDE_CHANNEL if columns else 0
     content_w = max(lanes_w + 2 * side, 640)
 
-    # 帯の中の箱を、幅に収まるように行へ分ける
+    # 帯の中の箱を、幅に収まるように行へ分ける。行の中で隣り合う箱を結ぶ線は、箱の間を
+    # まっすぐ通り、名前もその間に書く。名前が箱に隠れないよう、間を名前の幅だけ空ける
+    pair_gap = _pair_gaps(lines)
+    lead: dict[str, float] = {}  # 帯の箱 → 行の中で、左の箱との間
     rows: dict[str, tuple[str, int, int]] = {}
     band_rows: dict[str, list[list[Box]]] = {}
     for t in top + bottom:
         band_rows[t] = [[]]
         used = 0.0
         for box in groups[t]:
-            need = box.w + (BOX_GAP if band_rows[t][-1] else 0)
+            row = band_rows[t][-1]
+            lead[box.key] = pair_gap.get(frozenset((row[-1].key, box.key)), BOX_GAP) if row else 0.0
+            need = box.w + lead[box.key]
             if band_rows[t][-1] and used + need > content_w:
                 band_rows[t].append([])
                 used = 0.0
+                lead[box.key] = 0.0
                 need = box.w
             band_rows[t][-1].append(box)
             used += need
@@ -432,8 +447,9 @@ def _layout(boxes: list[Box], lines: list[Line]) -> Layout:
         for r, row in enumerate(band_rows[t]):
             x = float(MARGIN)
             for box in row:
+                x += lead[box.key]
                 box.x, box.y = x, y
-                x += box.w + BOX_GAP
+                x += box.w
             y += max(b.h for b in row) + (BOX_GAP if r < len(band_rows[t]) - 1 else 0)
         if side_ > 0 and t in arcs:
             y += ARC_SPACE
@@ -491,6 +507,19 @@ def _layout(boxes: list[Box], lines: list[Line]) -> Layout:
         corridor,
         {-1: top_gap / 2, 1: bottom_gap / 2},
     )
+
+
+def _pair_gaps(lines: list[Line]) -> dict[frozenset[str], float]:
+    """2つの箱を結ぶ線の名前が、その2つの箱の間に収まる幅。BOX_GAPより広くなる組だけを返す。"""
+    out: dict[frozenset[str], float] = {}
+    for line in lines:
+        if line.src == line.dst or (line.count is None and line.kind in QUIET_LABELS):
+            continue
+        need = text_width(_label_text(line), EDGE_LABEL_FONT) + 2 * LABEL_PAD
+        key = frozenset((line.src, line.dst))
+        if need > max(out.get(key, 0), BOX_GAP):
+            out[key] = round(need, 1)
+    return out
 
 
 def _gap(a: Box, b: Box) -> float:
@@ -572,6 +601,10 @@ def _rounded(points: list[Point], radius: float = 10) -> str:
     return " ".join(d)
 
 
+def _lerp(a: Point, b: Point, t: float) -> Point:
+    return a[0] + (b[0] - a[0]) * t, a[1] + (b[1] - a[1]) * t
+
+
 def _halfway(points: list[Point]) -> Point:
     """折れ線の長さの半分の位置。線の名前を置く。"""
     segs = list(zip(points, points[1:]))
@@ -604,6 +637,29 @@ class Route:
     anchor: str = "middle"
     # 同じ値を持つ線の名前は、最初の1つだけを書く。帯の箱から出る線の名前を、箱ごとに1つにまとめる
     label_key: tuple | None = None
+    # 名前を置ける所が無かった線。名前は図に書かず、線のツールチップ（<title>）にする
+    tooltip: bool = False
+
+
+def label_rect(text: str, at: Point, anchor: str = "middle") -> tuple[float, float, float, float]:
+    """線の名前が占める矩形（左, 上, 右, 下）の見積もり。名前は、atのyから4だけ上を文字の下端にして書く。"""
+    w = text_width(text, EDGE_LABEL_FONT)
+    left = at[0] - w / 2 if anchor == "middle" else at[0]
+    base = at[1] - 4
+    return left, base - EDGE_LABEL_FONT * 0.85, left + w, base + EDGE_LABEL_FONT * 0.2
+
+
+def _meets(a: tuple[float, float, float, float], b: tuple[float, float, float, float]) -> bool:
+    """2つの矩形（左, 上, 右, 下）が交わるか。"""
+    return a[0] < b[2] and b[0] < a[2] and a[1] < b[3] and b[1] < a[3]
+
+
+def _hits(rect: tuple[float, float, float, float], box: Box) -> bool:
+    return _meets(rect, (box.x, box.y, box.x + box.w, box.y + box.h))
+
+
+# 帯の箱どうしを結ぶ線で、名前を置いてみる線の上の位置（0が始まり、1が終わり）。真ん中から順に試す
+LABEL_SPOTS = (0.5, 0.4, 0.6, 0.3, 0.7, 0.2, 0.8)
 
 
 class _Router:
@@ -618,9 +674,12 @@ class _Router:
         # 通り道の幅に収め、端に重ならないようにする
         self.used: dict[tuple, int] = {}
         self.counts: dict[tuple, int] = {}
+        # 線の名前が占める矩形。帯の箱のそばに書く名前は、先に1度道筋を引いたときに集める
+        self.exits: dict[tuple, tuple[float, float, float, float]] = {}
+        self.spots: list[tuple[float, float, float, float]] = []
         for i in range(len(lines)):
             self.route(i)
-        self.counts, self.used = self.used, {}
+        self.counts, self.used, self.spots = self.used, {}, []
 
     def _parallel(self) -> list[float]:
         """同じ2つの箱を結ぶ線どうしの、ずらし幅。"""
@@ -672,6 +731,14 @@ class _Router:
         return max(-limit, min(limit, m * spread))
 
     def route(self, i: int) -> Route:
+        route = self._route(i)
+        line = self.lines[i]
+        key = route.label_key
+        if key is not None and key[0] == "exit" and not (line.count is None and line.kind in QUIET_LABELS):
+            self.exits[key] = label_rect(_label_text(line), route.label, route.anchor)
+        return route
+
+    def _route(self, i: int) -> Route:
         lay, line = self.lay, self.lines[i]
         a, b = lay.boxes[line.src], lay.boxes[line.dst]
         offset = self.parallel[i]
@@ -816,14 +883,33 @@ class _Router:
         p = _clip(a, _center(b))
         q = _clip(b, _center(a))
         if offset == 0:
-            return Route(f"M{_n(p[0])},{_n(p[1])} L{_n(q[0])},{_n(q[1])}", ((p[0] + q[0]) / 2, (p[1] + q[1]) / 2))
+            return self._spot(i, f"M{_n(p[0])},{_n(p[1])} L{_n(q[0])},{_n(q[1])}", lambda t: _lerp(p, q, t))
         # 平行な線は、中点を横にずらした曲線にする
         dx, dy = q[0] - p[0], q[1] - p[1]
         length = (dx * dx + dy * dy) ** 0.5 or 1
         nx, ny = -dy / length, dx / length
-        cx, cy = (p[0] + q[0]) / 2 + nx * offset * 2, (p[1] + q[1]) / 2 + ny * offset * 2
-        d = f"M{_n(p[0])},{_n(p[1])} Q{_n(cx)},{_n(cy)} {_n(q[0])},{_n(q[1])}"
-        return Route(d, ((p[0] + 2 * cx + q[0]) / 4, (p[1] + 2 * cy + q[1]) / 4))
+        c = ((p[0] + q[0]) / 2 + nx * offset * 2, (p[1] + q[1]) / 2 + ny * offset * 2)
+        d = f"M{_n(p[0])},{_n(p[1])} Q{_n(c[0])},{_n(c[1])} {_n(q[0])},{_n(q[1])}"
+        return self._spot(i, d, lambda t: _lerp(_lerp(p, c, t), _lerp(c, q, t), t))
+
+    def _spot(self, i: int, d: str, at) -> Route:
+        """帯の箱どうしを結ぶ線の名前を、箱にもほかの線の名前にも重ならない位置に置く。
+        行をまたぐ線は、間の箱の上を通ることがあり、真ん中に置くと名前が箱に隠れる。
+        線の上のLABEL_SPOTSの位置を順に試し、どこも重なるなら、名前をツールチップにする。
+        """
+        line = self.lines[i]
+        if line.count is None and line.kind in QUIET_LABELS:
+            return Route(d, at(0.5))
+        text = _label_text(line)
+        boxes = self.lay.boxes.values()
+        taken = list(self.exits.values()) + self.spots
+        for t in LABEL_SPOTS:
+            point = at(t)
+            rect = label_rect(text, point)
+            if not any(_hits(rect, box) for box in boxes) and not any(_meets(rect, o) for o in taken):
+                self.spots.append(rect)
+                return Route(d, point)
+        return Route(d, at(0.5), tooltip=True)
 
 
 # --------------------------------------------------------------------------
@@ -942,6 +1028,13 @@ def _draw(
             marker = ""
         else:
             marker = f' marker-end="url(#arrow-{line.kind})"'
+        text = _label_text(line)
+        if route.tooltip:
+            o.append(
+                f'<path id="{eid}" class="{classes}" d="{d}"{marker} '
+                f'data-src="{_esc(line.src)}" data-dst="{_esc(line.dst)}"><title>{_esc(text)}</title></path>'
+            )
+            continue
         o.append(
             f'<path id="{eid}" class="{classes}" d="{d}"{marker} '
             f'data-src="{_esc(line.src)}" data-dst="{_esc(line.dst)}"/>'
@@ -950,7 +1043,6 @@ def _draw(
             if route.label_key in labelled:
                 continue
             labelled.add(route.label_key)
-        text = line.kind if line.count is None else f"{line.kind} {line.count}"
         counted = "" if line.count is None else " counted"
         labels.append(
             f'<text class="edge-label k-{line.kind}{counted}" x="{_n(lx)}" y="{_n(ly - 4)}" '
