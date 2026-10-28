@@ -184,6 +184,58 @@ class VariantsTest(unittest.TestCase):
         self.assertNotIn("<!--", out)
 
 
+def crowded(adrs: int, contracts: int = 0):
+    """決定記録がadrs個あり、それぞれがARCH-01・DOM-01・UC-01をdecidesで指すグラフ。
+    契約はcontracts個あり、それぞれがARCH-01へdepends_onで2列以上をまたぐ。"""
+    nodes = [
+        node("UC-01", "usecase", edges=[edge("UC-01", "DOM-01")]),
+        node("DOM-01", "domain", edges=[edge("DOM-01", "ARCH-01")]),
+        node("ARCH-01", "architecture"),
+    ]
+    for i in range(1, adrs + 1):
+        adr = f"ADR-{i:04d}"
+        nodes.append(
+            node(adr, "adr", edges=[edge(adr, t, "decides") for t in ("ARCH-01", "DOM-01", "UC-01")])
+        )
+    for i in range(1, contracts + 1):
+        con = f"CON-{i:02d}"
+        nodes.append(node(con, "contract", edges=[edge(con, "UC-01"), edge(con, "ARCH-01")]))
+    return make_graph(nodes)
+
+
+class CrowdedTest(unittest.TestCase):
+    """線の多い図でも、線の名前と通り道が重ならないようにする。"""
+
+    def test_band_label_once_per_box_and_kind(self) -> None:
+        out = svg.to_svg(crowded(5), css=CSS)
+        labels = re.findall(r'<text class="edge-label k-decides"[^>]*>decides</text>', out)
+        self.assertEqual(len(labels), 5)
+
+    def test_corridor_grows_with_lines(self) -> None:
+        def gap(graph) -> float:
+            boxes, lines = svg._parts_plain(graph, False, set())
+            lay = svg._layout(boxes, lines)
+            band_bottom = max(b.y + b.h for b in lay.boxes.values() if b.type == "adr")
+            return min(y for _, _, y, _, _ in lay.lanes) - band_bottom
+
+        self.assertEqual(gap(crowded(1)), svg.BAND_GAP)
+        many = gap(crowded(10))
+        self.assertGreaterEqual(many, svg.CORRIDOR_STEP * 30)
+
+    def test_dummies_are_packed(self) -> None:
+        boxes, lines = svg._parts_plain(crowded(0, contracts=6), False, set())
+        lay = svg._layout(boxes, lines)
+        dummies = [d for ds in lay.dummies.values() for d in ds if d.type == "usecase"]
+        self.assertEqual(len(dummies), 6)
+        column = sorted(dummies + [lay.boxes["UC-01"]], key=lambda b: b.y)
+        # 続けて並ぶ通り道どうしは、DUMMY_GAPだけ空けて詰める
+        steps = {round(b.y - a.y, 1) for a, b in zip(column, column[1:]) if not a.head and not b.head}
+        self.assertEqual(steps, {svg.DUMMY_H + svg.DUMMY_GAP})
+
+    def test_same_input_gives_same_bytes(self) -> None:
+        self.assertEqual(svg.to_svg(crowded(10, 6), css=CSS), svg.to_svg(crowded(10, 6), css=CSS))
+
+
 def run(root: Path, *args: str) -> tuple[int, str, str]:
     out, err = io.StringIO(), io.StringIO()
     with contextlib.redirect_stdout(out), contextlib.redirect_stderr(err):

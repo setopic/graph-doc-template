@@ -48,7 +48,9 @@ BAND_HEAD = 24  # 帯の見出しの高さ
 BAND_GAP = 36  # 帯と列の間
 ARC_SPACE = 44  # 帯の中の弧の線に取っておく高さ
 PARALLEL_STEP = 16  # 同じ2つの箱を結ぶ線どうしの間隔
-DUMMY_H = 10  # 2列以上離れた列を結ぶ線が、間の列で通る場所の高さ
+DUMMY_H = 2  # 2列以上離れた列を結ぶ線が、間の列で通る場所の高さ
+DUMMY_GAP = 4  # 間の列で、通り道どうしの間。続けて並ぶ通り道は、束にして詰める
+CORRIDOR_STEP = 4  # 廊下（帯と列の間）で、横に通る線どうしの間隔
 SIDE_CHANNEL = 28  # 列の左右の端の、縦に線を通す場所の幅
 SWEEPS = 8  # 重心法で並べ替える回数
 INSERT_SEARCH_MAX = 40  # 帯の中の並びを、箱を1つずつ移して詰める箱の数の上限
@@ -348,6 +350,7 @@ class Layout:
     dummies: dict[int, list[Box]]  # 線の番号 → 間の列に置いた通り道
     channels: list[float]  # 列と列の間（と両端）の、縦に線を通す位置のx
     corridor: dict[int, float]  # 上（-1）と下（1）の、横に線を通す位置のy
+    corridor_half: dict[int, float]  # 上と下の廊下の、高さの半分
 
 
 def _layout(boxes: list[Box], lines: list[Line]) -> Layout:
@@ -415,6 +418,7 @@ def _layout(boxes: list[Box], lines: list[Line]) -> Layout:
         if a and b and a[0] == b[0] and a[1] == b[1] and abs(a[2] - b[2]) > 1:
             arcs.add(a[0])
 
+    band_side_of = {t: -1 for t in top} | {t: 1 for t in bottom}
     y = float(MARGIN)
     bands: list[tuple[str, float, float]] = []
     band_side: dict[str, int] = {}
@@ -435,17 +439,17 @@ def _layout(boxes: list[Box], lines: list[Line]) -> Layout:
             y += ARC_SPACE
         return y
 
-    for t in top:
-        y = place_band(t, y, -1) + BAND_GAP
+    # 帯と列の間の廊下は、横に通る線の数に合わせて広げる
+    top_gap, bottom_gap = (_corridor_gap(lines, rows, set(col_of_box), band_side_of, s) for s in (-1, 1))
+    for i, t in enumerate(top):
+        y = place_band(t, y, -1) + (top_gap if i == len(top) - 1 else BAND_GAP)
 
     lanes: list[tuple[str, float, float, float, float]] = []
     channels: list[float] = []
     corridor: dict[int, float] = {}
     if columns:
-        corridor[-1] = y - BAND_GAP / 2
-        inner_h = max(
-            sum(b.h for b in groups[t]) + BOX_GAP * (len(groups[t]) - 1) for t in columns
-        )
+        corridor[-1] = y - top_gap / 2
+        inner_h = max(_stack_h(groups[t]) for t in columns)
         lane_h = LANE_HEAD + inner_h + LANE_PAD
         x = float(MARGIN + side)
         channels.append(MARGIN + side / 2)
@@ -453,16 +457,20 @@ def _layout(boxes: list[Box], lines: list[Line]) -> Layout:
             lane_w = col_w[t] + 2 * LANE_PAD
             lanes.append((t, x, y, lane_w, lane_h))
             by = y + LANE_HEAD
+            prev = None
             for box in groups[t]:
+                if prev is not None:
+                    by += _gap(prev, box)
                 box.x, box.y, box.w = x + LANE_PAD, by, col_w[t]
-                by += box.h + BOX_GAP
+                by += box.h
+                prev = box
             x += lane_w + COL_GAP
             channels.append(x - COL_GAP / 2 if i < len(columns) - 1 else x - COL_GAP + side / 2)
         y += lane_h
-        corridor[1] = y + BAND_GAP / 2
+        corridor[1] = y + bottom_gap / 2
 
-    for t in bottom:
-        y = place_band(t, y + BAND_GAP, 1)
+    for i, t in enumerate(bottom):
+        y = place_band(t, y + (bottom_gap if i == 0 else BAND_GAP), 1)
 
     width = int(MARGIN * 2 + content_w)
     # まとめた図の、同じ種別どうしの線（自分への輪）の分だけ、右に余白を取る
@@ -481,7 +489,36 @@ def _layout(boxes: list[Box], lines: list[Line]) -> Layout:
         dummies,
         channels,
         corridor,
+        {-1: top_gap / 2, 1: bottom_gap / 2},
     )
+
+
+def _gap(a: Box, b: Box) -> float:
+    """列の中で、上の箱aと下の箱bの間。通り道どうしは詰め、箱と通り道の間は半分にする。"""
+    if not a.head and not b.head:
+        return DUMMY_GAP
+    if not a.head or not b.head:
+        return BOX_GAP / 2
+    return BOX_GAP
+
+
+def _stack_h(column: list[Box]) -> float:
+    """列の箱と通り道を、上から順に積んだ高さ。"""
+    return sum(b.h for b in column) + sum(_gap(a, b) for a, b in zip(column, column[1:]))
+
+
+def _corridor_gap(lines: list[Line], rows: dict, in_columns: set[str], band_side_of: dict, side: int) -> float:
+    """帯と列の間の高さ。廊下を横に通る線が多ければ、CORRIDOR_STEPずつ並ぶだけの高さを取る。"""
+    n = 0
+    for line in lines:
+        ends = [band_side_of[rows[e][0]] for e in (line.src, line.dst) if e in rows]
+        if not ends or line.src == line.dst:
+            continue
+        if len(ends) == 1 and (line.src in in_columns or line.dst in in_columns) and ends[0] == side:
+            n += 1
+        elif len(ends) == 2 and ends[0] != ends[1] and in_columns:
+            n += 1
+    return max(BAND_GAP, CORRIDOR_STEP * n + 16)
 
 
 # --------------------------------------------------------------------------
@@ -548,11 +585,25 @@ def _halfway(points: list[Point]) -> Point:
     return points[-1]
 
 
+def _exit_label(box: Box, side: int, kind: str) -> tuple[Point, str, tuple]:
+    """帯の箱から列の側へ出る線の名前の位置。箱の列に向いた縁の、左寄りに置く。
+
+    帯から出る線は廊下に集まるので、線ごとに名前を書くと重なって読めない。
+    箱ごとに、線の種類ごとの名前を1つだけ書く。まとめた線（本数つき）は線ごとに数が違うので、
+    これまでどおり線の途中に書く。
+    """
+    x = box.x + 6
+    y = box.y + box.h + 15 if side < 0 else box.y - 2
+    return (x, y), "start", ("exit", box.key, kind)
+
+
 @dataclass
 class Route:
     d: str
     label: Point
     anchor: str = "middle"
+    # 同じ値を持つ線の名前は、最初の1つだけを書く。帯の箱から出る線の名前を、箱ごとに1つにまとめる
+    label_key: tuple | None = None
 
 
 class _Router:
@@ -563,7 +614,13 @@ class _Router:
         self.lines = lines
         self.parallel = self._parallel()
         self.ports = self._ports()
+        # 同じ通り道を使う線の数を、先に1度道筋を引いて数える。多ければ、ずらし幅を詰めて
+        # 通り道の幅に収め、端に重ならないようにする
         self.used: dict[tuple, int] = {}
+        self.counts: dict[tuple, int] = {}
+        for i in range(len(lines)):
+            self.route(i)
+        self.counts, self.used = self.used, {}
 
     def _parallel(self) -> list[float]:
         """同じ2つの箱を結ぶ線どうしの、ずらし幅。"""
@@ -607,6 +664,9 @@ class _Router:
         """同じ通り道（廊下や列の間）を使う線を、順にspreadずつずらす。"""
         k = self.used.get(key, 0)
         self.used[key] = k + 1
+        widest = self.counts.get(key, 0) // 2
+        if widest and spread * widest > limit:
+            spread = limit / widest
         # 0, +1, -1, +2, -2, ... の順に使う
         m = (k + 1) // 2 * (1 if k % 2 else -1)
         return max(-limit, min(limit, m * spread))
@@ -706,7 +766,7 @@ class _Router:
         # 帯の箱からは、列に向いた側（上の帯なら下、下の帯なら上）から出る
         by = band_box.y + band_box.h + 3 if side < 0 else band_box.y - 3
         # 帯が下なら列の下の廊下、上なら上の廊下を通る
-        cy = lay.corridor[side] + self._slot(("corridor", side), 5, BAND_GAP / 2 - 5)
+        cy = lay.corridor[side] + self._slot(("corridor", side), 5, lay.corridor_half[side] - 5)
         chx, enter = self._channel_for(col, bx)
         chx += self._slot(("channel", round(chx)), 6, COL_GAP / 2 - 8)
         # 列から列への線は箱の横の真ん中あたりに集まるので、帯からの線は下寄りに入れる
@@ -716,6 +776,8 @@ class _Router:
         label = _halfway(points[1:3]) if abs(chx - bx) > 60 else _halfway(points)
         if band_box is b:
             points.reverse()
+        if line.count is None:
+            return Route(_rounded(points), *_exit_label(band_box, side, line.kind))
         return Route(_rounded(points), label)
 
     def _bands(self, i: int, a: Box, b: Box, offset: float) -> Route:
@@ -740,12 +802,14 @@ class _Router:
             bx = b.x + b.w / 2 + self._slot(("port", b.key), 8, b.w / 2 - 10)
             y1 = a.y + a.h + 3 if sa < 0 else a.y - 3
             y2 = b.y + b.h + 3 if sb < 0 else b.y - 3
-            c1 = lay.corridor[sa] + self._slot(("corridor", sa), 5, BAND_GAP / 2 - 5)
-            c2 = lay.corridor[sb] + self._slot(("corridor", sb), 5, BAND_GAP / 2 - 5)
+            c1 = lay.corridor[sa] + self._slot(("corridor", sa), 5, lay.corridor_half[sa] - 5)
+            c2 = lay.corridor[sb] + self._slot(("corridor", sb), 5, lay.corridor_half[sb] - 5)
             mid = (ax + bx) / 2
             chx = min(lay.channels, key=lambda c: (abs(c - mid), c))
             chx += self._slot(("channel", round(chx)), 6, COL_GAP / 2 - 8)
             points = [(ax, y1), (ax, c1), (chx, c1), (chx, c2), (bx, c2), (bx, y2)]
+            if self.lines[i].count is None:
+                return Route(_rounded(points), *_exit_label(a, sa, self.lines[i].kind))
             label = _halfway(points[1:3]) if abs(chx - ax) > 60 else _halfway(points)
             return Route(_rounded(points), label)
         # そのほか（同じ側の帯どうし）は、中心どうしを結ぶ直線を箱の縁で切る
@@ -867,6 +931,7 @@ def _draw(
     router = _Router(lay, lines)
     ids = [f"e{i}" for i in range(len(lines))]
     labels: list[str] = []
+    labelled: set[tuple] = set()
     o.append('<g class="edges">')
     for i, (line, eid) in enumerate(zip(lines, ids)):
         route = router.route(i)
@@ -881,6 +946,10 @@ def _draw(
             f'<path id="{eid}" class="{classes}" d="{d}"{marker} '
             f'data-src="{_esc(line.src)}" data-dst="{_esc(line.dst)}"/>'
         )
+        if route.label_key is not None:
+            if route.label_key in labelled:
+                continue
+            labelled.add(route.label_key)
         text = line.kind if line.count is None else f"{line.kind} {line.count}"
         counted = "" if line.count is None else " counted"
         labels.append(
