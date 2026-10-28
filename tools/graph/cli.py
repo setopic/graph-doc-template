@@ -41,6 +41,14 @@ def _repo_root(arg: str | None) -> Path:
     return Path(__file__).resolve().parents[2]
 
 
+def _shown(path: Path, root: Path) -> str:
+    """表示に使うパス。根の中なら根からの相対で、外なら渡されたパスのまま見せる。"""
+    try:
+        return path.relative_to(root).as_posix()
+    except ValueError:
+        return path.as_posix()
+
+
 def cmd_check(args: argparse.Namespace) -> int:
     root = _repo_root(args.root)
     graph = load(root)
@@ -265,9 +273,9 @@ def cmd_render(args: argparse.Namespace) -> int:
             return 1
         changed = changed or svg_stale
 
-        rel = into_path.relative_to(root).as_posix()
+        rel = _shown(into_path, root)
         if args.format == "svg":
-            rel = f"{rel}・{svg_path.relative_to(root).as_posix()}"
+            rel = f"{rel}・{_shown(svg_path, root)}"
         if not changed:
             print(f"更新なし（最新）: {rel}")
             return 0
@@ -283,7 +291,7 @@ def cmd_render(args: argparse.Namespace) -> int:
             out_path = root / out_path
         out_path.parent.mkdir(parents=True, exist_ok=True)
         out_path.write_text(output, encoding="utf-8", newline="\n")
-        print(f"書き出した: {out_path.relative_to(root).as_posix()}")
+        print(f"書き出した: {_shown(out_path, root)}")
     else:
         sys.stdout.write(output)
     return 0
