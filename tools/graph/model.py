@@ -69,7 +69,7 @@ class Issue:
 class Graph:
     nodes: dict[str, Node] = field(default_factory=dict)
     load_issues: list[Issue] = field(default_factory=list)
-    # リポジトリの根。implemented_byの指し先を確かめるのに要る（G016）。
+    # リポジトリの根。implemented_byの参照先を確かめるのに要る（G016）。
     # 部分グラフでも引き継ぐ。読めなかった場合はNone。
     root: Path | None = None
 

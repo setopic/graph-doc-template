@@ -240,7 +240,7 @@ class Rule(unittest.TestCase):
         )
 
     def test_one_issue_per_node(self) -> None:
-        """節ごとではなくノードごとに1件。指し先は並べて出す。"""
+        """節ごとではなくノードごとに1件。参照先は並べて出す。"""
         old2 = node("ADR-0003", type_="adr", status="deprecated")
         body = "[[ADR-0008]] による。\n\nまた [[ADR-0003]] による。\n"
         graph = make_graph([OLD, NEW, old2, node("UC-01", body=body)])

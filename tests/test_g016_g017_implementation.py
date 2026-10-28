@@ -62,7 +62,7 @@ class TargetExists(unittest.TestCase):
     def test_missing_target_is_an_error(self):
         declare(self.tmp, DOMAIN_PATH, "src/nowhere.py")
         code, output = run_check(self.tmp, "--no-history")
-        self.assertEqual(code, 1, "指し先が無いのはエラー（警告ではない）")
+        self.assertEqual(code, 1, "参照先が無いのはエラー（警告ではない）")
         self.assertIn("G016", output)
         self.assertIn("nowhere.py", output)
 
