@@ -170,7 +170,7 @@ period = 6
 | クラス名 | 付く要素 |
 | --- | --- |
 | `graph` | SVGの全体。色の変数（`--bg`など）とフォントをここに書く |
-| `bg`、`lane-bg`、`lane-label`、`band-label` | 背景、列の背景、列の見出し、帯の見出し |
+| `bg`、`lane-bg`、`lane-label`、`band-label` | 背景、層の背景、層の見出し、段の見出し |
 | `node`、`t-<種別>`、`s-<status>`、`focus`、`group` | 箱のまとまり。`group`は`--aggregate`と`--type`の型ごとの箱 |
 | `box`、`node-id`、`node-title` | 箱の枠、idの行、題の行 |
 | `edge`、`k-<線の種類>`、`undirected` | 線。`undirected`は向きの無い`related` |
