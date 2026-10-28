@@ -35,6 +35,7 @@ ID_FONT = 12.0
 TITLE_FONT = 12.5
 LABEL_FONT = 13.0
 EDGE_LABEL_FONT = 10.5  # 線の名前
+LANE_LABEL_FONT = 13.0  # 列の見出し
 
 # 既定のテーマが名前を書かない線の種類（まとめた線でないとき）。帯の箱の間に、名前の幅を取らない
 QUIET_LABELS = {"depends_on", "related"}
@@ -915,6 +916,57 @@ class _Router:
 # --------------------------------------------------------------------------
 # 書き出し
 # --------------------------------------------------------------------------
+# まとめた線の名前を、ほかの名前や箱に重ならないようにずらすときの、位置の候補。
+# 縦は、線の名前の1行分（LABEL_STEP）ずつ、もとの位置の上下に離していく。
+# それで収まらなければ、名前の幅だけ左右にずらして、また上下を試す
+LABEL_STEP = 12
+COUNTED_SHIFTS = (0, -1, 1, -2, 2, -3, 3)
+
+
+def _settle_counted(routes: list[Route], lines: list[Line], lay: Layout) -> list[Route]:
+    """まとめた線（本数つき）の名前を、互いに重ならない位置に置き直す。
+
+    型ごとにまとめた図では、同じ2つの箱の間を、種類の違う線が何本も通る。線の名前は
+    線の真ん中に書くので、名前どうしが重なる。本数の多い線から順に、もとの位置から
+    LABEL_STEPずつ上下に、さらに名前の幅だけ左右にずらし、箱にも、先に置いた名前にも重ならない所に書く。
+    どこも重なるなら、名前をその線のツールチップにする。本数の無い線の名前は動かさない。
+    """
+    # 列の見出し（層の番号と名前）にも重ねない
+    taken: list[tuple[float, float, float, float]] = []
+    for t, x, y, _w, _h in lay.lanes:
+        spec = schema.NODE_TYPES[t]
+        head = f"{spec['layer']} {spec['label']}"
+        taken.append((x + 12, y + 22 - LANE_LABEL_FONT, x + 12 + text_width(head, LANE_LABEL_FONT), y + 22 + 3))
+    seen: set[tuple] = set()
+    for route, line in zip(routes, lines):
+        if line.count is not None or route.tooltip or (line.kind in QUIET_LABELS):
+            continue
+        if route.label_key is not None:
+            if route.label_key in seen:
+                continue
+            seen.add(route.label_key)
+        taken.append(label_rect(_label_text(line), route.label, route.anchor))
+    boxes = list(lay.boxes.values())
+    order = sorted(
+        (i for i, line in enumerate(lines) if line.count is not None and not routes[i].tooltip),
+        key=lambda i: (-(lines[i].count or 0), i),
+    )
+    out = list(routes)
+    for i in order:
+        route, text = routes[i], _label_text(lines[i])
+        w = text_width(text, EDGE_LABEL_FONT) + 6
+        for dx, k in ((dx, k) for dx in (0, -w, w) for k in COUNTED_SHIFTS):
+            point = (route.label[0] + dx, route.label[1] + k * LABEL_STEP)
+            rect = label_rect(text, point, route.anchor)
+            if not any(_hits(rect, box) for box in boxes) and not any(_meets(rect, o) for o in taken):
+                taken.append(rect)
+                out[i] = Route(route.d, point, route.anchor, route.label_key)
+                break
+        else:
+            out[i] = Route(route.d, route.label, route.anchor, route.label_key, tooltip=True)
+    return out
+
+
 def _esc(text: str) -> str:
     return (
         text.replace("&", "&amp;").replace("<", "&lt;").replace(">", "&gt;").replace('"', "&quot;")
@@ -1016,11 +1068,11 @@ def _draw(
 
     router = _Router(lay, lines)
     ids = [f"e{i}" for i in range(len(lines))]
+    routes = _settle_counted([router.route(i) for i in range(len(lines))], lines, lay)
     labels: list[str] = []
     labelled: set[tuple] = set()
     o.append('<g class="edges">')
-    for i, (line, eid) in enumerate(zip(lines, ids)):
-        route = router.route(i)
+    for line, eid, route in zip(lines, ids, routes):
         d, (lx, ly) = route.d, route.label
         classes = f"edge k-{line.kind}"
         if line.kind in _UNDIRECTED:

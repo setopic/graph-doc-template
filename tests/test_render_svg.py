@@ -312,6 +312,74 @@ class BandLabelTest(unittest.TestCase):
         self.assertEqual(self.out, svg.to_svg(superseded(14), css=CSS))
 
 
+def mixed():
+    """型ごとにまとめると、同じ2つの箱の間を、種類と向きの違う線が何本も通るグラフ。
+    ドメインとアーキテクチャの間に、depends_onの往復とrefinesが通る。"""
+    nodes = []
+    for i in range(1, 11):
+        adr = f"ADR-{i:04d}"
+        edges = [edge(adr, f"ARCH-0{1 + i % 3}", "decides"), edge(adr, f"DOM-0{1 + i % 4}", "decides")]
+        if i > 1:
+            edges.append(edge(adr, f"ADR-{i - 1:04d}", "supersedes"))
+        nodes.append(node(adr, "adr", edges=edges))
+    for i in range(1, 5):
+        dom = f"DOM-0{i}"
+        edges = [edge(dom, "ARCH-01"), edge(dom, "ARCH-02"), edge(dom, "ARCH-03")][:i]
+        if i > 1:
+            edges.append(edge(dom, "DOM-01", "refines"))
+        nodes.append(node(dom, "domain", edges=edges))
+    nodes += [
+        node("ARCH-01", "architecture"),
+        node("ARCH-02", "architecture", edges=[edge("ARCH-02", "ARCH-01", "refines")]),
+        node("ARCH-03", "architecture", edges=[edge("ARCH-03", "DOM-01")]),
+    ]
+    for i in range(1, 6):
+        uc = f"UC-0{i}"
+        nodes.append(node(uc, "usecase", edges=[edge(uc, f"DOM-0{1 + i % 4}"), edge(uc, "ARCH-01")]))
+    for i in range(1, 4):
+        con = f"CON-0{i}"
+        nodes.append(node(con, "contract", edges=[edge(con, f"UC-0{i}"), edge(con, "DOM-01"), edge(con, "ARCH-02")]))
+    nodes += [
+        node("META-01", "meta", edges=[edge("META-01", "META-02", "related"), edge("META-01", "ARCH-01", "related")]),
+        node("META-02", "meta"),
+    ]
+    return make_graph(nodes)
+
+
+class CountedLabelTest(unittest.TestCase):
+    """型ごとにまとめた図で、本数つきの線の名前が、互いにも箱にも重ならない。"""
+
+    KINDS = {"depends_on", "refines", "supersedes", "decides", "related"}
+
+    def check(self, out: str) -> None:
+        boxes = drawn_boxes(out)
+        labels = drawn_labels(out, self.KINDS)
+        self.assertTrue(labels)
+        for k, (text, rect) in enumerate(labels):
+            for box in boxes:
+                self.assertFalse(svg._meets(rect, box), (text, rect, box))
+            for other, rect2 in labels[k + 1 :]:
+                self.assertFalse(svg._meets(rect, rect2), (text, rect, other, rect2))
+
+    def test_aggregate(self) -> None:
+        self.check(svg.to_svg(mixed(), css=CSS, aggregate=True))
+
+    def test_types(self) -> None:
+        self.check(svg.to_svg(mixed(), css=CSS, types={"domain"}))
+
+    def test_every_line_keeps_its_count(self) -> None:
+        out = svg.to_svg(mixed(), css=CSS, aggregate=True)
+        shown = len(re.findall(r'<text class="edge-label [^"]*counted"', out))
+        tooltips = len(re.findall(r"<path [^>]*><title>", out))
+        lines = len(svg._parts_aggregate(mixed(), False)[1])
+        self.assertEqual(shown + tooltips, lines)
+
+    def test_same_input_gives_same_bytes(self) -> None:
+        self.assertEqual(
+            svg.to_svg(mixed(), css=CSS, aggregate=True), svg.to_svg(mixed(), css=CSS, aggregate=True)
+        )
+
+
 def run(root: Path, *args: str) -> tuple[int, str, str]:
     out, err = io.StringIO(), io.StringIO()
     with contextlib.redirect_stdout(out), contextlib.redirect_stderr(err):
