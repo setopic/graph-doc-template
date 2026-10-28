@@ -1,8 +1,8 @@
-"""upgradeが、テンプレートの層ごとに版を比べるときのテスト（setopic/graph-doc-template#125）。
+"""upgradeが、テンプレートの層ごとにバージョンを比べるときのテスト（setopic/graph-doc-template#125）。
 
-下の層（graph-doc-template）の版だけを比べると、上の層（graph-project-template）だけの
+下の層（graph-doc-template）のバージョンだけを比べると、上の層（graph-project-template）だけの
 変更を「取り込むものは無い」と誤って伝える。上の層は`tools/graph/layers/<層の名前>.toml`に
-版と変更履歴の場所を書き、`upgrade`は層ごとに比べる。
+バージョンと変更履歴の場所を書き、`upgrade`は層ごとに比べる。
 """
 
 from __future__ import annotations
@@ -108,7 +108,7 @@ class LayerTest(unittest.TestCase):
         self.assertEqual(upgrade.inspect_label(self.derived), "1.1.0-project-0.2.0")
 
     def test_base_layer_only_keeps_plain_version(self) -> None:
-        """下の層だけなら、これまでどおり版だけにする。"""
+        """下の層だけなら、これまでどおりバージョンだけにする。"""
         self.commit_upstream(self.two_layers("1.0.0", "0.1.0"))
         self.clone()
         self.commit_upstream({upgrade.VERSION_PATH: 'TEMPLATE_VERSION = "1.0.1"\n'})

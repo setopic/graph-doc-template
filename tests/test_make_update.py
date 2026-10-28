@@ -2,8 +2,8 @@
 
 `make update`がメッセージを渡さないと、gitの既定の英語の文
 （Merge remote-tracking branch 'template/main'）が付く。コミットメッセージも
-日本語の書き方の対象なので、「テンプレートの<版>を取り込む」を渡す。
-版は、`upgrade --label`が、遅れている層の版を並べて作る（setopic/graph-doc-template#125）。
+日本語の書き方の対象なので、「テンプレートの<バージョン>を取り込む」を渡す。
+バージョンは、`upgrade --label`が、遅れている層のバージョンを並べて作る（setopic/graph-doc-template#125）。
 """
 
 from __future__ import annotations
@@ -48,7 +48,7 @@ class MakeUpdateMessageTest(unittest.TestCase):
 
         run(base, "git", "init", "-q", "-b", "main", str(self.upstream))
         shutil.copy(ROOT / "Makefile", self.upstream / "Makefile")
-        # make updateは、版を読むためにtools.graphを呼ぶ
+        # make updateは、バージョンを読むためにtools.graphを呼ぶ
         shutil.copytree(
             ROOT / "tools", self.upstream / "tools", ignore=shutil.ignore_patterns("__pycache__")
         )
@@ -64,13 +64,13 @@ class MakeUpdateMessageTest(unittest.TestCase):
         return run(self.derived, "make", "-s", "update", f"PYTHON={python}", check=False)
 
     def bump_upstream(self, version: str, x: str) -> None:
-        # 版の行の後ろに日本語を置き、version.pyをUTF-8で読めているかも確かめる。
-        write(self.upstream / "tools/graph/version.py", f'TEMPLATE_VERSION = "{version}"\n# 版\n')
+        # バージョンの行の後ろに日本語を置き、version.pyをUTF-8で読めているかも確かめる。
+        write(self.upstream / "tools/graph/version.py", f'TEMPLATE_VERSION = "{version}"\n# バージョン\n')
         write(self.upstream / "x.txt", x)
         run(self.upstream, "git", "commit", "-q", "-am", "up")
 
     def test_merge_commit_message_names_the_version(self) -> None:
-        """取り込んだテンプレートの版を、日本語のメッセージに入れる。"""
+        """取り込んだテンプレートのバージョンを、日本語のメッセージに入れる。"""
         write(self.derived / "local.txt", "local\n")
         run(self.derived, "git", "add", ".")
         run(self.derived, "git", "commit", "-q", "-m", "local")
@@ -96,7 +96,7 @@ class MakeUpdateMessageTest(unittest.TestCase):
         self.assertEqual(subject, "テンプレートの1.2.4を取り込む")
 
     def test_upper_layer_only(self) -> None:
-        """上の層だけが変わっても、その層の名前と版をメッセージに入れる。"""
+        """上の層だけが変わっても、その層の名前とバージョンをメッセージに入れる。"""
         layer = (
             'name = "graph-project-template"\n'
             'label = "project"\n'

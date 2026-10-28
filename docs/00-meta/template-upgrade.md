@@ -77,7 +77,7 @@ python -m tools.graph upgrade
 make update
 ```
 
-`make update`は、マージコミットのメッセージを「テンプレートの<版>を取り込む」にする。版は`python -m tools.graph upgrade --label`が作り、遅れている層の版を下の層から並べる（「3. テンプレートの層」）。競合したときも、解いたあとの`git commit`で同じメッセージが使われる。
+`make update`は、マージコミットのメッセージを「テンプレートの<バージョン>を取り込む」にする。バージョンは`python -m tools.graph upgrade --label`が作り、遅れている層のバージョンを下の層から並べる（「3. テンプレートの層」）。競合したときも、解いたあとの`git commit`で同じメッセージが使われる。
 
 ```bash
 python -m tools.graph reset-samples --yes
@@ -112,14 +112,14 @@ make readme
 
 ## 3. テンプレートの層
 
-テンプレートは層を重ねられる。下の層は土台になるテンプレート（このリポジトリ、`graph-doc-template`）で、上の層は下の層の上に重ねたテンプレートである。版と変更履歴は層ごとにあり、`upgrade`は層ごとに比べる。
+テンプレートは層を重ねられる。下の層は土台になるテンプレート（このリポジトリ、`graph-doc-template`）で、上の層は下の層の上に重ねたテンプレートである。バージョンと変更履歴は層ごとにあり、`upgrade`は層ごとに比べる。
 
-| 層 | 版 | 変更履歴 | 取り込みの版の書き方 |
+| 層 | バージョン | 変更履歴 | 取り込みのバージョンの書き方 |
 | --- | --- | --- | --- |
 | graph-doc-template | `tools/graph/version.py`の`TEMPLATE_VERSION` | `TEMPLATE_CHANGELOG.md` | `1.38.0` |
-| 上の層 | `tools/graph/layers/<層の名前>.toml`の`version` | 同じファイルの`changelog`が指すもの | `<label>-<版>`（`<label>-0.14.0`など） |
+| 上の層 | `tools/graph/layers/<層の名前>.toml`の`version` | 同じファイルの`changelog`が指すもの | `<label>-<バージョン>`（`<label>-0.14.0`など） |
 
-両方の層が遅れていれば、取り込みの版は`1.38.0-<label>-0.14.0`になる。上の層を作るときは、`tools/graph/layers/<層の名前>.toml`を1つ置く。層ごとにファイルの名前が違うので、層を重ねても取り込みで競合しない。
+両方の層が遅れていれば、取り込みのバージョンは`1.38.0-<label>-0.14.0`になる。上の層を作るときは、`tools/graph/layers/<層の名前>.toml`を1つ置く。層ごとにファイルの名前が違うので、層を重ねても取り込みで競合しない。
 
 ```toml
 name = "<層の名前>"
@@ -130,9 +130,9 @@ changelog = "<変更履歴のファイル>"
 repository = "https://github.com/<owner>/<repo>.git"
 ```
 
-`label`は、取り込みの版で層を見分ける名前で、英小文字と数字で書く。`below`には1つ下の層の`name`を書く。リモート`template`が無いとき、`upgrade`はいちばん上の層の`repository`を案内する。
+`label`は、取り込みのバージョンで層を見分ける名前で、英小文字と数字で書く。`below`には1つ下の層の`name`を書く。リモート`template`が無いとき、`upgrade`はいちばん上の層の`repository`を案内する。
 
-PRの題に版を求めるときは、`versioned_title = true`を足す。書かなければ求めない。CIの`names`は、`repository`がPRのリポジトリと同じ層だけに当てるので、宣言が写った派生では求めない（[META-07](issue-pr-flow.md)）。
+PRの題にバージョンを求めるときは、`versioned_title = true`を足す。書かなければ求めない。CIの`names`は、`repository`がPRのリポジトリと同じ層だけに当てるので、宣言が写った派生では求めない（[META-07](issue-pr-flow.md)）。
 
 上の層が足す規約の文書は、下の層の規約の文書を`related`に入れない。`related`は相互に書く決まりなので、入れると下の層の共通ファイルを書き換えることになる。下の層の規約の文書へは、本文のリンクで案内する（[META-01](graph-rules.md)の「規約の文書には逆引きを書かない」）。
 
@@ -150,7 +150,7 @@ PRの題に版を求めるときは、`versioned_title = true`を足す。書か
 なし（テンプレートの取り込みのみ）
 ```
 
-取り込みのブランチ名は`chore/template-<版>`にし（版は`make update`のメッセージと同じもの）、PRの題は`chore: テンプレートの<版>を取り込む`のように書く。CIの`names`が、ブランチ名とPRの題を確かめる（[META-07](issue-pr-flow.md)）。取り込みに入る上流のコミットは確かめない。
+取り込みのブランチ名は`chore/template-<バージョン>`にし（バージョンは`make update`のメッセージと同じもの）、PRの題は`chore: テンプレートの<バージョン>を取り込む`のように書く。CIの`names`が、ブランチ名とPRの題を確かめる（[META-07](issue-pr-flow.md)）。取り込みに入る上流のコミットは確かめない。
 
 取り込みのPRは、squashではなくマージコミットでマージする（`gh pr merge --merge`）。squashすると、上流のコミットとの親子関係が消え、次の`make update`の基点が古いままになる。[META-07](issue-pr-flow.md)の「ブランチ名とコミットの1行目」も、派生がマージコミットで本体のコミットを取り込むことを前提にしている。マージコミットの1行目はGitHubの既定の「Merge pull request #N ...」になるが、CIの`names`はマージコミットを確かめないので、直さなくてよい。
 

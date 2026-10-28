@@ -426,7 +426,7 @@ def cmd_upgrade(args: argparse.Namespace) -> int:
 
     try:
         if args.label:
-            # make updateが、マージのメッセージに入れる版を読む。fetchはmake updateが済ませる
+            # make updateが、マージのメッセージに入れるバージョンを読む。fetchはmake updateが済ませる
             print(upgrade_mod.inspect_label(root))
             return 0
         result = upgrade_mod.inspect(root)
@@ -441,7 +441,7 @@ def cmd_upgrade(args: argparse.Namespace) -> int:
     print("")
 
     if result["ahead"]:
-        print("ローカルのほうが新しい版である。テンプレート本体で実行していないかを確かめる。")
+        print("ローカルのほうが新しいバージョンである。テンプレート本体で実行していないかを確かめる。")
         return 0
 
     if not result["behind"]:
@@ -453,7 +453,7 @@ def cmd_upgrade(args: argparse.Namespace) -> int:
         print("下の移行手順を読んでから取り込む。")
         print("")
 
-    print(f"取り込みの版: {result['label']}")
+    print(f"取り込みのバージョン: {result['label']}")
     print("")
 
     for layer in result["layers"]:
@@ -624,7 +624,7 @@ def build_parser() -> argparse.ArgumentParser:
         "--version",
         action="version",
         version=f"graph-doc-template {TEMPLATE_VERSION}",
-        help="テンプレートの版を表示する（変更履歴はTEMPLATE_CHANGELOG.md）",
+        help="テンプレートのバージョンを表示する（変更履歴はTEMPLATE_CHANGELOG.md）",
     )
     parser.add_argument("--root", help="リポジトリの根（既定はこのファイルの場所から推定する）")
     sub = parser.add_subparsers(dest="command", required=True)
@@ -804,7 +804,7 @@ def build_parser() -> argparse.ArgumentParser:
     p_upgrade.add_argument(
         "--label",
         action="store_true",
-        help="取り込みの版（ブランチ名とマージのメッセージに入れるもの）だけを出す。fetchはしない",
+        help="取り込みのバージョン（ブランチ名とマージのメッセージに入れるもの）だけを出す。fetchはしない",
     )
     p_upgrade.set_defaults(func=cmd_upgrade)
 

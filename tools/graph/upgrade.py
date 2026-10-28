@@ -9,11 +9,11 @@
 何も起きないので、気づく機会が無い。
 
 テンプレートは層を重ねられる（下の層のgraph-doc-templateの上に、上の層を重ねる）。
-版と変更履歴は層ごとに持ち、層ごとに比べる（setopic/graph-doc-template#125）。
-下の層の版だけを比べると、上の層だけの変更を「取り込むものは無い」と誤って伝える。
+バージョンと変更履歴は層ごとに持ち、層ごとに比べる（setopic/graph-doc-template#125）。
+下の層のバージョンだけを比べると、上の層だけの変更を「取り込むものは無い」と誤って伝える。
 
-- 下の層（graph-doc-template）の版は`tools/graph/version.py`、変更履歴は`TEMPLATE_CHANGELOG.md`
-- 上の層は、`tools/graph/layers/<層の名前>.toml`を1つ置き、版と変更履歴の場所を書く
+- 下の層（graph-doc-template）のバージョンは`tools/graph/version.py`、変更履歴は`TEMPLATE_CHANGELOG.md`
+- 上の層は、`tools/graph/layers/<層の名前>.toml`を1つ置き、バージョンと変更履歴の場所を書く
 
 上の層のファイルは層ごとに名前が違うので、層を重ねても取り込みで競合しない。
 """
@@ -33,7 +33,7 @@ BRANCH = "main"
 VERSION_PATH = "tools/graph/version.py"
 CHANGELOG_PATH = "TEMPLATE_CHANGELOG.md"
 
-# 下の層。版と変更履歴の場所は、上の層の宣言より前から決まっているので、ここに書く
+# 下の層。バージョンと変更履歴の場所は、上の層の宣言より前から決まっているので、ここに書く
 BASE_LAYER = "graph-doc-template"
 BASE_REPOSITORY = "https://github.com/setopic/graph-doc-template.git"
 
@@ -44,8 +44,8 @@ LAYER_KEYS = ("name", "label", "below", "version", "changelog", "repository")
 LABEL_RE = re.compile(r"^[a-z][a-z0-9]*$")
 
 VERSION_RE = re.compile(r'TEMPLATE_VERSION\s*=\s*["\']([^"\']+)["\']')
-# 変更履歴の見出しの形（例: "## 1.2.0（2026-08-14）"）。版の後ろは問わない。
-# 1.43.2までの見出しは版と日付をダッシュでつないでいた。上の層や派生の変更履歴には残っているので、どちらも読む
+# 変更履歴の見出しの形（例: "## 1.2.0（2026-08-14）"）。バージョンの後ろは問わない。
+# 1.43.2までの見出しはバージョンと日付をダッシュでつないでいた。上の層や派生の変更履歴には残っているので、どちらも読む
 ENTRY_RE = re.compile(r"^##\s+(\d+\.\d+\.\d+)\b(.*)$")
 
 # check-attrに一度に渡す経路の数。多すぎると、コマンド行の長さの上限に当たる
@@ -55,16 +55,16 @@ ATTR_CHUNK = 100
 
 @dataclass(frozen=True)
 class Layer:
-    """テンプレートの1つの層。版は、読めなければNoneにする。"""
+    """テンプレートの1つの層。バージョンは、読めなければNoneにする。"""
 
     name: str
     version: str | None
     changelog: str
     repository: str
-    # 取り込みのブランチ名で、版の前に付ける名前。下の層は付けない（`chore/template-<版>`のまま）
+    # 取り込みのブランチ名で、バージョンの前に付ける名前。下の層は付けない（`chore/template-<バージョン>`のまま）
     label: str | None = None
     below: str | None = None
-    # PRの題（squashのコミット）に版を求めるか。上の層は、tomlの`versioned_title`で選ぶ（META-07）
+    # PRの題（squashのコミット）にバージョンを求めるか。上の層は、tomlの`versioned_title`で選ぶ（META-07）
     versioned_title: bool = False
 
 
@@ -89,7 +89,7 @@ def read_remote_file(root: Path, path: str) -> str | None:
 
 
 def changelog_entries(text: str, newer_than: tuple[int, ...]) -> list[tuple[str, str]]:
-    """`newer_than`より新しい版の項目を、新しい順に返す。"""
+    """`newer_than`より新しいバージョンの項目を、新しい順に返す。"""
     entries: list[tuple[str, str]] = []
     current: str | None = None
     body: list[str] = []
@@ -226,7 +226,7 @@ def remote_layers(root: Path) -> list[Layer]:
 
 
 def compare(root: Path) -> list[dict]:
-    """テンプレートの側にある層ごとに、手元の版と比べる。下の層から順に返す。
+    """テンプレートの側にある層ごとに、手元のバージョンと比べる。下の層から順に返す。
 
     手元にしか無い層は比べない。上の層のテンプレート本体では、
     自分の層は手元にしか無く、`template`は1つ下の層を指しているからである。
@@ -236,15 +236,15 @@ def compare(root: Path) -> list[dict]:
     for theirs in remote_layers(root):
         remote = parse_version(theirs.version) if theirs.version else None
         if remote is None:
-            raise UpgradeError(f"テンプレートの{theirs.name}の版を読み取れなかった")
+            raise UpgradeError(f"テンプレートの{theirs.name}のバージョンを読み取れなかった")
         ours = local.get(theirs.name)
         local_text = ours.version if ours else None
         current = parse_version(local_text) if local_text else None
         if ours is not None and current is None:
-            raise UpgradeError(f"手元の{theirs.name}の版を読み取れなかった")
+            raise UpgradeError(f"手元の{theirs.name}のバージョンを読み取れなかった")
 
         # 手元に無い層は、まだ一度も取り込んでいない。遅れているとして扱い、
-        # 変更履歴は全部を出さない（版の宣言より前の項目まで並んでしまう）
+        # 変更履歴は全部を出さない（バージョンの宣言より前の項目まで並んでしまう）
         behind = current is None or remote > current
         entries: list[tuple[str, str]] = []
         if current is not None and remote > current:
@@ -269,9 +269,9 @@ def compare(root: Path) -> list[dict]:
 
 
 def label(layers: list[dict]) -> str:
-    """取り込みのブランチ名とマージのメッセージに入れる版。遅れている層だけを、下から並べる。
+    """取り込みのブランチ名とマージのメッセージに入れるバージョン。遅れている層だけを、下から並べる。
 
-    下の層は版だけ（`1.38.0`）、上の層は層の宣言の`label`を前に付ける（`<label>-0.14.0`）。
+    下の層はバージョンだけ（`1.38.0`）、上の層は層の宣言の`label`を前に付ける（`<label>-0.14.0`）。
     両方が遅れていれば`1.38.0-<label>-0.14.0`になる。遅れている層が無ければ空にする。
     """
     parts = []
@@ -297,7 +297,7 @@ def _require_remote(root: Path) -> None:
 
 
 def inspect_label(root: Path) -> str:
-    """取り込みの版（`label`）だけを返す。fetchはしない。`make update`が先に済ませる。"""
+    """取り込みのバージョン（`label`）だけを返す。fetchはしない。`make update`が先に済ませる。"""
     _require_remote(root)
     return label(compare(root))
 

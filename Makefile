@@ -42,12 +42,12 @@ help:
 # 初回だけは、履歴を共有していないので、引数を足す。
 #   make update UPDATE_ARGS=--allow-unrelated-histories
 #
-# マージコミットのメッセージは「テンプレートの<版>を取り込む」にする（setopic/graph-doc-template#116）。
+# マージコミットのメッセージは「テンプレートの<バージョン>を取り込む」にする（setopic/graph-doc-template#116）。
 # 渡さないと、gitの既定の英語の文が付く。メッセージはファイルに書いて-Fで渡す。
 # Windowsのmakeはcmd経由で引数を渡すので、-mで日本語を渡すと文字が化ける。
-# 版は、取り込んだ後のテンプレートの版を読むので、fetchが済んでから展開する
+# バージョンは、取り込んだ後のテンプレートのバージョンを読むので、fetchが済んでから展開する
 # （makeはレシピの全行を、最初の行を実行する前に展開する。だからfetchを別のターゲットにする）。
-# 版は層ごとにあるので、遅れている層の版を`upgrade --label`で並べる（setopic/graph-doc-template#125）。
+# バージョンは層ごとにあるので、遅れている層のバージョンを`upgrade --label`で並べる（setopic/graph-doc-template#125）。
 # 下の層だけなら「1.38.0」、上の層だけなら「<label>-0.14.0」のようになる。
 # UPDATE_ARGSに-mを足すと、そのメッセージは次の段落に付く。
 UPDATE_ARGS ?=

@@ -46,7 +46,7 @@ class Subject(unittest.TestCase):
         for subject in (
             "サンプルを配るテンプレートではreset-samplesを回さない",  # いまの書き方
             "feature: 種類の綴りが違う",
-            "feat(1.36.14): 版は括弧に入れない",
+            "feat(1.36.14): バージョンは括弧に入れない",
             "feat:空白が無い",
             "Feat: 大文字で始まる",
             "テンプレートの1.36.14を取り込む",
@@ -76,7 +76,7 @@ class Title(unittest.TestCase):
 
 @unittest.skipUnless(SCRIPT.exists(), "check_names.pyを消したリポジトリでは飛ばす")
 class VersionedRepositories(unittest.TestCase):
-    """版を求めるリポジトリは、層の宣言から決まる（#131）。"""
+    """バージョンを求めるリポジトリは、層の宣言から決まる（#131）。"""
 
     def setUp(self):
         self.names = load_script()

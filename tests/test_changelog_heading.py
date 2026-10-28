@@ -1,6 +1,6 @@
-"""変更履歴の見出しの形を変えても、upgradeが版を読めることのテスト（setopic/graph-doc-template#135）。
+"""変更履歴の見出しの形を変えても、upgradeがバージョンを読めることのテスト（setopic/graph-doc-template#135）。
 
-1.43.3で、見出しを版と日付をダッシュでつなぐ形から`## 1.2.3（2026-10-21）`の形に改めた。
+1.43.3で、見出しをバージョンと日付をダッシュでつなぐ形から`## 1.2.3（2026-10-21）`の形に改めた。
 上の層や派生の変更履歴は古い形のまま取り込まれることがあるので、upgradeは新旧どちらの形も読む。
 """
 
@@ -42,7 +42,7 @@ class ChangelogEntriesTest(unittest.TestCase):
         self.assertEqual(entries, [("0.2.0", "変更")])
 
     def test_mixed_headings_keep_version_order(self) -> None:
-        # 新しい版だけを新しい形にし、古い版は古い形のまま残した変更履歴
+        # 新しいバージョンだけを新しい形にし、古いバージョンは古い形のまま残した変更履歴
         text = changelog(new_heading("1.10.0"), new_heading("1.9.1"), old_heading("1.9.0"), old_heading("1.2.0"))
         versions = [version for version, _ in upgrade.changelog_entries(text, (1, 2, 0))]
         self.assertEqual(versions, ["1.10.0", "1.9.1", "1.9.0"])
@@ -68,7 +68,7 @@ class TemplateChangelogTest(unittest.TestCase):
         self.assertEqual(entries[0][0], TEMPLATE_VERSION)
 
     def test_versions_are_strictly_descending(self) -> None:
-        # 見出しを書き換えた後も、新しい順に並び、版の比較が崩れていない
+        # 見出しを書き換えた後も、新しい順に並び、バージョンの比較が崩れていない
         versions = [upgrade.parse_version(v) for v, _ in upgrade.changelog_entries(self.text, (0, 0, 0))]
         self.assertNotIn(None, versions)
         self.assertEqual(versions, sorted(versions, reverse=True))

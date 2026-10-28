@@ -10,4 +10,4 @@
 
 テキストを書き出すときは、必ず`encoding="utf-8"`と`newline="\n"`を渡す。**既定に任せると、Windowsでだけ改行がCRLFに、文字コードがcp932になる。** gitが改行を正規化するので、`git status`にも出ない。`test_newline_discipline`が構文木を調べて、渡し忘れを見つける。
 
-動作を保証するPythonの下限は、`version.py`の`MIN_PYTHON`である。開発機・CI・本番で実際に回している版で、願望ではない。下限を動かすなら、CIの`python-version`とREADMEも同時に直す。ずれると`test_python_floor`が落ちる。
+動作を保証するPythonの下限は、`version.py`の`MIN_PYTHON`である。開発機・CI・本番で実際に回しているバージョンで、願望ではない。下限を動かすなら、CIの`python-version`とREADMEも同時に直す。ずれると`test_python_floor`が落ちる。

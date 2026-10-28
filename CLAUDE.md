@@ -192,7 +192,7 @@ python -m tools.graph path CON-01 ARCH-01
 
 ## テンプレート本体やツールを直すとき
 
-このリポジトリがテンプレート本体（`graph-doc-template`）なら、変更を`TEMPLATE_CHANGELOG.md`に記録し、`tools/graph/version.py`の版を上げる。どの箇所を上げるかと、移行手順の決まりは、`TEMPLATE_CHANGELOG.md`の「版の付け方」にある。`tools/graph/`を直す前には、`tools/graph/MAINTAINING.md`を読む。
+このリポジトリがテンプレート本体（`graph-doc-template`）なら、変更を`TEMPLATE_CHANGELOG.md`に記録し、`tools/graph/version.py`のバージョンを上げる。どの箇所を上げるかと、移行手順の決まりは、`TEMPLATE_CHANGELOG.md`の「バージョンの付け方」にある。`tools/graph/`を直す前には、`tools/graph/MAINTAINING.md`を読む。
 
 ## issueとPR
 

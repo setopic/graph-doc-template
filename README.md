@@ -170,8 +170,8 @@ python -m tools.graph render --format mermaid --focus DOM-01
 | `python -m tools.graph new --from <file>` | 1行に1ノードを書いたファイルから、まとめて作る |
 | `python -m tools.graph reset-samples` | 同梱のサンプルノードをまとめて取り除く |
 | `python -m tools.graph upgrade` | テンプレートとの差を調べる（読み取りのみ） |
-| `python -m tools.graph upgrade --label` | 取り込みの版だけを出す（`make update`が使う。fetchはしない） |
-| `python -m tools.graph --version` | テンプレートの版を表示する |
+| `python -m tools.graph upgrade --label` | 取り込みのバージョンだけを出す（`make update`が使う。fetchはしない） |
+| `python -m tools.graph --version` | テンプレートのバージョンを表示する |
 | `python -m tools.graph stats` | ノード数・エッジ数を集計し、構造の見直しの候補を出す（下の「構造の見直しの候補」） |
 | `python -m tools.graph review` | 本文の質をAIに見てもらう（任意・通信あり） |
 | `python -m unittest discover -s tests -t .` | ツール自体のテスト |
@@ -306,7 +306,7 @@ python -m tools.graph linkify
 
 ## テンプレートの更新を取り込む
 
-このテンプレートから作ったプロジェクトに、あとからテンプレート側の改善を反映する手順は、[META-08 テンプレートの更新を取り込む](docs/00-meta/template-upgrade.md)にある。初回の準備、`make update`での取り込み、テンプレートの層ごとの版、取り込みのPRの書き方を扱う。
+このテンプレートから作ったプロジェクトに、あとからテンプレート側の改善を反映する手順は、[META-08 テンプレートの更新を取り込む](docs/00-meta/template-upgrade.md)にある。初回の準備、`make update`での取り込み、テンプレートの層ごとのバージョン、取り込みのPRの書き方を扱う。
 
 手順をこのREADMEに置かないのは、`README.md`が`.gitattributes`の`merge=ours`で、プロジェクトが書き換えたあとは取り込みが届かないからである。META-08は共通ファイルなので、取り込むたびに手順も新しくなる。
 
