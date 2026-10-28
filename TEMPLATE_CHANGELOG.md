@@ -26,6 +26,20 @@ python -m tools.graph --version
 
 ---
 
+## 1.57.0（2026-10-28）
+
+### 追加
+
+READMEのSVGの図から、動きのあるGIFを作る`gif`コマンドと`make gif`を足した（#203）。スライドや記事には、SVGの動きを貼れないことが多いからである。SVGの動きの1周を1秒10コマに分け、コマごとにEdgeかChromeのヘッドレスでPNGに撮り、Pillowで1つのGIFにまとめる。書き出し先の既定は`docs/graph.gif`で、`.gitignore`で外した。
+
+EdgeかChromeとPillowが無ければ、何が要るかを示して終わる。このツールは標準ライブラリだけで動くことを前提にしているので、Pillowは`gif`コマンドの中だけで読む。CIでは作らない。使い方はREADMEの「GIFにする」に、外部依存の例外は`tools/graph/MAINTAINING.md`に書いた。
+
+### 取り込む側の作業
+
+なし。GIFが要るときだけ、Pillowを入れて`make gif`を回す。
+
+---
+
 ## 1.56.0（2026-10-28）
 
 ### 追加

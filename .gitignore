@@ -10,6 +10,7 @@ venv/
 docs/graph.mmd
 docs/graph.json
 docs/graph.dot
+docs/graph.gif
 
 .DS_Store
 .idea/

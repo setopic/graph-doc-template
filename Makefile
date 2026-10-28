@@ -23,7 +23,7 @@ README_GRAPH_FORMAT ?= svg
 README_GRAPH_SVG ?= docs/graph.svg
 README_GRAPH_OUT = $(if $(filter svg,$(README_GRAPH_FORMAT)),--out $(README_GRAPH_SVG))
 
-.PHONY: help setup update update-fetch check strict sync sync-check linkify linkify-check graph json readme readme-check stats all
+.PHONY: help setup update update-fetch check strict sync sync-check linkify linkify-check graph json readme readme-check gif stats all
 
 help:
 	@echo "setup         以前のsetupが常設したmerge=oursドライバの設定を外す（何度実行してもよい）"
@@ -38,6 +38,7 @@ help:
 	@echo "json          docs/graph.jsonを書き出す"
 	@echo "readme        READMEの図を再生成する（既定はSVG。graph.mkのREADME_GRAPH_FORMATで選ぶ）"
 	@echo "readme-check  READMEの図が古ければ失敗する（CI用）"
+	@echo "gif           READMEのSVGの図からdocs/graph.gifを作る（任意。EdgeかChromeとPillowが要る）"
 	@echo "stats         ノード数・エッジ数を表示する"
 	@echo "all           check + sync + linkify + readme"
 
@@ -99,6 +100,10 @@ readme:
 
 readme-check:
 	$(PYTHON) -m tools.graph render --format $(README_GRAPH_FORMAT) --into README.md --check $(README_GRAPH_OUT) $(README_GRAPH_ARGS)
+
+# スライドや記事に貼るGIF。CIでは作らない。docs/graph.gifは.gitignoreで外してある
+gif:
+	$(PYTHON) -m tools.graph gif --svg $(README_GRAPH_SVG) --out docs/graph.gif
 
 graph:
 	$(PYTHON) -m tools.graph render --format mermaid --out docs/graph.mmd

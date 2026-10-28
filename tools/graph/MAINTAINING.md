@@ -6,7 +6,7 @@
 
 検証ルールは`tools/graph/rules.py`に、1ルール1関数で並んでいる。ルールを足したら、`RULE_INDEX`と`graph-rules.md`の一覧の両方に追記する。テストも足し、`tests/`に`unittest`で置く。`python -m unittest discover -s tests -t .`が、CIで最初に回るテストである。テストどうしの読み込みは`from tests.helpers import make_graph`のように`tests.`から書く。`from .helpers`と書くと、`-t .`を付けずに回したときに読み込みで落ちる。
 
-外部依存を足さない。標準ライブラリだけで動くことが、このツールの前提である。`check`はオフラインで完結させる。通信するのは`review`だけで、`review`はCIから呼ばず、終了コードも常に0である（`docs/00-meta/ai-review.md`）。
+外部依存を足さない。標準ライブラリだけで動くことが、このツールの前提である。例外は`gif`コマンド（`tools/graph/gif.py`）だけで、ブラウザとPillowを使う。GIFはスライドや記事に貼るための任意のもので、CIでは作らない。Pillowは`gif.py`の関数の中で読み、ほかのモジュールからは読まない。無ければ、何が要るかを示して終わる。`check`はオフラインで完結させる。通信するのは`review`だけで、`review`はCIから呼ばず、終了コードも常に0である（`docs/00-meta/ai-review.md`）。
 
 テキストを書き出すときは、必ず`encoding="utf-8"`と`newline="\n"`を渡す。**既定に任せると、Windowsでだけ改行がCRLFに、文字コードがcp932になる。** gitが改行を正規化するので、`git status`にも出ない。`test_newline_discipline`が構文木を調べて、渡し忘れを見つける。
 

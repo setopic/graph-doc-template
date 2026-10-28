@@ -93,6 +93,25 @@ make readme
 
 色・フォント・線の太さ・動きは、SVGに埋め込むCSSのテーマで決める。自分のテーマへの差し替え方と、動きを止める設定は、[META-02](docs/00-meta/node-types.md)の「図のテーマと動き」にある。READMEの図をMermaidで描きたいリポジトリは、`graph.mk`に`README_GRAPH_FORMAT = mermaid`を置く。
 
+### GIFにする
+
+スライドや記事には、SVGの動きを貼れないことが多い。そのときは、`make gif`でREADMEのSVGの図から`docs/graph.gif`を作る。`docs/graph.gif`は`.gitignore`で外してあり、CIでは作らない。
+
+```bash
+make gif
+```
+
+GIFを作るには、EdgeかChrome（Chromium）と、Pillow（`python -m pip install Pillow`）が要る。どちらかが無ければ、何が要るかを示して終わる。SVGの動きの1周を1秒10コマに分け、コマごとにブラウザのヘッドレスでPNGに撮り、Pillowで1つのGIFにまとめる。ブラウザがPATHに無いなら、`--browser`か環境変数`GRAPH_BROWSER`で実行ファイルを指す。ほかの図をGIFにするときは、`render --format svg --out <ファイル>`で書き出してから、`gif --svg <ファイル>`に渡す。
+
+| オプション | 意味 | 既定 |
+| --- | --- | --- |
+| `--svg` | 元にするSVG | `docs/graph.svg` |
+| `--out` | GIFの書き出し先 | `docs/graph.gif` |
+| `--fps` | 1秒あたりのコマの数 | 10 |
+| `--scale` | 拡大率 | 1 |
+| `--dark` | ダークモードの色で撮る | 付けない |
+| `--jobs` | 同時に動かすブラウザの数 | 4 |
+
 ### 近傍だけを描く
 
 ノードが増えると、全体図は読めなくなる。`--focus`を使うと、1つのノードの周りだけを切り出せる。
@@ -129,6 +148,7 @@ python -m tools.graph render --format mermaid --focus DOM-01
 | `python -m tools.graph render --format svg --into README.md` | SVGを`docs/graph.svg`（`--out`で変えられる）に書き、READMEにその画像への参照を書く |
 | `python -m tools.graph render --into README.md` | READMEにMermaidの図を書き込む |
 | `python -m tools.graph render --into README.md --check` | 図が古ければ終了コード1（CI用）。SVGなら、書き出したファイルも比べる |
+| `python -m tools.graph gif` | SVGの図から、動きのあるGIFを作る（任意。EdgeかChromeとPillowが要る） |
 | `python -m tools.graph new --type usecase --id UC-02 --title "..."` | 雛形からノードを作る |
 | `python -m tools.graph new --from <file>` | 1行に1ノードを書いたファイルから、まとめて作る |
 | `python -m tools.graph reset-samples` | 同梱のサンプルノードをまとめて取り除く |

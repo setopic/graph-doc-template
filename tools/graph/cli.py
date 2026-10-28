@@ -8,6 +8,7 @@
     python -m tools.graph reset-samples  サンプルノードをまとめて取り除く
     python -m tools.graph stats          ノード数・エッジ数と、構造の見直しの候補を出す
     python -m tools.graph path           2つのノードを結ぶ前提の経路を出す
+    python -m tools.graph gif            SVGの図から、動きのあるGIFを作る（任意。ブラウザとPillowが要る）
 """
 
 from __future__ import annotations
@@ -552,6 +553,28 @@ def cmd_stats(args: argparse.Namespace) -> int:
     return 0
 
 
+def cmd_gif(args: argparse.Namespace) -> int:
+    # Pillowは外部依存なので、このコマンドを呼んだときだけ読む
+    from . import gif
+
+    root = _repo_root(args.root)
+    svg_path = Path(args.svg)
+    if not svg_path.is_absolute():
+        svg_path = root / svg_path
+    out_path = Path(args.out)
+    if not out_path.is_absolute():
+        out_path = root / out_path
+    return gif.run(
+        svg_path,
+        out_path,
+        browser=args.browser,
+        fps=args.fps,
+        scale=args.scale,
+        dark=args.dark,
+        jobs=args.jobs,
+    )
+
+
 def cmd_path(args: argparse.Namespace) -> int:
     root = _repo_root(args.root)
     graph = load(root)
@@ -756,6 +779,27 @@ def build_parser() -> argparse.ArgumentParser:
         "近いノードから残す。外したノードはomittedに名前だけを出す",
     )
     p_render.set_defaults(func=cmd_render)
+
+    p_gif = sub.add_parser(
+        "gif",
+        help="SVGの図から、動きのあるGIFを作る（任意。EdgeかChromeとPillowが要る）",
+    )
+    p_gif.add_argument(
+        "--svg",
+        default="docs/graph.svg",
+        help="元にするSVG（render --format svgで書き出したもの。既定はdocs/graph.svg）",
+    )
+    p_gif.add_argument("--out", default="docs/graph.gif", help="GIFの書き出し先（既定はdocs/graph.gif）")
+    p_gif.add_argument("--fps", type=float, default=10, help="1秒あたりのコマの数（既定は10）")
+    p_gif.add_argument("--scale", type=float, default=1, help="拡大率（既定は1。2にすると縦横2倍）")
+    p_gif.add_argument("--dark", action="store_true", help="ダークモードの色で撮る")
+    p_gif.add_argument(
+        "--browser",
+        metavar="PATH",
+        help="EdgeかChromeの実行ファイル（省略したときは、環境変数GRAPH_BROWSER、PATH、よくある置き場所の順に探す）",
+    )
+    p_gif.add_argument("--jobs", type=int, default=4, help="同時に動かすブラウザの数（既定は4）")
+    p_gif.set_defaults(func=cmd_gif)
 
     p_path = sub.add_parser(
         "path",
