@@ -102,6 +102,7 @@ make readme
 | 知っておくこと | 説明 |
 | --- | --- |
 | サンプルノードは毎回追加される | マージは、テンプレート側にしかないファイルをそのまま足す。そのため、`reset-samples`で消すところまでが1セットである。省くと、プロジェクト側の同じidと衝突して`G002`が残る。サンプルノードを配るテンプレートは例外で、`reset-samples`を回さない |
+| READMEの図の`docs/graph.svg`も`merge=ours`である | `make readme`がプロジェクトのノードから作るので、`README.md`と同じく、プロジェクト側を残す。READMEの図をMermaidにしたプロジェクト（`graph.mk`に`README_GRAPH_FORMAT = mermaid`）では使われないが、消すとテンプレートが変えたときにmodify/deleteの競合になるので、消さずに残す |
 | `README.md`と`docs/index.md`は競合しない | `make update`で取り込めば、`.gitattributes`の`merge=ours`で、プロジェクト側が優先される。ただし優先されるのは、プロジェクトが書き換えたファイルだけである（下の段落）。`git merge`を直接使うと`merge=ours`が使われず、競合する。テンプレート側の改善を取り込みたいときは、`git diff HEAD template/main -- README.md`で差分を見て、手で反映する |
 | テンプレートがサンプルノードを変更したときだけ、modify/deleteの競合が出る | `git rm <path>`で解決してよい |
 | 初回のマージだけ`--allow-unrelated-histories`が要る | GitHubの"Use this template"は、履歴を引き継がないため |

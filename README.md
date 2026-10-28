@@ -73,7 +73,7 @@ tools/graph/            検証・可視化・生成ツール（依存なし）
 
 ## グラフ
 
-同梱のサンプルノードで作ったグラフである。実線が`depends_on`と`refines`、破線が`related`と`decides`を表す。点線の枠は`draft`のノードである。
+同梱のサンプルノードで作ったグラフである。層を列にして、左から40 契約、30 ユースケース、20 ドメイン、10 アーキテクチャの順に並べる。層のルールの対象外の種別は帯に置き、決定記録は上、メタ / 規約は下に並べる。実線が`depends_on`と`refines`、破線が`related`と`decides`を表す。点線の枠は`draft`のノードである。`depends_on`の線の上を点が流れ、行き着いた先の箱がわずかに光る。
 
 `related`は向きの無い関係なので、矢印の無い破線で描く。2つのノードの両方に書いてあっても、線は1本である。線を1本も持たないノード（目次など）は、図に出さない。
 
@@ -81,55 +81,17 @@ tools/graph/            検証・可視化・生成ツール（依存なし）
 
 <!-- この図は render --into が生成する。手で編集しない -->
 
-```mermaid
-graph LR
-  subgraph meta["メタ / 規約"]
-    META-01["META-01<br/>グラフの規約"]
-    META-02["META-02<br/>ノード種別と層"]
-    META-03["META-03<br/>本文のレビュー（AI）"]
-    META-07["META-07<br/>issueとPRの流れ"]
-    META-08["META-08<br/>テンプレートの更新を取り込む"]
-  end
-  subgraph architecture["アーキテクチャ"]
-    ARCH-01["ARCH-01<br/>システム全体構成"]
-    ARCH-02["ARCH-02<br/>ワーカーの実行モデル"]
-  end
-  subgraph domain["ドメイン"]
-    DOM-01["DOM-01<br/>予約"]
-  end
-  subgraph usecase["ユースケース"]
-    UC-01["UC-01<br/>予約を確定する"]
-  end
-  subgraph contract["契約"]
-    CON-01["CON-01<br/>予約確定エンドポイント"]
-  end
-  subgraph adr["決定記録"]
-    ADR-0001["ADR-0001<br/>設計文書をグラフとして管理する"]
-  end
-  ADR-0001 -.->|decides| META-01
-  ADR-0001 -.->|decides| ARCH-01
-  ARCH-02 -->|refines| ARCH-01
-  CON-01 -->|depends_on| UC-01
-  CON-01 -->|depends_on| DOM-01
-  DOM-01 -->|depends_on| ARCH-01
-  META-01 -.-|related| META-02
-  META-01 -.-|related| META-03
-  META-01 -.-|related| META-07
-  META-01 -.-|related| META-08
-  META-07 -.-|related| META-08
-  UC-01 -->|depends_on| DOM-01
-  classDef draft stroke-dasharray: 4\,3;
-  classDef deprecated opacity:0.5;
-  class CON-01 draft;
-```
+![設計文書のグラフ](docs/graph.svg)
 
 <!-- graph:diagram:end -->
 
-図は`render --into`が生成する。図が最新かどうかは、CIが検証している。
+図は`make readme`が生成する。SVGを`docs/graph.svg`に書き、マーカーの中にはその画像への参照を書く。図が最新かどうかは、CIが検証している。
 
 ```bash
-python -m tools.graph render --format mermaid --into README.md
+make readme
 ```
+
+色・フォント・線の太さ・動きは、SVGに埋め込むCSSのテーマで決める。自分のテーマへの差し替え方と、動きを止める設定は、[META-02](docs/00-meta/node-types.md)の「図のテーマと動き」にある。READMEの図をMermaidで描きたいリポジトリは、`graph.mk`に`README_GRAPH_FORMAT = mermaid`を置く。
 
 ### 近傍だけを描く
 
@@ -156,7 +118,7 @@ python -m tools.graph render --format mermaid --focus DOM-01
 | `python -m tools.graph sync --check` | 作り直しが必要なら終了コード1（CI用） |
 | `python -m tools.graph linkify` | 本文の`[[ID]]`を相対リンクに直す |
 | `python -m tools.graph linkify --check` | 直す必要があれば終了コード1（CI用） |
-| `python -m tools.graph render --format mermaid\|json\|dot` | 図やデータを書き出す |
+| `python -m tools.graph render --format mermaid\|svg\|json\|dot` | 図やデータを書き出す |
 | `python -m tools.graph render --focus <ID>` | そのノードの近傍だけを描く（`--depth N`） |
 | `python -m tools.graph render --format json --focus <ID> --budget <文字数>` | 本文の文字数の合計が収まる範囲で、近傍を近い順に残す |
 | `python -m tools.graph path <FROM> <TO>` | `depends_on`・`refines`を辿って、2つのノードを結ぶ最短の経路を出す |
@@ -164,8 +126,9 @@ python -m tools.graph render --format mermaid --focus DOM-01
 | `python -m tools.graph render --hide-edges decides,supersedes` | 挙げた種類の線を描かない。その線しか持たないノードも外れる |
 | `python -m tools.graph render --type domain` | 挙げた種別のノードだけを描き、ほかの種別は型ごとの箱にまとめる |
 | `python -m tools.graph render --reduce` | ほかの`depends_on`を辿れば分かる依存を図から省く |
-| `python -m tools.graph render --into README.md` | READMEの図を作り直す |
-| `python -m tools.graph render --into README.md --check` | 図が古ければ終了コード1（CI用） |
+| `python -m tools.graph render --format svg --into README.md` | SVGを`docs/graph.svg`（`--out`で変えられる）に書き、READMEにその画像への参照を書く |
+| `python -m tools.graph render --into README.md` | READMEにMermaidの図を書き込む |
+| `python -m tools.graph render --into README.md --check` | 図が古ければ終了コード1（CI用）。SVGなら、書き出したファイルも比べる |
 | `python -m tools.graph new --type usecase --id UC-02 --title "..."` | 雛形からノードを作る |
 | `python -m tools.graph new --from <file>` | 1行に1ノードを書いたファイルから、まとめて作る |
 | `python -m tools.graph reset-samples` | 同梱のサンプルノードをまとめて取り除く |
@@ -247,14 +210,14 @@ contract | CON-02 | キャンセル API | cancel-api | draft | contract-http
 | `G015` | 依存先を変えたのに、依存元を見ていない（警告。gitの変更の窓を見る） |
 | `G016` | `implemented_by`の参照先が存在しない |
 | `G017` | 文書と実装の片方だけが変わった（警告。同じく変更の窓を見る） |
-| `G018` | READMEの図が、GitHubの描画上限（エッジ500本）に達した / 近づいた |
+| `G018` | READMEの図が、GitHubの描画上限（エッジ500本）に達した / 近づいた。SVGの図なら、線が多すぎて読めない |
 | `G019` | Markdownの表が途中で切れている（段落や空行が挟まっている） |
 | `G020` | 取り下げた決定を、断りなく現在の根拠として引いている（警告） |
 | `G021` | 自動生成ブロックより後ろに本文が残っている |
 | `G022` | 同じ用語が複数のドメインノードの用語表にあり、定義元へのリンクが無い（警告） |
 | `G023` | 契約が「対応」に挙げたユースケースを`depends_on`に書いていない（警告） |
 
-`G001`〜`G008`と`G016`は構造の誤りで、直さなければ文書として成り立たない。`G009`〜`G015`と`G017`・`G020`・`G022`・`G023`は健全性の警告で、承知のうえで放置してもよい（`--strict`を付ければ失敗として扱える）。`G018`は、上限に近づいていれば警告、達していればエラーになる。達した時点で、図は描画されていないからである。`G019`と`G021`はエラーである。切れた行はすでにただの文字列として表示されていて、自動ブロックの下に回った本文は読む人に届いていない。しきい値は、`graph.toml`の`[thresholds]`で変えられる（[META-02](docs/00-meta/node-types.md)の「しきい値」）。必須の節は、`graph.toml`の`[required_sections]`で変えられる（[META-02](docs/00-meta/node-types.md)の「必須の節」）。
+`G001`〜`G008`と`G016`は構造の誤りで、直さなければ文書として成り立たない。`G009`〜`G015`と`G017`・`G020`・`G022`・`G023`は健全性の警告で、承知のうえで放置してもよい（`--strict`を付ければ失敗として扱える）。`G018`は、上限に近づいていれば警告、達していればエラーになる。達した時点で、図は描画されていないからである。READMEの図がSVGなら、描画の上限が無いので、警告だけを出す。`G019`と`G021`はエラーである。切れた行はすでにただの文字列として表示されていて、自動ブロックの下に回った本文は読む人に届いていない。しきい値は、`graph.toml`の`[thresholds]`で変えられる（[META-02](docs/00-meta/node-types.md)の「しきい値」）。必須の節は、`graph.toml`の`[required_sections]`で変えられる（[META-02](docs/00-meta/node-types.md)の「必須の節」）。
 
 `G018`・`G019`・`G021`は、見た目と、読む人に届くかどうかを見ている。グラフの整合性はすべて通るのに、読む人のところで崩れている、という種類の問題が実際に起きたためである。`G021`は`sync`では直らない。`sync`はブロックをその場で入れ替えるだけで、後ろに回った本文は動かさない。
 
@@ -328,7 +291,7 @@ python -m tools.graph linkify
 
 PRのときは、別のジョブ（`refs`）が、PRの本文に書いたノードのidが実在するかも確かめる。もう1つのジョブ（`names`）は、ブランチ名・PRの題・コミットの1行目が決まりに合うかを確かめる（[META-07](docs/00-meta/issue-pr-flow.md)）。
 
-5つ目は、`render --into README.md --check`を`make`経由で呼ぶ。`graph.mk`の`README_GRAPH_ARGS`（`--aggregate`など）を付けて確かめるためである。5つ目があるので、グラフを変えたままREADMEの図を更新し忘れると、CIが落ちる。
+5つ目は、`render --into README.md --check`を`make`経由で呼ぶ。`graph.mk`の`README_GRAPH_ARGS`（`--aggregate`など）と`README_GRAPH_FORMAT`を付けて確かめるためである。5つ目があるので、グラフを変えたままREADMEの図を更新し忘れると、CIが落ちる。
 
 ## ライセンス
 

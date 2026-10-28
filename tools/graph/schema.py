@@ -298,6 +298,21 @@ DIAGRAM_BLOCK_END = "<!-- graph:diagram:end -->"
 MERMAID_MAX_EDGES = 500
 MERMAID_WARN_EDGES = 450
 
+# --------------------------------------------------------------------------
+# SVGの図（render --format svg）
+# --------------------------------------------------------------------------
+# renderは配置・箱・線・クラス名だけを出し、色・フォント・線の太さ・動きは
+# テーマのCSSで決める。CSSはSVGの中の<style>に埋め込む。GitHubはREADMEのSVGを
+# imgで出すので、外部のCSSやフォントは読めないからである。
+#
+# RENDER_THEME:   テーマのCSS（リポジトリの根からの相対パス）。Noneなら既定のテーマ
+#                 （tools/graph/themes/default.css）を使う
+# RENDER_ANIMATE: depends_onの線の上を点が流れる動き（SMIL）を出すか
+# RENDER_PERIOD:  動きの1周の秒数
+RENDER_THEME: str | None = None
+RENDER_ANIMATE = True
+RENDER_PERIOD = 6.0
+
 # 目次の一覧ブロックの目印。syncが中身を作り直す
 CHILDREN_START = "<!-- graph:children:start -->"
 CHILDREN_END = "<!-- graph:children:end -->"
@@ -382,6 +397,14 @@ def frontmatter_edge_kinds() -> tuple[str, ...]:
 #     [required_sections]
 #     domain = ["定義", "用語"]
 #
+# `[render]`の表には、SVGの図（render --format svg）のテーマと動きを書ける。
+# 上のRENDER_THEME・RENDER_ANIMATE・RENDER_PERIODを差し替える。
+#
+#     [render]
+#     theme = "docs/graph-theme.css"
+#     animate = true
+#     period = 6
+#
 # `[thresholds]`の表には、健全性のしきい値を書ける。上のSTALE_AFTER_DAYS（G011）と
 # MAX_INCOMING_DEPENDENCIES（G012）を、schema.pyを書き換えずに変えるためのものである。
 # schema.pyは共通ファイルなので、書き換えると取り込みのたびに競合する。
@@ -411,6 +434,7 @@ _TYPE_KEYS = {
     "template",
 }
 _THRESHOLD_KEYS = {"max_incoming_dependencies", "stale_after_days"}
+_RENDER_KEYS = {"theme", "animate", "period"}
 _TERMS_KEYS = {
     "section_heading": "TERM_SECTION_HEADING",
     "term_column": "TERM_COLUMN",
@@ -439,6 +463,9 @@ _DEFAULTS = {
     "TERM_COLUMN": TERM_COLUMN,
     "TERM_MEANING_COLUMN": TERM_MEANING_COLUMN,
     "TERM_OLD_NAME_COLUMN": TERM_OLD_NAME_COLUMN,
+    "RENDER_THEME": RENDER_THEME,
+    "RENDER_ANIMATE": RENDER_ANIMATE,
+    "RENDER_PERIOD": RENDER_PERIOD,
 }
 
 
@@ -452,6 +479,7 @@ def reset() -> None:
     global MAX_INCOMING_DEPENDENCIES, STALE_AFTER_DAYS
     global TERM_SECTION_HEADING, TERM_COLUMN, TERM_MEANING_COLUMN, TERM_OLD_NAME_COLUMN
     global TERM_OLD_NAME_COLUMNS
+    global RENDER_THEME, RENDER_ANIMATE, RENDER_PERIOD
     # 辞書は中身を入れ替える。ほかのモジュールが同じ辞書を参照しているためである
     NODE_TYPES.clear()
     NODE_TYPES.update(copy.deepcopy(_DEFAULTS["NODE_TYPES"]))
@@ -474,6 +502,9 @@ def reset() -> None:
     TERM_MEANING_COLUMN = _DEFAULTS["TERM_MEANING_COLUMN"]
     TERM_OLD_NAME_COLUMN = _DEFAULTS["TERM_OLD_NAME_COLUMN"]
     TERM_OLD_NAME_COLUMNS = (TERM_OLD_NAME_COLUMN, TERM_FORBIDDEN_COLUMN)
+    RENDER_THEME = _DEFAULTS["RENDER_THEME"]
+    RENDER_ANIMATE = _DEFAULTS["RENDER_ANIMATE"]
+    RENDER_PERIOD = _DEFAULTS["RENDER_PERIOD"]
 
 
 def configure(root: Path) -> None:
@@ -502,6 +533,7 @@ def configure(root: Path) -> None:
         "terms",
         "required_sections",
         "required_sections_refined",
+        "render",
     }
     if unknown:
         raise ConfigError(f"{CONFIG_FILE}に知らないキーがある: {', '.join(sorted(unknown))}")
@@ -516,6 +548,8 @@ def configure(root: Path) -> None:
         _apply_thresholds(data["thresholds"])
     if "terms" in data:
         _apply_terms(data["terms"])
+    if "render" in data:
+        _apply_render(root, data["render"])
     extend = data.get("extend_default_types", False)
     if not isinstance(extend, bool):
         raise ConfigError(f"{CONFIG_FILE}のextend_default_types: trueかfalseにする")
@@ -756,6 +790,37 @@ def _apply_thresholds(table: object) -> None:
             raise ConfigError(f"{where}: {key}は1以上の整数にする")
     MAX_INCOMING_DEPENDENCIES = table.get("max_incoming_dependencies", MAX_INCOMING_DEPENDENCIES)
     STALE_AFTER_DAYS = table.get("stale_after_days", STALE_AFTER_DAYS)
+
+
+def _apply_render(root: Path, table: object) -> None:
+    """[render]の表を読む。テーマのCSSは、リポジトリの根の中にあるファイルだけを受け付ける。"""
+    global RENDER_THEME, RENDER_ANIMATE, RENDER_PERIOD
+    where = f"{CONFIG_FILE}の[render]"
+    if not isinstance(table, dict):
+        raise ConfigError(f"{where}: 表で書く")
+    unknown = set(table) - _RENDER_KEYS
+    if unknown:
+        raise ConfigError(f"{where}: 知らないキーがある: {', '.join(sorted(unknown))}")
+    if "theme" in table:
+        value = table["theme"]
+        if not isinstance(value, str) or not value.strip():
+            raise ConfigError(f"{where}: themeは、リポジトリの根からの相対パスを空でない文字列で書く（例: docs/graph-theme.css）")
+        parts = value.strip().replace("\\", "/").split("/")
+        if value.strip().startswith(("/", "\\")) or ":" in parts[0] or any(p in ("", ".", "..") for p in parts):
+            raise ConfigError(f"{where}: themeは、リポジトリの根からの相対パスにする（/で始めない。.や..や空の区切りを使わない）: {value!r}")
+        rel = "/".join(parts)
+        if not (root / rel).is_file():
+            raise ConfigError(f"{where}: themeのファイルが無い: {rel}")
+        RENDER_THEME = rel
+    if "animate" in table:
+        if not isinstance(table["animate"], bool):
+            raise ConfigError(f"{where}: animateはtrueかfalseにする")
+        RENDER_ANIMATE = table["animate"]
+    if "period" in table:
+        period = table["period"]
+        if isinstance(period, bool) or not isinstance(period, (int, float)) or not 0 < period <= 600:
+            raise ConfigError(f"{where}: periodは、0より大きく600以下の秒数にする")
+        RENDER_PERIOD = float(period)
 
 
 def _apply_terms(table: object) -> None:

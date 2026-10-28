@@ -26,6 +26,43 @@ python -m tools.graph --version
 
 ---
 
+## 1.56.0（2026-10-28）
+
+### 追加
+
+`render`に`--format svg`を足し、`make readme`が描くREADMEの図の既定を、MermaidからSVGに変えた（#203）。Mermaidの図は配置をGitHubが決めるので、層の並びが図から読み取りにくく、見た目もリポジトリごとに変えられなかったからである。
+
+SVGの図は、層のルールの対象の種別を1種別1列にし、`layer`の大きい順に左から並べる。既定の種別では、40 契約、30 ユースケース、20 ドメイン、10 アーキテクチャの順になる。決定記録は上の帯、メタ / 規約と目次は下の帯に置く。列と帯の中の並びは重心法で決め、線の交差を減らす。2列以上離れた列を結ぶ線は間の列の箱の間を通し、帯と列を結ぶ線は列の上下と列の間の空いたところを通す。`depends_on`の線の上を点が流れ、行き着いた先の箱がわずかに光る（SVGのアニメーション要素で、6秒で1周する）。描くノードと線の選び方はMermaidの図と同じで、`--focus`・`--aggregate`・`--hide-edges`・`--type`・`--reduce`がそのまま効く。
+
+`render`が決めるのは、配置・箱・線と、要素のクラス名（種別、線の種類、`status`など）だけである。色・フォント・線の太さ・動きの見た目は、SVGに埋め込むCSSのテーマで決める。既定のテーマは`tools/graph/themes/default.css`で、ダークモードと、動きを減らす設定に合わせてある。`graph.toml`に`[render]`の表を足し、自分のテーマ（`theme`）、動きの有無（`animate`）、1周の秒数（`period`）を書けるようにした。書き方とクラス名の一覧は、[META-02](docs/00-meta/node-types.md)の「図のテーマと動き」にある。
+
+`make readme`は、SVGを`docs/graph.svg`に書き、READMEのマーカーの中にはその画像への参照を書く。`make readme-check`は、READMEのマーカーの中と、書き出したSVGのバイト列の両方を比べる。同じグラフと設定からは、同じバイト列を書き出す。`Makefile`に`README_GRAPH_FORMAT`（既定は`svg`）と`README_GRAPH_SVG`（既定は`docs/graph.svg`）を足した。Mermaidの図に戻すときは、`graph.mk`に次の1行を置く。
+
+```make
+README_GRAPH_FORMAT = mermaid
+```
+
+`G018`は、READMEの図がSVGなら、SVGの中の線を数える。SVGには描画の上限が無いので、線が450本以上のときに警告だけを出し、エラーにはしない。線が込み合うと、READMEの幅に縮めた図が読めないからである。Mermaidの図の扱いは変えていない。
+
+`.gitattributes`で、`docs/graph.svg`を`merge=ours`にした。`README.md`と同じく、プロジェクトのノードから作るものだからである。
+
+### 取り込む側の作業
+
+READMEの図を作り直してコミットする。取り込むと、`make readme-check`がSVGの図を求めるので、作り直すまでCIが落ちる。`README.md`は`merge=ours`なので、取り込みでは図は変わらない。
+
+```bash
+make readme
+git add README.md docs/graph.svg
+```
+
+取り込みでは、テンプレートのサンプルノードで描いた`docs/graph.svg`が入る。上の`make readme`が、プロジェクトのノードで描き直す。
+
+READMEの図をMermaidのままにするときは、`make readme`の前に、`graph.mk`に`README_GRAPH_FORMAT = mermaid`を置く。このときも、取り込みで入った`docs/graph.svg`は消さずに残す。消すと、テンプレートがこのファイルを変えたときに、取り込みでmodify/deleteの競合になる。
+
+`graph.mk`の`README_GRAPH_ARGS`に書いた`--aggregate`などは、SVGの図にもそのまま効く。
+
+---
+
 ## 1.55.3（2026-10-28）
 
 ### 修正

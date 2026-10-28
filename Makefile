@@ -1,10 +1,13 @@
 PYTHON ?= python
 
 # リポジトリ固有の設定があれば読む（無くてもよい）。
-# READMEの図がGitHubの描画上限（エッジ500本 / G018）に近づいたら、
-# **そのリポジトリのgraph.mkにだけ**次の1行を置く。
+# READMEの図の線が多すぎる（G018）なら、**そのリポジトリのgraph.mkにだけ**次の1行を置く。
 #
 #     README_GRAPH_ARGS = --aggregate
+#
+# READMEの図をSVGではなくMermaidで描くなら、graph.mkに次の1行を置く。
+#
+#     README_GRAPH_FORMAT = mermaid
 #
 # graph-doc-templateはgraph.mkを配らない。だから取り込み（make update）で
 # 競合せず、リポジトリごとに図の形を選べる。上の層のテンプレートがgraph.mkを
@@ -13,6 +16,12 @@ PYTHON ?= python
 
 # READMEの図に足す引数。既定は無し（全ノードをそのまま描く）。
 README_GRAPH_ARGS ?=
+
+# READMEの図の形式（svgかmermaid）と、SVGの書き出し先。
+# svgでは、SVGをファイルに書き、READMEのマーカーの中にはその画像への参照を書く。
+README_GRAPH_FORMAT ?= svg
+README_GRAPH_SVG ?= docs/graph.svg
+README_GRAPH_OUT = $(if $(filter svg,$(README_GRAPH_FORMAT)),--out $(README_GRAPH_SVG))
 
 .PHONY: help setup update update-fetch check strict sync sync-check linkify linkify-check graph json readme readme-check stats all
 
@@ -27,7 +36,7 @@ help:
 	@echo "linkify-check 直す必要があれば失敗する（CI用）"
 	@echo "graph         docs/graph.mmdを書き出す（Mermaid）"
 	@echo "json          docs/graph.jsonを書き出す"
-	@echo "readme        READMEの図を再生成する"
+	@echo "readme        READMEの図を再生成する（既定はSVG。graph.mkのREADME_GRAPH_FORMATで選ぶ）"
 	@echo "readme-check  READMEの図が古ければ失敗する（CI用）"
 	@echo "stats         ノード数・エッジ数を表示する"
 	@echo "all           check + sync + linkify + readme"
@@ -86,10 +95,10 @@ linkify-check:
 	$(PYTHON) -m tools.graph linkify --check
 
 readme:
-	$(PYTHON) -m tools.graph render --format mermaid --into README.md $(README_GRAPH_ARGS)
+	$(PYTHON) -m tools.graph render --format $(README_GRAPH_FORMAT) --into README.md $(README_GRAPH_OUT) $(README_GRAPH_ARGS)
 
 readme-check:
-	$(PYTHON) -m tools.graph render --format mermaid --into README.md --check $(README_GRAPH_ARGS)
+	$(PYTHON) -m tools.graph render --format $(README_GRAPH_FORMAT) --into README.md --check $(README_GRAPH_OUT) $(README_GRAPH_ARGS)
 
 graph:
 	$(PYTHON) -m tools.graph render --format mermaid --out docs/graph.mmd

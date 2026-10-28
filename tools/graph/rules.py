@@ -826,7 +826,7 @@ def rule_g017_implementation_drift(
 
 
 # --------------------------------------------------------------------------
-# G018: READMEの図がGitHubの描画上限に近い
+# G018: READMEの図がGitHubの描画上限に近い（SVGなら、線が多すぎて読めない）
 # --------------------------------------------------------------------------
 def rule_g018_diagram_size(graph: Graph) -> list[Issue]:
     """READMEに書き込まれた図が、GitHubの描画上限に収まっているか。
@@ -837,14 +837,33 @@ def rule_g018_diagram_size(graph: Graph) -> list[Issue]:
 
     上限を超えている場合は、エラーにする。図が丸ごと描画されず、READMEに
     図が表示されていない状態だからである。近づいているだけなら、警告にとどめる。
+
+    READMEの図がSVGなら、GitHubの描画上限は無い。それでも線が同じ本数を超えると、
+    READMEの幅に縮めた図は線が込み合って読めないので、警告だけを出す。
     """
     if graph.root is None:
         return []
 
     readme = graph.root / "README.md"
-    count = render.count_edges_in_markdown(readme)
-    if count is None or count < schema.MERMAID_WARN_EDGES:
+    found = render.diagram_in_markdown(readme)
+    if found is None:
         return []
+    fmt, count = found
+    if count < schema.MERMAID_WARN_EDGES:
+        return []
+
+    if fmt == "svg":
+        return [
+            Issue(
+                "G018",
+                WARN,
+                f"READMEの図（SVG）の線が{count}本ある。"
+                "SVGに描画の上限は無いが、READMEの幅に縮めると線が込み合って読めない。"
+                "graph.mkのREADME_GRAPH_ARGSに--hide-edgesか--reduceか--aggregateを置いて、"
+                "線を減らす",
+                "README.md",
+            )
+        ]
 
     # ちょうど上限でも描画されない。GitHubの文言が
     # 「500 edges found, but the limit is 500」で、その時点で図は消えている。

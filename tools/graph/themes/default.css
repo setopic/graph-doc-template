@@ -1,0 +1,75 @@
+/* graph-doc-templateの既定のテーマ（render --format svg）。
+   自分のテーマにするときは、このファイルを写して書き換え、graph.tomlの[render]のthemeで指す。
+   renderは配置とクラス名だけを出す。色・フォント・線の太さ・動きの見た目は、ここで決める。 */
+
+.graph {
+  --bg: #ffffff;
+  --lane: #f7f7f5;
+  --muted: #77756f;
+  --ink: #2b2a27;
+  --edge: #6f6d67;
+  --flow: #c8743a;
+  font-family: "Hiragino Sans", "Yu Gothic UI", "Meiryo", "Noto Sans JP", sans-serif;
+}
+
+.bg { fill: var(--bg); }
+.lane-bg { fill: var(--lane); rx: 10px; }
+.lane-label, .band-label { fill: var(--muted); font-size: 13px; font-weight: 600; }
+
+/* 箱。層の種別ごとに色と枠を分ける */
+.box { fill: #f3f3f1; stroke: #8a8a84; stroke-width: 1.6px; rx: 9px; }
+.t-contract .box { fill: #fdf2e9; stroke: #c8743a; }
+.t-usecase .box { fill: #eaf4ec; stroke: #3f8a52; }
+.t-domain .box { fill: #e9f0fb; stroke: #3b6db3; }
+.t-architecture .box { fill: #f1ecf9; stroke: #7652b0; }
+.t-adr .box { fill: #fbf6df; stroke: #a8891c; }
+.t-meta .box, .t-index .box { fill: #f3f3f1; stroke: #8a8a84; }
+.group .box { stroke-width: 2.4px; }
+.node-id { fill: var(--ink); font-size: 12px; font-weight: 700; }
+.node-title { fill: var(--ink); font-size: 12.5px; }
+
+/* status */
+.s-draft .box { stroke-dasharray: 5 3; }
+.s-deprecated { opacity: 0.5; }
+.focus .box { stroke-width: 3.2px; }
+
+/* 線 */
+.edge { fill: none; stroke: var(--edge); stroke-width: 1.6px; }
+.edge.k-related, .edge.k-decides, .edge.k-mentions { stroke-dasharray: 5 4; }
+.edge.k-supersedes { stroke-width: 2.6px; }
+.arrow-head { fill: var(--edge); }
+.edge-label {
+  fill: var(--muted);
+  font-size: 10.5px;
+  paint-order: stroke;
+  stroke: var(--bg);
+  stroke-width: 3px;
+}
+/* depends_onとrelatedは数が多いので、名前を書かない。まとめた線の本数は書く */
+.edge-label.k-depends_on:not(.counted), .edge-label.k-related:not(.counted) { display: none; }
+
+/* 動き。点の色と、行き着いた先の箱の光り方 */
+.flow-dot { fill: var(--flow); }
+.glow { fill: none; stroke: var(--flow); stroke-width: 3px; stroke-opacity: 0.55; rx: 11px; }
+
+@media (prefers-reduced-motion: reduce) {
+  .flow { display: none; }
+}
+
+@media (prefers-color-scheme: dark) {
+  .graph {
+    --bg: #1c1c1a;
+    --lane: #262624;
+    --muted: #a9a79f;
+    --ink: #ecebe6;
+    --edge: #a9a79f;
+    --flow: #e8955a;
+  }
+  .box { fill: #2c2c2a; stroke: #8a8a84; }
+  .t-contract .box { fill: #3a2a1e; stroke: #e0905a; }
+  .t-usecase .box { fill: #1f3324; stroke: #6cbf80; }
+  .t-domain .box { fill: #1d2a3d; stroke: #6f9ee0; }
+  .t-architecture .box { fill: #2b2340; stroke: #a688db; }
+  .t-adr .box { fill: #36301a; stroke: #d2b44a; }
+  .t-meta .box, .t-index .box { fill: #2c2c2a; stroke: #8a8a84; }
+}
