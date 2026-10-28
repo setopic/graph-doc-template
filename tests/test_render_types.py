@@ -14,10 +14,8 @@ from pathlib import Path
 
 from tools.graph import cli, render
 
-from tests.helpers import make_graph
+from tests.helpers import make_graph, sample_root
 from tests.test_render_mermaid import edge, edge_lines, node
-
-ROOT = Path(__file__).resolve().parents[1]
 
 
 def sample():
@@ -44,10 +42,10 @@ def sample():
     )
 
 
-def run(*args: str) -> tuple[int, str, str]:
+def run(root: Path, *args: str) -> tuple[int, str, str]:
     out, err = io.StringIO(), io.StringIO()
     with contextlib.redirect_stdout(out), contextlib.redirect_stderr(err):
-        code = cli.main(["--root", str(ROOT), "render", *args])
+        code = cli.main(["--root", str(root), "render", *args])
     return code, out.getvalue(), err.getvalue()
 
 
@@ -85,21 +83,24 @@ class ToMermaidTypesTest(unittest.TestCase):
 
 
 class CliTest(unittest.TestCase):
+    def setUp(self) -> None:
+        self.root = sample_root(self)
+
     def test_unknown_type_is_error(self) -> None:
-        code, _, err = run("--type", "domian")
+        code, _, err = run(self.root, "--type", "domian")
         self.assertEqual(code, 1)
         self.assertIn("domian", err)
 
     def test_with_focus_is_error(self) -> None:
-        code, _, _ = run("--type", "meta", "--focus", "META-01")
+        code, _, _ = run(self.root, "--type", "meta", "--focus", "META-01")
         self.assertEqual(code, 1)
 
     def test_with_aggregate_is_error(self) -> None:
-        code, _, _ = run("--type", "meta", "--aggregate")
+        code, _, _ = run(self.root, "--type", "meta", "--aggregate")
         self.assertEqual(code, 1)
 
     def test_json_has_only_listed_types(self) -> None:
-        code, out, _ = run("--format", "json", "--type", "meta")
+        code, out, _ = run(self.root, "--format", "json", "--type", "meta")
         self.assertEqual(code, 0)
         payload = json.loads(out)
         self.assertTrue(payload["nodes"])
@@ -110,7 +111,7 @@ class CliTest(unittest.TestCase):
             self.assertIn(e["dst"], ids)
 
     def test_hidden_edges_are_not_counted(self) -> None:
-        code, out, _ = run("--type", "meta", "--hide-edges", "related")
+        code, out, _ = run(self.root, "--type", "meta", "--hide-edges", "related")
         self.assertEqual(code, 0)
         self.assertNotIn("|related", out)
 

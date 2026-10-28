@@ -15,7 +15,7 @@ from pathlib import Path
 from tools.graph import cli, review
 from tools.graph.model import Edge, Node
 
-from tests.helpers import make_graph
+from tests.helpers import make_graph, sample_root
 
 
 def node(node_id="DOM-01", node_type="domain", body="## 定義\n仮の本文\n") -> Node:
@@ -221,7 +221,7 @@ class WithoutAnApiKey(unittest.TestCase):
         """キーが無いのはグラフの問題ではない。失敗にしない。"""
         out = io.StringIO()
         with redirect_stdout(out):
-            code = cli.main(["review"])
+            code = cli.main(["--root", str(sample_root(self)), "review"])
         self.assertEqual(code, 0)
         self.assertIn(review.API_KEY_ENV, out.getvalue())
 

@@ -14,10 +14,8 @@ from pathlib import Path
 
 from tools.graph import cli, render
 
-from tests.helpers import make_graph
+from tests.helpers import make_graph, sample_root
 from tests.test_render_mermaid import edge, edge_lines, node
-
-ROOT = Path(__file__).resolve().parents[1]
 
 
 def sample():
@@ -37,10 +35,10 @@ def sample():
     )
 
 
-def run(*args: str) -> tuple[int, str, str]:
+def run(root: Path, *args: str) -> tuple[int, str, str]:
     out, err = io.StringIO(), io.StringIO()
     with contextlib.redirect_stdout(out), contextlib.redirect_stderr(err):
-        code = cli.main(["--root", str(ROOT), "render", *args])
+        code = cli.main(["--root", str(root), "render", *args])
     return code, out.getvalue(), err.getvalue()
 
 
@@ -65,20 +63,23 @@ class WithoutKindsTest(unittest.TestCase):
 
 
 class CliTest(unittest.TestCase):
+    def setUp(self) -> None:
+        self.root = sample_root(self)
+
     def test_unknown_kind_is_error(self) -> None:
-        code, _, err = run("--hide-edges", "decide")
+        code, _, err = run(self.root, "--hide-edges", "decide")
         self.assertEqual(code, 1)
         self.assertIn("decide", err)
 
     def test_json_has_no_hidden_edges(self) -> None:
-        code, out, _ = run("--format", "json", "--hide-edges", "decides,related")
+        code, out, _ = run(self.root, "--format", "json", "--hide-edges", "decides,related")
         self.assertEqual(code, 0)
         kinds = {e["kind"] for e in json.loads(out)["edges"]}
         self.assertTrue(kinds)
         self.assertFalse(kinds & {"decides", "related"})
 
     def test_aggregate_has_no_hidden_edges(self) -> None:
-        code, out, _ = run("--aggregate", "--hide-edges", "related")
+        code, out, _ = run(self.root, "--aggregate", "--hide-edges", "related")
         self.assertEqual(code, 0)
         self.assertNotIn("|related", out)
 

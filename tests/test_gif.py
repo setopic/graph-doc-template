@@ -8,12 +8,13 @@ from __future__ import annotations
 
 import contextlib
 import io
+import shutil
 import tempfile
 import unittest
 from pathlib import Path
 from unittest import mock
 
-from tools.graph import cli, gif
+from tools.graph import cli, gif, schema
 
 SVG = (
     '<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 300 200" width="300" height="200">\n'
@@ -47,10 +48,10 @@ class FrameTest(unittest.TestCase):
         self.assertIn("s.pauseAnimations();s.setCurrentTime(1.5);", html)
 
 
-def run(*args: str) -> tuple[int, str, str]:
+def run(root: Path, *args: str) -> tuple[int, str, str]:
     out, err = io.StringIO(), io.StringIO()
     with contextlib.redirect_stdout(out), contextlib.redirect_stderr(err):
-        code = cli.main(["gif", *args])
+        code = cli.main(["--root", str(root), "gif", *args])
     return code, out.getvalue(), err.getvalue()
 
 
@@ -59,13 +60,16 @@ class MissingTest(unittest.TestCase):
 
     def setUp(self) -> None:
         self.tmp = Path(tempfile.mkdtemp())
+        self.addCleanup(shutil.rmtree, self.tmp, True)
+        # 根を渡さないと、リポジトリの根のgraph.tomlで語彙が差し替わったまま残る
+        self.addCleanup(schema.reset)
         (self.tmp / "g.svg").write_text(SVG, encoding="utf-8")
 
     def test_no_browser(self) -> None:
         with mock.patch.object(gif, "find_browser", return_value=None), mock.patch.object(
             gif, "load_pillow", return_value=object()
         ):
-            code, _, err = run("--svg", str(self.tmp / "g.svg"), "--out", str(self.tmp / "g.gif"))
+            code, _, err = run(self.tmp, "--svg", str(self.tmp / "g.svg"), "--out", str(self.tmp / "g.gif"))
         self.assertEqual(code, 1)
         self.assertIn("EdgeかChrome", err)
         self.assertNotIn("Pillow", err)
@@ -75,7 +79,7 @@ class MissingTest(unittest.TestCase):
         with mock.patch.object(gif, "find_browser", return_value="msedge"), mock.patch.object(
             gif, "load_pillow", return_value=None
         ):
-            code, _, err = run("--svg", str(self.tmp / "g.svg"), "--out", str(self.tmp / "g.gif"))
+            code, _, err = run(self.tmp, "--svg", str(self.tmp / "g.svg"), "--out", str(self.tmp / "g.gif"))
         self.assertEqual(code, 1)
         self.assertIn("pip install Pillow", err)
         self.assertNotIn("EdgeかChrome", err)
@@ -84,7 +88,7 @@ class MissingTest(unittest.TestCase):
         with mock.patch.object(gif, "find_browser", return_value="msedge"), mock.patch.object(
             gif, "load_pillow", return_value=object()
         ):
-            code, _, err = run("--svg", str(self.tmp / "none.svg"), "--out", str(self.tmp / "g.gif"))
+            code, _, err = run(self.tmp, "--svg", str(self.tmp / "none.svg"), "--out", str(self.tmp / "g.gif"))
         self.assertEqual(code, 1)
         self.assertIn("make readme", err)
 

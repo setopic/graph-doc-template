@@ -13,10 +13,8 @@ from pathlib import Path
 
 from tools.graph import cli, render
 
-from tests.helpers import make_graph
+from tests.helpers import make_graph, sample_root
 from tests.test_render_mermaid import edge, edge_lines, node
-
-ROOT = Path(__file__).resolve().parents[1]
 
 
 def chain():
@@ -42,10 +40,10 @@ def chain():
     )
 
 
-def run(*args: str) -> tuple[int, str, str]:
+def run(root: Path, *args: str) -> tuple[int, str, str]:
     out, err = io.StringIO(), io.StringIO()
     with contextlib.redirect_stdout(out), contextlib.redirect_stderr(err):
-        code = cli.main(["--root", str(ROOT), "render", *args])
+        code = cli.main(["--root", str(root), "render", *args])
     return code, out.getvalue(), err.getvalue()
 
 
@@ -98,28 +96,31 @@ class WithoutImpliedTest(unittest.TestCase):
 
 
 class CliTest(unittest.TestCase):
+    def setUp(self) -> None:
+        self.root = sample_root(self)
+
     def test_comment_and_stderr(self) -> None:
-        code, out, err = run("--reduce")
+        code, out, err = run(self.root, "--reduce")
         self.assertEqual(code, 0)
         self.assertIn("%% ほかのdepends_onを辿れば分かる依存を", out.splitlines()[1])
         self.assertIn("本省いた", err)
 
     def test_dot_comment(self) -> None:
-        code, out, _ = run("--reduce", "--format", "dot")
+        code, out, _ = run(self.root, "--reduce", "--format", "dot")
         self.assertEqual(code, 0)
         self.assertIn("// ", out.splitlines()[1])
 
     def test_with_type(self) -> None:
-        code, _, _ = run("--reduce", "--type", "domain")
+        code, _, _ = run(self.root, "--reduce", "--type", "domain")
         self.assertEqual(code, 0)
 
     def test_json_is_error(self) -> None:
-        code, _, err = run("--reduce", "--format", "json")
+        code, _, err = run(self.root, "--reduce", "--format", "json")
         self.assertEqual(code, 1)
         self.assertIn("--reduce", err)
 
     def test_aggregate_is_error(self) -> None:
-        code, _, err = run("--reduce", "--aggregate")
+        code, _, err = run(self.root, "--reduce", "--aggregate")
         self.assertEqual(code, 1)
         self.assertIn("--reduce", err)
 
